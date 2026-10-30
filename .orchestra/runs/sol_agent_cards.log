@@ -1,0 +1,1137 @@
+Reading additional input from stdin...
+OpenAI Codex v0.166.0
+--------
+workdir: /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a18da9-5c78-7a81-af99-ffdf3ad5b8c4
+--------
+user
+너는 개발팀 작업자(GPT-6.1 Sol)다. 글 담당이다.
+
+harness/harness.config.json 을 읽고, agents 배열의 에이전트 13개마다 "card" 경로(harness/ 기준 상대경로, 예: harness/agents/lead/orchestrator.md)에 에이전트 카드를 한국어로 써라. 폴더가 없으면 만든다.
+참고: harness/policies/forbidden-phrases.json, research_notes/지식경영학회 스마트서비스 공모전 아이디어/06_선정아이디어_매장위키.md (지식경영 이론 근거: SECI 표출화, 조직기억, KCS, 지식 은닉, 사례기반추론 4R, 결정적 사건 기법).
+
+카드 형식 (각 파일, 40~70줄):
+# <이름> (<id>)
+- 팀 / LLM 사용 여부 / 앞뒤 에이전트
+## 하는 일 (두세 문장)
+## 입력 / 출력 (필드 이름과 예시 한 줄씩)
+## 판단 규칙 (번호 목록, 구체적으로. 예: 점수 임계값, 막는 조건)
+## 하지 않는 일 (경계: LLM이 할 일과 규칙이 할 일)
+## 실패하면 (게이트 onFail과 맞게)
+## 근거 이론 (해당 에이전트가 왜 필요한지, 위 노트에 있는 논문·이론만 인용. 없는 인용은 쓰지 않는다)
+## 신입이 체감하는 것 (한 문장)
+
+글쓰기 원칙: 짧은 문장, 번역투 금지, "혁신적", "획기적", "~를 통해", "~에 있어서" 같은 상투어 금지, 이모지 금지, 과장 금지. 사실이 확실하지 않으면 쓰지 않는다.
+harness/agents 아래 카드 파일 말고 다른 파일은 수정하지 않는다. 다 쓰면 만든 파일 목록을 출력한다.
+warning: Codex is ignoring 1 unrecognized configuration setting. Check for typos or deprecated settings.
+  user (/home/data/.local/share/orca/codex-accounts/41245642-2fb9-489b-a66e-16c7b6c8151b/home/config.toml): `features.child_agents_md` is ignored.
+warning: Codex is ignoring 1 unrecognized configuration setting. Check for typos or deprecated settings.
+  user (/home/data/.local/share/orca/codex-accounts/41245642-2fb9-489b-a66e-16c7b6c8151b/home/config.toml): `features.child_agents_md` is ignored.
+hook: SessionStart
+hook: SessionStart Completed
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+codex
+설정의 에이전트 13개와 게이트 실패 처리를 확인한 뒤, 지정된 카드 파일만 작성하겠습니다. 이론 근거는 참고 노트에 있는 내용으로 한정하고, 파일마다 40~70줄인지 검사하겠습니다.
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/bash -lc "pwd; rg --files -g AGENTS.md -g harness.config.json -g forbidden-phrases.json -g '*06_선정아이디어_매장위키.md' -g '*SKILL.md' ." in /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+ succeeded in 712ms:
+/mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+./research_notes/지식경영학회 스마트서비스 공모전 아이디어/06_선정아이디어_매장위키.md
+./harness/policies/forbidden-phrases.json
+./harness/harness.config.json
+
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/bash -lc 'for p in /AGENTS.md /mnt/AGENTS.md /mnt/c/AGENTS.md /mnt/c/Users/AGENTS.md /mnt/c/Users/User/AGENTS.md /mnt/c/Users/User/Desktop/AGENTS.md /mnt/c/Users/User/Desktop/대학교/AGENTS.md /mnt/c/Users/User/Desktop/대학교/3학년/AGENTS.md; do if [ -f "$p" ]; then printf '"'\\n%s\\n' \""'$p"; cat "$p"; fi; done' in /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+ succeeded in 0ms:
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/bash -lc "rg --files --hidden -g AGENTS.md -g '"'!node_modules'"' -g '"'!.git'"' .; cat harness/harness.config.json; cat harness/policies/forbidden-phrases.json; cat 'research_notes/지식경영학회 스마트서비스 공모전 아이디어/06_선정아이디어_매장위키.md'" in /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+ succeeded in 43ms:
+{
+  "name": "이어받기 매장 위키 에이전트 하네스",
+  "version": "0.2.0",
+  "llm": {
+    "provider": "anthropic",
+    "model": "claude-opus-5-5",
+    "envModel": "CLAUDE_MODEL",
+    "fallbacks": "default",
+    "offline": "ANTHROPIC_API_KEY가 없거나 호출이 실패하면 규칙 기반으로 같은 모양의 결과를 낸다. 화면에 '규칙 모드'로 표시한다."
+  },
+  "teams": [
+    { "id": "lead", "name": "지휘", "color": "blue", "agents": ["orchestrator"] },
+    { "id": "capture", "name": "수집팀", "color": "green", "agents": ["privacy-guard", "interviewer", "card-writer"] },
+    { "id": "answer", "name": "답변팀", "color": "violet", "agents": ["librarian", "coach", "escalator"] },
+    { "id": "verify", "name": "검증팀", "color": "orange", "agents": ["citation-checker", "policy-checker", "wording-guard"] },
+    { "id": "keeper", "name": "위키 관리팀", "color": "teal", "agents": ["synthesizer", "linter", "trainer"] }
+  ],
+  "agents": [
+    { "id": "orchestrator", "team": "lead", "name": "오케스트레이터", "role": "들어온 요청을 흐름(질문·기록·점장 답변·점검·훈련)에 배정하고 실행 순서와 결과 요약을 맡는다", "card": "agents/lead/orchestrator.md", "llm": false },
+    { "id": "privacy-guard", "team": "capture", "name": "개인정보 가드", "role": "기록 속 전화번호·카드번호·고객 실명을 가린다. 가린 개수를 남긴다", "card": "agents/capture/privacy-guard.md", "llm": false },
+    { "id": "interviewer", "team": "capture", "name": "회고 인터뷰어", "role": "무엇을 했는지만 적힌 기록에서 빠진 판단 이유·하면 안 되는 것·점장 호출 기준을 되묻는다", "card": "agents/capture/interviewer.md", "llm": true },
+    { "id": "card-writer", "team": "capture", "name": "사례 카드 편집자", "role": "기록과 되묻기 답을 상황·판단 이유·대응·금지·호출 기준의 사례 카드로 정리한다", "card": "agents/capture/card-writer.md", "llm": true },
+    { "id": "librarian", "team": "answer", "name": "검색 사서", "role": "승인된 사례 카드에서 질문과 가까운 카드를 찾는다(한국어 2-gram BM25)", "card": "agents/answer/librarian.md", "llm": false },
+    { "id": "coach", "team": "answer", "name": "현장 코치", "role": "찾은 카드만 근거로 신입이 바로 따라 할 답을 쓴다. 문장마다 카드 번호를 붙인다", "card": "agents/answer/coach.md", "llm": true },
+    { "id": "escalator", "team": "answer", "name": "점장 연결", "role": "근거가 없거나 점장 호출 기준에 걸리면 점장에게 넘긴다", "card": "agents/answer/escalator.md", "llm": false },
+    { "id": "citation-checker", "team": "verify", "name": "근거 검증", "role": "답의 문장마다 실제 승인된 카드 번호가 붙었는지, 없는 카드를 인용하지 않았는지 본다", "card": "agents/verify/citation-checker.md", "llm": false },
+    { "id": "policy-checker", "team": "verify", "name": "규정 우선 검증", "role": "인용한 카드끼리 공식규정과 현장노하우가 부딪히면 공식규정을 따르라는 안내가 있는지 본다", "card": "agents/verify/policy-checker.md", "llm": false },
+    { "id": "wording-guard", "team": "verify", "name": "표현 검증", "role": "고객 탓, 단정, 임의 보상 약속 같은 금지 표현을 막는다", "card": "agents/verify/wording-guard.md", "llm": false },
+    { "id": "synthesizer", "team": "keeper", "name": "종합 편집자", "role": "토픽에 카드가 늘거나 바뀌면 토픽 페이지의 핵심 판단 원칙을 다시 쓴다", "card": "agents/keeper/synthesizer.md", "llm": true },
+    { "id": "linter", "team": "keeper", "name": "위키 점검관", "role": "상충·만료·효과 낮음·중복·빈 토픽·승인 대기를 찾아 점장 할 일로 만든다", "card": "agents/keeper/linter.md", "llm": true },
+    { "id": "trainer", "team": "keeper", "name": "훈련 코치", "role": "실제 사례의 상황만 보여 주고 신입의 답을 카드와 비교해 피드백한다", "card": "agents/keeper/trainer.md", "llm": true }
+  ],
+  "flows": {
+    "ask": { "name": "신입 질문", "steps": ["orchestrator", "librarian", "coach", "citation-checker", "policy-checker", "wording-guard", "escalator"] },
+    "record": { "name": "노하우 기록", "steps": ["orchestrator", "privacy-guard", "interviewer", "card-writer", "wording-guard"] },
+    "approve": { "name": "점장 승인", "steps": ["orchestrator", "synthesizer"] },
+    "resolve": { "name": "점장 답변 재축적", "steps": ["orchestrator", "privacy-guard", "card-writer", "wording-guard", "synthesizer"] },
+    "lint": { "name": "위키 점검", "steps": ["orchestrator", "linter"] },
+    "train": { "name": "훈련 채점", "steps": ["orchestrator", "trainer"] }
+  },
+  "gates": [
+    { "id": "answer-gate", "flow": "ask", "agents": ["citation-checker", "policy-checker", "wording-guard"], "onFail": "근거 없는 문장을 빼고 다시 확인한다. 남는 문장이 없으면 점장에게 넘긴다" },
+    { "id": "card-gate", "flow": "record", "agents": ["wording-guard"], "onFail": "막힌 표현을 표시하고 작성자에게 고쳐 달라고 되돌린다(저장은 승인 대기로)" }
+  ]
+}
+{
+  "note": "현장 코치의 답과 사례 카드에서 막는 표현. pattern은 정규식, why는 화면에 보이는 이유.",
+  "rules": [
+    { "id": "blame-customer", "pattern": "(고객|손님)(이|가)?\\s*(잘못|틀렸|거짓말|진상)", "why": "고객 탓을 하는 표현은 응대 지침으로 남기지 않는다" },
+    { "id": "absolute-refund", "pattern": "무조건\\s*(환불|교환|무료)", "why": "보상 범위를 단정하면 정산·규정 문제가 생긴다" },
+    { "id": "free-promise", "pattern": "(공짜|무료)로\\s*(드리|줘|준다)", "why": "임의 무료 제공은 점장 승인 대상이다" },
+    { "id": "always-never", "pattern": "(항상|절대로)\\s*(된다|됩니다|안 된다|안됩니다)", "why": "예외를 지우는 단정은 판단을 막는다. 조건을 함께 적는다" },
+    { "id": "ai-certainty", "pattern": "(100%|확실히|틀림없이)", "why": "AI 답이 확실하다고 말하지 않는다" },
+    { "id": "hide-from-manager", "pattern": "(점장|사장)(님)?(한테|에게|께)\\s*(말하지|알리지)\\s*(마|말)", "why": "보고를 막는 지시는 남기지 않는다" }
+  ],
+  "pii": [
+    { "id": "phone", "pattern": "01[016789][-\\s]?\\d{3,4}[-\\s]?\\d{4}", "mask": "[전화번호]" },
+    { "id": "card", "pattern": "\\d{4}[-\\s]?\\d{4}[-\\s]?\\d{4}[-\\s]?\\d{4}", "mask": "[카드번호]" },
+    { "id": "customer-name", "pattern": "([가-힣]{2,3})\\s*(고객|손님)님", "mask": "[고객]" }
+  ]
+}
+# 선정 아이디어 근거 노트: "알바가 바뀌어도 서비스가 같은 매장" (AI 매장 위키)
+
+> 작성일: 2026-10-31 · 대상: 2026 한국지식경영학회 「대학생 AI 시대 스마트서비스 아이디어 공모전」 A4 1매 제안서(마감 2026-11-02 월)
+> 아이디어: 숙련 직원이 쿠폰 오류·품절·교환 같은 예외 상황에서 내린 판단과 그 이유를 AI가 모아 매장 위키로 쌓고, 신입 알바가 현장에서 검색하거나 질문해서 쓰는 직원용 매장 지식 서비스
+> 선행 노트(중복 조사 안 함): `reports/지식경영학회 스마트서비스 공모전 아이디어.md`(1위 호텔 현장 지식 코파일럿, 6위 외식 리뷰 코파일럿), `04_지식경영_생성형AI.md`(SECI·Ba·지식은닉·Brynjolfsson 34%·미충원 사유 '경력 부족' 26.9% 등). 이 노트는 그 두 문서에 **없는 내용만** 담았다.
+>
+> **검증 표기**
+> - **[검증]**: 이번 세션에 원문 페이지를 직접 열어 수치를 확인함
+> - **[서지검증]**: Crossref API로 DOI·저자·권호를 확인함. 내용 요약은 초록을 본 경우에만 적었다.
+> - **[부분검증]**: 검색 엔진 요약이나 언론 보도로만 확인함. 원문을 열지 않았다.
+> - **[미확인]**: 근거를 찾지 못했거나 기억에 기댄 내용
+
+---
+
+## 1. 문제 근거
+
+### Takeaway
+알바 인력은 규모가 크고 빨리 바뀐다. 사업주는 '경력자'를 원하지만 구하지 못한다. 시간제 근로자는 438만 명(2026.8)이고, 숙박·음식점업은 2026년 상반기 인력부족률 1위 업종이다. 반면 Z세대 알바생 10명 중 7명은 3개월도 안 돼 그만둔 알바가 있다. 숙련자 한 명이 떠날 때마다 그 매장의 예외 대응 노하우가 함께 사라지는 구조라는 점은 수치로 뒷받침된다. 다만 **숙박·음식점업과 도소매업의 업종별 이직률 수치는 이번에도 확보하지 못했다**(7절 참조).
+
+### Cited Findings
+**규모: 시간제·비정규·가맹점**
+- [검증] 2026년 8월 경제활동인구조사 근로형태별 부가조사(2026.10.21 발표) 결과다. 시간제 근로자는 **438만 2천 명**으로 전년보다 15만 2천 명 늘었다. 비정규직은 867만 1천 명으로 임금근로자의 38.5%다. 비정규직의 현 직장 평균 근속기간은 3년이고, 시간제만 따로 낸 근속기간은 공표 요약에 없다. 비정규직이 많은 산업으로 숙박음식업(9.9%)이 거론되는데, 이 값은 비정규직 전체에서 숙박음식업이 차지하는 구성비로 읽힌다. — [정책브리핑 2026.10.21](https://www.korea.kr/briefing/policyBriefingView.do?newsId=156785961)
+- [부분검증] 2025년 8월 같은 조사에서 시간제 근로자는 422만 9천 명(비정규직의 49.4%)이었다. — [KDI 경제정보센터 요약](https://eiec.kdi.re.kr/policy/materialView.do?num=272406) (검색 요약 기준이며 해당 URL이 2025년 자료인지는 열어서 확인하지 않았다)
+- [부분검증] 공정위 「2025년도 가맹사업 현황」(2026.4.12 발표): 가맹점 **379,739개**(+4.0%), 가맹본부 9,960개(+13.2%), 브랜드 13,725개다. 외식 가맹점 평균 매출은 3억 5,100만 원(+6.1%)이고 한식 가맹점은 약 4.3만 개다. — [데일리안](https://www.dailian.co.kr/news/view/1632100); [뉴시스](https://www.newsis.com/view/NISX20260411_0003587198); [서울신문](https://m.seoul.co.kr/news/2026/04/12/20260412500047)
+
+**인력 부족·이직**
+- [검증] 「2026년 5월 사업체노동력조사 및 2026년 상반기 직종별사업체노동력조사」: 인력부족률이 가장 높은 산업이 **숙박 및 음식점업**이다(수치는 본문에 없음). 도·소매업과 숙박음식점업은 2026년 5월 종사자가 줄어든 산업으로 언급됐다. 입·이직률은 각 4.9%(입직 95.4만, 이직 95.2만)다. 미충원 사유 1위는 "요구하는 경력·학력·자격을 갖춘 지원자가 없어서"다. — [정책브리핑 2026.5](https://www.korea.kr/news/policyNewsView.do?newsId=156768867)
+- [검증] 2026년 1월 전 산업 이직자는 982천 명(-13.7%), 입직자는 1,063천 명이다. 보도자료 본문에는 업종별 이직률이 없다. — [고용노동부 2026.2.26](https://www.moel.go.kr/news/enews/report/enewsView.do?news_seq=19002)
+- [부분검증] 한국노동연구원 「노동리뷰」 2025년 1월호 이슈분석에 따르면 2024년 상반기 음식점·주점업의 평균 월 임금은 약 180만 원으로 나머지 업종(323만 원)의 55.6%다. 근로시간은 더 길다. — [KLI 노동리뷰 no.238](https://repository.kli.re.kr/bitstream/2021.oak/11587/2/%eb%85%b8%eb%8f%99%eb%a6%ac%eb%b7%b0_no.238_2025.1_7.pdf) (PDF가 403으로 열리지 않아 검색 요약 기준)
+
+**짧은 근속·갑작스런 퇴사(플랫폼 설문)**
+- [부분검증] 알바천국은 2023년 5월 Z세대 알바 경험자 1,854명을 조사했다. **'가장 짧게 근무한 알바'가 3개월 미만이라는 응답이 69.5%**였다. 1~3개월 30.1%, 1주 미만 10.7%, 하루 출근 후 그만둔 경우가 10.9%다. 퇴사 계기 1위는 근무 강도·방식·환경 불만(24.7%)이었고 급여 불만은 7.6%에 그쳤다. 6개월 이상 일하게 만드는 요소 1위는 '원만한 근무 분위기'였다. — [경기일보 2023.5.23](https://www.kyeonggi.com/article/20230523580028)
+  - 주의: '평균' 근속기간이 아니라 '가장 짧았던' 알바의 근속기간이다. 제안서에는 "10명 중 7명이 3개월 안에 그만둔 알바 경험이 있다"로 적어야 정확하다.
+- [부분검증, 오래된 자료] 알바천국이 2017년 고용주 211명을 조사한 결과, 79.6%가 개강 무렵 알바생에게 사직 통보를 받은 적이 있었다. 75.8%는 갑작스런 사직 통보로 곤란을 겪었고, 그 이유로 '당장의 일손 부족'(79.5%)을 꼽았다. 통보 방식 중 무단퇴사는 11.9%였다. — [시대일보 2017](https://www.sidae.com/article/2017082108418079962)
+- [부분검증] 알바천국 2024년 6월 조사에서 사장님들은 알바 채용 시 **'경력'(49.3%, 복수응답)**을 가장 중시했다. — [한경매거진 2024.6](https://magazine.hankyung.com/business/article/202406247570b)
+
+**이직의 성과 비용(학술)**
+- [서지검증] Ton & Huckman(2008)은 소매 체인 매장 데이터로 직원 이직이 매장 성과를 떨어뜨린다는 점을 보였다. 그 부정적 효과는 표준 프로세스를 잘 지키는(process conformance) 매장에서 작았다. 매장 위키가 하는 일이 '프로세스 준수를 신입에게 빨리 이식하는 장치'라는 논리로 연결된다. — Organization Science 19(1), 56–68. [DOI 10.1287/orsc.1070.0294](https://doi.org/10.1287/orsc.1070.0294) (내용 요약은 기억에 기댄 것이므로 초록으로 다시 확인할 것)
+- [서지검증] Kacmar et al.(2006)은 패스트푸드 매장 단위에서 직원 이직이 운영 효율과 매출·이익 하락으로 이어진다는 점을 실증했다. 논문 제목은 "Sure everyone can be replaced… but at what cost?"다. — Academy of Management Journal 49(1), 133–144. [DOI 10.5465/amj.2006.20785670](https://doi.org/10.5465/amj.2006.20785670) (표본이 버거킹 매장이라는 점과 매개변수 세부는 [미확인])
+
+### Inferences
+- "경력자를 원한다(49.3%) → 경력자가 없다(미충원 사유 1위) → 3개월 안에 나간다(69.5%)"를 하나로 엮으면 **"경력자를 뽑을 수 없으니, 경력자의 판단을 매장에 남겨 두자"**는 제안 논리가 된다.
+- 퇴사 사유 1위가 급여(7.6%)가 아니라 근무 방식과 환경(24.7%)이라는 결과는 서비스 효과로 연결할 수 있다. 예외 상황을 혼자 떠안는 스트레스를 줄이면 이탈도 줄어든다(추론이며 인과는 검증되지 않음).
+
+### Gaps
+- 숙박·음식점업과 도소매업의 **업종별 입직률·이직률**: 보도자료 본문에는 없고 첨부 표(hwpx·xlsx)나 KOSIS 「사업체노동력조사」 산업별 표에만 있다. 이번 세션에서는 KOSIS 표와 KLI PDF를 열지 못했다. 제출 전에 [고용노동통계](https://laborstat.moel.go.kr/)에서 직접 숫자를 확인해야 한다.
+- 알바 **평균** 근속기간, 신입 **교육 시간**, 사장님 **교육 부담**을 직접 물은 2023~2026년 설문은 찾지 못했다. 소상공인실태조사의 인력 애로 항목도 확인하지 못했다.
+- 이직 1건당 비용(채용·교육비)에 대한 한국 수치는 찾지 못했다.
+
+---
+
+## 2. 예외상황 사례
+
+### Takeaway
+쿠폰·기프티콘, 배달 주문, 진상 고객 응대는 모두 소비자원·언론·설문으로 '분쟁이 실제로 생긴다'는 것이 확인된다. 특히 **알바가 진상 고객을 만났을 때 가장 많이 하는 대응이 '무조건 사과'(43.6%)**라는 결과가 있다. 예외 대응 지식이 없으면 직원이 소진되고 고객 문제도 해결되지 않는다는 근거로 쓰기 좋다.
+
+### Cited Findings
+**쿠폰·기프티콘(모바일 상품권)**
+- [부분검증] 2018~2020년 상품권 관련 피해구제 694건 가운데 유효기간 경과로 사용을 거부당한 사례가 57.3%, 환급 거부 16.7%, **유효기간 안인데도 사용을 거절당한 사례가 7.5%**였다. — [경향신문 2021.2.3](https://www.khan.co.kr/article/202102031018011)
+- [부분검증] 2025년 보도에 따르면 최근 3년 6개월 동안 신유형 상품권 상담 1,349건 중 **사용·환급 거부가 998건(74%)**이었다. 기업이 대량 구매해 나눠준 상품권은 표준약관 적용 대상이 아니라는 점도 함께 보도됐다. 환급률(90%→95%) 관련 내용은 다른 자료와 충돌하므로 인용하지 않는다. — [YTN 2025.9](https://www.ytn.co.kr/_ln/0102_202509162236077796)
+- [부분검증, 2018] 본사 홈페이지에는 '사용 가능'으로 안내돼 있는데 가맹점에서 기프티콘을 거부하는 사례가 보도됐다. 원인으로는 높은 수수료가 지목됐다. — [데일리안 2018](https://www.dailian.co.kr/news/view/745958/)
+  - 제안서 시나리오 예시: "본사는 가능하다는데 우리 매장 POS에서 바코드가 안 읽힌다", "금액권으로 차액 결제를 요구한다", "유효기간이 지난 쿠폰을 연장해 달라고 한다". 매장마다 처리 방식이 다르고, 알바가 혼자 판단하기 어려운 대표적인 예외 상황이다.
+
+**배달앱 주문 오류**
+- [부분검증] 한국소비자원이 1372 상담 691건(2016.1~2019.8)을 분석했다. 미배달·오배달 같은 계약불이행이 24.0%, 환급 지연·거부 20.5%, **전산시스템 오류·취소 절차 14.5%**였다. — [아주경제 2020.2.25](https://www.ajunews.com/view/20200225160158141); [경향신문 2020.2.26](https://www.khan.co.kr/article/202002262102035)
+- [부분검증] 2024년 1~7월 식사배달 상담은 722건으로 전년 같은 기간보다 47.3% 늘었다. 지연·취소 상담 비중은 2022년 12.7%, 2023년 13.5%, 2024년 14.5%로 해마다 올랐다(한국소비자단체협의회 자료). — [MTN 2024.9.3](https://news.mtn.co.kr/news-detail/2024090316214620001)
+
+**진상·갑질 고객 응대**
+- [부분검증] 알바천국 2023년 8월 실태조사(763명): 89.9%가 근무 중 스트레스를 경험했고, 가장 큰 스트레스는 **'진상 손님 응대'(39.4%)**였다. 갑질 유형은 인격 무시형 52.0%, 반말 51.2% 순이다. 대응은 **'무조건 사과'가 43.6%로 1위**였다. 갑질을 겪은 응답자의 **72.2%가 퇴사·이직을 고려했고 32.4%는 실제로 그만뒀다**. — [스마트투데이 2023.8.18](https://www.smarttoday.co.kr/ko-kr/articles/33789)
+- [부분검증] 직장갑질119·글로벌리서치 조사(2026.6.1~9, 직장인 1,000명, ±3.1%p): 30.3%가 알바 중 고객 갑질을 직접 겪었다. 고용형태별로는 **시간제 알바가 45.0%**로 가장 높았고, 20대는 46.8%였다. 유형은 반말 61.4%, 욕설 44.2%, 물건·돈 투척 31.4%(경험자 기준 복수응답)다. — [아시아경제 2026.6.28](https://view.asiae.co.kr/article/2026062815385423664); [세계일보](https://www.segye.com/newsView/20260628507185)
+
+**품절 대체·교환·환불, POS 결제 오류**
+- [미확인] 매장 단위 품절 대체나 교환·환불 분쟁, POS 오류 빈도를 다룬 소비자원·통계 자료는 이번 세션에서 찾지 못했다. 제안서에서는 현직 알바 인터뷰(팀 자체 조사)로 채우는 편이 낫다.
+
+### Inferences
+- 예외 상황 데이터는 거의 다 **고객 쪽 피해 통계**다. "직원이 어떻게 처리했는가"는 어디에도 기록되지 않는다. 그래서 고객 불만이 남아도 매장의 대응 지식은 쌓이지 않는다. 바로 이 지점이 위키가 메울 공백이다.
+- '무조건 사과'(43.6%)는 판단 근거가 없을 때 직원이 기본값으로 택하는 행동으로 해석할 수 있다. 숙련자의 판단 이유("이 경우엔 사과 + 음료 쿠폰, 이 경우엔 매니저 호출")를 넘겨 주면 대응이 일관되고 소진은 줄어든다는 가설로 제시할 수 있다(가설이며 검증되지 않음).
+
+### Gaps
+- 프랜차이즈 매장 고객 불만 중 '직원마다 응대가 다름(서비스 비일관성)'의 비중은 찾지 못했다.
+- 편의점 택배·공과금·교통카드 충전 같은 부가서비스 오류 통계도 찾지 못했다.
+
+---
+
+## 3. 경쟁 서비스와 공백
+
+### Takeaway
+"직원용 AI 매뉴얼 챗봇"은 이미 있다. **GS25 챗봇지니·챗봇조이(2018~)**와 **스타벅스 Green Dot Assist(2025)**가 대표적이다. 따라서 "AI 챗봇으로 매뉴얼을 묻는다"만으로는 차별성이 0점이다. 차별점은 다음 세 가지로 좁혀야 한다. ① **본사 FAQ가 아니라 매장에서 실제로 일어난 사건을 사례로 수확**한다. ② **'무엇을 했나'와 함께 '왜 그렇게 판단했나'를 묻는 인터뷰형 수집**을 한다. ③ **본사가 없는 독립 매장이나 매장마다 다른 로컬 규칙**까지 다룬다.
+
+### Cited Findings
+**프랜차이즈 본사형 AI 챗봇**
+- [부분검증] GS25 '챗봇지니'는 2018년 1월 KT와 함께 만든 카카오톡 기반 업무지원 챗봇이다. 점포 근무자가 문자나 음성으로 업무를 물으면 실시간으로 답한다. **점포 문의와 FAQ를 분석해 시나리오를 구축**했고, 신규 근무자 교육, 신상품 안내, 긴급 공지 기능이 있다. 2021년 3월 기준 점포 근무자 4만 3천 명이 이 챗봇으로 교육을 받았다. — [더팩트 2021](https://news.tf.co.kr/read/economy/1849912.htm); [파이낸셜뉴스 2021.3.24](https://www.fnnews.com/news/202103240924272584)
+- [부분검증] 후속인 '챗봇조이'(2022.7~)는 경영주와 스토어매니저 대상으로 24시간 업무 문의, 상품·물류 조회, 업무 지식 검색을 지원한다. 2023년 2월 가입자가 전월 대비 130% 늘었다. — [MTN 2023.3.10](https://news.mtn.co.kr/news-detail/2023031009510249060)
+- [부분검증] CU(BGF리테일)는 AI 발주(스마트 발주 2.0: 결품 21% 감소, 매출 5% 증가)와 CCTV 영상분석에 집중한다. 2026년 8월에는 DX실을 신설했다. 근무자용 매뉴얼 챗봇은 확인되지 않았다. — [헤럴드경제 르포(검색 요약)](https://heraldk.com/?p=2352622); [인사이트 2026.8](https://www.insight.co.kr/news/570180)
+- [부분검증] 스타벅스 'Green Dot Assist'(2025.6 발표)는 Microsoft Azure OpenAI 기반 바리스타용 생성형 AI 비서다. 매장 아이패드에 말이나 글로 물으면 음료 레시피나 기계 고장 조치를 안내한다. 35개 매장에서 시범 운영했고 FY2026에 미국·캐나다 전체로 확대할 계획이다. 정확성은 'grounding engine'으로 담보한다고 설명했다. — [The Register 2025.6.11](https://www.theregister.com/2025/06/11/starbucks_ai_baristas/); [eMarketer](https://www.emarketer.com/content/starbucks-debuts-ai-powered-barista-assistant-cut-wait-times)
+- [부분검증] Oliver Wyman(2025)은 매장 직원이 프로세스 표준, 인사 정책, 교육 자료를 묻는 '지식 비서'를 생성형 AI의 주요 매장 활용 사례로 꼽았다. 예시는 MediaMarktSaturn의 음성 비서와 스타벅스 시범 사례다. BCG(2025)에 따르면 리테일 현장 직원의 정기적 생성형 AI 사용률은 51%다. — [Oliver Wyman](https://www.oliverwyman.com/our-expertise/journals/retail-and-consumer-journal/2025/how-generative-ai-can-transform-retail-stores-key-benefits.html) (BCG 수치는 1차 출처 미확인)
+
+**국내 매장 운영 앱**
+- [부분검증] '모두의매뉴얼'은 사진·영상으로 업무 매뉴얼을 만들고 업무 체크, 채팅, 출퇴근을 관리하는 앱이다. 비즈니스 플랜은 월 55,000원(매장 3개, 매장당 업무 60개·직원 20명), 프랜차이즈 플랜은 월 149,000원(매장 12개, 무제한)이다. — [App Store](https://apps.apple.com/kr/app/%EB%AA%A8%EB%91%90%EC%9D%98%EB%A7%A4%EB%89%B4%EC%96%BC-%EC%95%8C%EB%B0%94-%EC%97%85%EB%AC%B4-%EC%B1%84%ED%8C%85-%EA%B5%90%EC%9C%A1-%EC%B6%9C%ED%87%B4%EA%B7%BC-%EA%B4%80%EB%A6%AC/id6446064796)
+- [부분검증] 알밤(비콘 출퇴근·근무일정표), 알바미(근태·인건비), 알바집(포지션별 업무 리스트·QR 출퇴근), 시프티(근태·스케줄)는 **근태와 스케줄 중심**이다. — [App Store 알밤(LVMH판)](https://apps.apple.com/kr/app/lvmh-%EC%B6%9C%ED%87%B4%EA%B7%BC-%EA%B4%80%EB%A6%AC%EC%9E%90%EC%9A%A9/id1426198753?l=en-GB); [시프티 블로그](https://shiftee.io/ko/blog/article/part-timer-attendance-management-and-payroll-guide)
+- [부분검증] KT '하이오더'(2023.5 출시)는 테이블 태블릿 주문·결제 서비스다. 외식 외에 호텔과 병원으로도 확장 중이다. 고객 접점 주문 도구이므로 직원 지식 관리와는 다르다. — [미코 뉴스 요약](https://meeco.kr/news/41223398)
+
+**해외 프런트라인 지식·교육 SaaS**
+- [검증] Trainual: 요금은 비공개이고 데모 후 견적을 받는다(Core/Pro/Premium/Enterprise). 기능 목록에 "AI-powered knowledge search (w/ Q&A)", "AI-assisted documentation"이 있고, FAQ에서는 "AI가 단계별 SOP 초안을 생성"하고 AI로 퀴즈를 자동 생성한다고 안내한다. — [Trainual Pricing](https://trainual.com/pricing)
+- [검증] Connecteam: 10명까지 무료다. 각 Hub(Operations·Communications·HR & Skills)는 30명까지 월 $29(연간 결제 추정)/$35이고, 상위 플랜은 $49·$99다. 지식베이스는 Communications Hub에 있고 Team Chat 안에 AI 에이전트와 AI 번역이 있다. — [Connecteam Pricing](https://connecteam.com/pricing/)
+- [부분검증] Axonify는 요금 비공개, 사용자당 과금이다. — [Capterra](https://www.capterra.com/p/130669/Axonify/)
+
+### 비교표 (공백 분석)
+
+| 유형 | 예시 | 지식의 출처 | 예외·판단 이유 수집 | 실제 사건에서 자동 갱신 | 독립 매장 사용 |
+|---|---|---|---|---|---|
+| 본사형 AI 챗봇 | GS25 챗봇지니·조이, 스타벅스 Green Dot Assist | 본사 FAQ·레시피·공지(톱다운) | 확인되지 않음 | 확인되지 않음(시나리오 구축형) | 불가(본사 전용) |
+| 매뉴얼·체크리스트 앱 | 모두의매뉴얼, 알바집 | 사장이 직접 작성한 정형 매뉴얼 | 없음(절차 중심) | 없음(수동 작성) | 가능 |
+| 근태·스케줄 앱 | 알밤, 시프티, 알바미 | 해당 없음 | 없음 | 없음 | 가능 |
+| 해외 교육·지식 SaaS | Trainual, Connecteam, Axonify | 관리자 작성 SOP, AI 초안 | AI가 SOP 초안을 생성하지만 '사례·판단 이유' 수집은 확인되지 않음 | 확인되지 않음 | 가능하나 한국어·국내 결제 맥락은 미확인 |
+| **제안 서비스** | 매장 위키 | **현장 숙련자의 실제 사건 → AI 인터뷰 → 사례 카드(바텀업)** | **핵심 기능** | **근무 후 회고·에스컬레이션 결과로 갱신** | 가능 |
+
+(표의 "확인되지 않음/없음"은 공개된 기능 소개 페이지 기준 판단이다. 내부 기능까지 확인한 것은 아니다.)
+
+### Inferences
+- 심사위원이 "GS25에 이미 있지 않나?"라고 물을 가능성이 높다. 답은 **"본사가 정한 정답(형식지)을 배포하는 도구와, 현장에서 생긴 암묵지를 끌어올리는 도구는 SECI에서 다른 단계"**다. 본사형 챗봇은 연결화·내면화 단계에, 제안 서비스는 **표출화**(사건 → 판단 이유 → 사례 카드)에 무게가 있다. 둘이 보완 관계라고 쓰면 "본사 챗봇과 연동하는 매장 레이어"로 B2B 판로 논리가 생긴다.
+- Trainual의 "AI가 SOP 초안 생성"은 가장 가까운 경쟁 기능이다. 하지만 관리자가 설명을 넣어야 시작되는 방식이라, **근무자의 사건 회고에서 시작하는 수집 방식**과는 출발점이 다르다.
+
+### Gaps
+- 노션 AI, 카카오워크, 잔디, 플로우 같은 사내 위키·메신저의 매장 직원용 활용 사례와 AI 검색 기능은 이번 세션에서 조사하지 못했다(범용 도구라 '매장 예외 사례 구조화'는 없다고 추정하지만 미확인).
+- CU·이마트24·세븐일레븐·스타벅스코리아의 국내 직원 교육 앱 현황은 확인하지 못했다.
+- 캐시노트, 하이오더 요금은 공식 페이지에서 확인하지 못했다.
+
+---
+
+## 4. 추가 논문 (선행 노트에 없는 것만)
+
+### Takeaway
+이론 축은 네 개로 정리된다. ① 신입 사회화(Bauer 2007 메타분석, Lan 외 2022 호텔 현장실험), ② 이직이 매장 성과를 깎는다는 실증(Ton & Huckman 2008, Kacmar 외 2006), ③ 서비스 접점의 '결정적 사건'(Bitner 1990·1994), ④ 사례기반추론 CBR(Aamodt & Plaza 1994). 생성형 AI와 연결되는 최신 근거로는 **"AI를 의식하면 호텔 직원의 암묵지 공유가 줄어든다"(Zhang 외 2025)**가 있다. 설계 리스크를 미리 짚는 데 꼭 필요한 논문이다.
+
+### Cited Findings
+**신입 사회화·온보딩**
+- [서지검증] Bauer, Bodner, Erdogan, Truxillo & Tucker (2007). Newcomer adjustment during organizational socialization: A meta-analytic review of antecedents, outcomes, and methods. *Journal of Applied Psychology*, 92(3), 707–721. [DOI 10.1037/0021-9010.92.3.707](https://doi.org/10.1037/0021-9010.92.3.707). 역할 명확성, 자기효능감, 사회적 수용이 신입 적응을 매개한다는 메타분석이다(내용은 널리 알려진 요지이며 이번에 초록을 다시 열지는 않음).
+- [서지검증·초록 확인] Lan, Wong & Wong (2022). The role of knowledge sharing in hotel newcomer socialization: a formal intervention program. *IJCHM*, 34(6), 2250–2271. [DOI 10.1108/IJCHM-10-2021-1311](https://doi.org/10.1108/IJCHM-10-2021-1311). 홍콩 5성급 호텔 체인에서 신입을 실험군(지식공유 그룹, N=235)과 통제군(N=233)에 무작위로 배정해 3개월 동안 진행한 현장실험이다. 지식공유 그룹은 서비스 원칙의 중요성 인식과 애착이 높아졌고, 이것이 **직무 명확성, 만족, 몰입을 높이고 이직의도를 낮췄다**. 저자들은 서비스 원칙이 "암묵적이어서 형식화하기 어렵다"고 문제를 정의했다. **이 아이디어와 가장 가까운 실증이다.**
+- [서지검증·초록 확인] Terrah, Mistry & Cobanoglu (2023). Issues related to part-time employees: A case of the hotel industry. *Journal of Hospitality & Tourism Cases*, 11(3), 74–82. [DOI 10.1177/21649987231216148](https://doi.org/10.1177/21649987231216148). 호텔 시간제 직원은 동기·몰입·헌신이 낮고, 관리자가 이 문제를 적극적으로 다루지 않았다는 사례연구다.
+
+**이직과 지식 손실·성과**
+- [서지검증] Ton & Huckman (2008), *Organization Science* 19(1), 56–68. [DOI 10.1287/orsc.1070.0294](https://doi.org/10.1287/orsc.1070.0294). 1절 참조.
+- [서지검증] Kacmar, Andrews, Van Rooy, Steilberg & Cerrone (2006), *AMJ* 49(1), 133–144. [DOI 10.5465/amj.2006.20785670](https://doi.org/10.5465/amj.2006.20785670). 1절 참조.
+- [서지검증] Hausknecht & Holwerda (2013). When does employee turnover matter? Dynamic member configurations, productive capacity, and collective performance. *Organization Science*, 24(1), 210–225. [DOI 10.1287/orsc.1110.0720](https://doi.org/10.1287/orsc.1110.0720). 누가, 언제, 얼마나 떠나는지에 따라 이직의 성과 영향이 달라진다는 이론 모델이다(요지는 기억 기반).
+- [서지검증·초록 확인] Hussain (2026). A temporal knowledge continuity framework: Explaining delayed performance effects of employee turnover. *Knowledge and Process Management* (Early View). [DOI 10.1002/kpm.70140](https://doi.org/10.1002/kpm.70140). 이직을 '지식 연속성의 단절 충격'으로 보고, 성과 하락이 퇴사 직후가 아니라 시간차를 두고 나타나는 이유를 설명한다. 개념 논문이다.
+- [서지검증] Kim, Yu, Huang & Lee (2023). Impact of customer incivility on restaurant employee stress spread and turnover: COVID-19 vaccination mandate. *IJHM*, 113, 103522. [DOI 10.1016/j.ijhm.2023.103522](https://doi.org/10.1016/j.ijhm.2023.103522). 고객 무례가 외식 직원의 스트레스와 이직으로 이어진다는 연구다(초록 미확인).
+
+**서비스 접점의 예외 사건(결정적 사건 기법)**
+- [서지검증] Bitner, Booms & Tetreault (1990). The service encounter: Diagnosing favorable and unfavorable incidents. *Journal of Marketing*, 54(1), 71–84. [DOI 10.1177/002224299005400105](https://doi.org/10.1177/002224299005400105). 항공·호텔·식당의 결정적 사건을 분석해, 고객 만족과 불만족을 가르는 직원 행동을 세 범주로 정리했다. 서비스 실패에 대한 대응, 고객의 특별 요청에 대한 대응, 직원의 자발적 행동이다(요지는 기억 기반이며 초록 재확인 필요).
+- [서지검증] Bitner, Booms & Mohr (1994). Critical service encounters: The employee's viewpoint. *Journal of Marketing*, 58(4), 95–106. [DOI 10.1177/002224299405800408](https://doi.org/10.1177/002224299405800408). 직원 관점에서 분석하자 '문제 고객 행동'이라는 네 번째 범주가 추가됐다(비중 수치는 [미확인]).
+  - KMR 연결: 정혜인·홍석표·정남호(2024)가 결정적 사건 기법을 프리미엄 모빌리티에 적용했다 [DOI 10.15813/kmr.2024.25.2.007](https://doi.org/10.15813/kmr.2024.25.2.007)(선행 보고서 부록 G에 수록). **회장 본인이 결정적 사건 기법을 쓰는 연구자**라는 점에서, 사례 카드를 'CIT 구조(상황-행동-결과-이유)'로 설계했다고 쓰면 심사위원이 바로 알아볼 수 있다.
+
+**사례기반추론(CBR)**
+- [서지검증] Aamodt & Plaza (1994). Case-based reasoning: Foundational issues, methodological variations, and system approaches. *AI Communications*, 7(1), 39–59. [DOI 10.3233/AIC-1994-7104](https://doi.org/10.3233/AIC-1994-7104). CBR의 4R 사이클(Retrieve-Reuse-Revise-Retain)을 제시했다. 매장 위키의 "비슷한 과거 사례 검색 → 적용 → 매니저 수정 → 새 사례 저장"과 일대일로 대응한다. RAG를 'LLM 시대의 CBR'로 설명하는 근거가 된다.
+
+**호텔·서비스 직원 × AI·지식공유(2020~2026)**
+- [서지검증·초록 확인] Zhang, Wang & Zhang (2025). Impacts of AI awareness on proactive service behavior and tacit knowledge sharing among hotel employees. *IJCHM*, 37(12), 3935–3951. [DOI 10.1108/IJCHM-03-2025-0420](https://doi.org/10.1108/IJCHM-03-2025-0420). 호텔 직원 376명을 두 차례 조사했다. AI 인식은 선제적 서비스 행동을 **높였지만 암묵지 공유는 낮췄다**. 이 효과는 '일자리 보전 동기'가 완전 매개했다. **"내 노하우를 AI에 주면 내가 대체된다"는 우려가 지식 수집을 막는다는 직접 증거**이므로 설계에 반영해야 한다(5절).
+- [서지검증·초록 확인] Yang, Guo, Chen, Li & Zhou (2025). Understanding service performance of frontline employees from employee–AI interaction perspective. *Journal of Service Management*, 36(3), 448–475. [DOI 10.1108/JOSM-10-2023-0425](https://doi.org/10.1108/JOSM-10-2023-0425). 배달 서비스 현장 직원을 대상으로, 직원과 AI 사이 상호작용의 유창성이 역할 내·외 서비스 성과에 미치는 영향을 분석했다.
+- [서지검증] Lu, Zhao & Chen (2024). Investigating OTA employees' double-edged perceptions of ChatGPT: The moderating role of organizational support. *IJHM*, 120, 103753. [DOI 10.1016/j.ijhm.2024.103753](https://doi.org/10.1016/j.ijhm.2024.103753). OTA 직원이 ChatGPT를 양면적으로 인식하며 조직 지원이 이를 조절한다는 연구다(초록 미확인).
+- [서지검증] Hu, Horng & Sun (2009). Hospitality teams: Knowledge sharing and service innovation performance. *Tourism Management*, 30(1), 41–50. [DOI 10.1016/j.tourman.2008.04.009](https://doi.org/10.1016/j.tourman.2008.04.009). 호텔 팀의 지식공유가 서비스 혁신 성과와 연결된다는 연구다(초록 미확인).
+- [서지검증] Solnet & Golubovskaya (2023). Research on service frontline employees: a science–practice perspective. *Journal of Service Management*. [DOI 10.1108/JOSM-07-2023-0321](https://doi.org/10.1108/JOSM-07-2023-0321). 현장 직원 연구의 리뷰·관점 논문이다(초록 미확인).
+
+### Inferences
+- 제안서 1매에 넣을 논문은 세 편이면 충분하다. **Lan 외 2022**(지식공유 → 신입 이직의도 감소, 호텔 현장실험), **Ton & Huckman 2008**(이직의 성과 손실은 프로세스 준수로 완화된다), **Zhang 외 2025**(AI가 암묵지 공유를 위축시킬 수 있으므로 기여자 보호 설계가 필요하다). 선행 노트의 Brynjolfsson(초보자 +34%)과 SECI는 그대로 유지한다.
+- Bitner의 CIT와 Aamodt의 CBR은 "사례 카드" 데이터 구조의 이론적 정당성을 준다. 지식경영학회 심사위원에게는 "LLM을 붙였다"보다 "CIT로 수집하고 CBR 사이클로 순환시킨다"가 더 설득력 있다.
+
+### Gaps
+- 편의점·카페 알바 같은 **국내 단시간 근로자 OJT·지식공유 KCI 논문**은 찾지 못했다(외식 종사원 이직의도 논문만 다수 있음).
+- 생성형 AI를 매장 현장 직원에게 적용해 성과를 측정한 동료심사 논문(리테일·외식)은 찾지 못했다. 업계 보고서(BCG, Oliver Wyman)뿐이다.
+- Kacmar 2006, Ton & Huckman 2008, Bitner 1990·1994의 수치 세부는 초록을 다시 확인해야 한다.
+
+---
+
+## 5. 학회 적합성 (호텔·관광 연결, 그림자노동 비판 회피)
+
+### Takeaway
+주 시장은 편의점·카페·외식 매장으로 두고, **호텔 F&B·프런트를 확장 시장(2단계)**으로 명시한다. 이렇게 하면 문제 규모(가맹점 38만, 시간제 438만)와 심사단 전문성(호텔관광대학)을 모두 잡을 수 있다. 그림자노동 비판은 원칙적으로 해당하지 않는다. 고객에게 일을 넘기지 않기 때문이다. 다만 **'직원에게 문서화 노동을 떠넘긴다'는 변형된 비판**이 나올 수 있으니 미리 막아 둔다.
+
+### Cited Findings (선행 노트 재인용 포함)
+- 회장 정남호 교수는 "AI와 인간 지식의 상호작용"을 지식경영의 핵심 과제로 꼽았고, 승무원 지식공유(유희주·한진선·정남호 2025, [DOI](https://doi.org/10.15813/kmr.2025.26.2.005))와 결정적 사건 연구(정혜인 외 2024)를 했다. — 선행 보고서 1절, 부록 F
+- 학회지는 셀프서비스가 고객에게 '디지털 그림자노동'을 넘긴다는 비판을 2023~2025년 네 편 실었다([유팅팅·고준 2025](https://doi.org/10.15813/kmr.2025.26.1.002)). — 선행 보고서
+- [서지검증] Lan 외(2022)는 호텔 신입 대상 지식공유 현장실험이다. 호텔에서 효과가 검증된 메커니즘을 매장으로 확장한다는 논리가 가능하다(4절).
+- [부분검증] KT 하이오더는 외식에서 호텔·병원으로 확장 중이다. 매장용 솔루션이 호텔로 넘어가는 경로가 시장에 이미 있다는 방증이다. — [미코](https://meeco.kr/news/41223398)
+- [서지검증·초록 확인] Zhang 외(2025): AI 인식이 호텔 직원의 암묵지 공유를 낮춘다(일자리 보전 동기). — [DOI](https://doi.org/10.1108/IJCHM-03-2025-0420)
+
+### Inferences (제안서 문구 제안)
+- **호텔 연결 문장 예시**: "1단계 편의점·카페(시간제 비중이 높고 예외가 잦음) → 2단계 호텔 F&B·프런트(OTA 예약 오류, 패키지 바우처, 룸서비스 품절, 환불 요청 등 같은 유형의 예외)." 호텔의 예외 상황은 선행 보고서 1위 아이디어의 근거(호텔 관광불편신고 146건 등)를 재사용할 수 있다.
+- **그림자노동 비판 회피**: "이 서비스는 고객에게 어떤 작업도 추가하지 않는다. 고객은 여전히 사람 직원을 만나고, AI는 직원 뒤에서 판단 근거만 준다."
+- **변형 비판(직원 문서화 노동) 대응 설계**
+  1. 기록은 **근무시간 안에서 30초~2분 음성 회고**로 하고, AI가 정리한다. 직원이 따로 글을 쓰지 않는다.
+  2. 사례 카드에 **기여자 표시와 보상**(우수 사례 수당, 경력 증명용 '응대 포트폴리오')을 붙인다. Zhang 외 2025의 '대체 불안'을 '인정받는 기여'로 바꾸는 장치다.
+  3. **감시·평가 도구로 쓰지 않는다는 원칙**과 고객 개인정보 마스킹(선행 보고서 프라이버시 항목을 재사용)을 둔다.
+  4. 위험도가 높은 예외(환불 금액 큼, 안전, 폭언)는 AI가 답하지 않고 **사장·매니저에게 에스컬레이션**한다. 그 결정이 다시 위키에 들어간다(CBR의 Revise-Retain).
+
+### Gaps
+- 호텔 F&B·프런트의 시간제·파견 인력 비중을 보여주는 국내 통계는 찾지 못했다.
+
+---
+
+## 6. 수익모델
+
+### Takeaway
+비교 대상 도구들의 가격은 대체로 **매장당 월 2만~5만 원, 사용자당 월 2천~4천 원** 범위다. 제안은 "매장당 월 구독(소상공인) + 본부 일괄 계약(가맹본부) + 정부 AI 바우처 공급기업 등록"의 3단 구성이 무난하다.
+
+### Cited Findings
+| 서비스 | 과금 방식 | 가격 | 검증 |
+|---|---|---|---|
+| 모두의매뉴얼 | 정액(매장 묶음) | 비즈니스 월 55,000원(3매장, 매장당 약 1.8만 원), 프랜차이즈 월 149,000원(12매장, 매장당 약 1.2만 원) | [부분검증, App Store](https://apps.apple.com/kr/app/%EB%AA%A8%EB%91%90%EC%9D%98%EB%A7%A4%EB%89%B4%EC%96%BC-%EC%95%8C%EB%B0%94-%EC%97%85%EB%AC%B4-%EC%B1%84%ED%8C%85-%EA%B5%90%EC%9C%A1-%EC%B6%9C%ED%87%B4%EA%B7%BC-%EA%B4%80%EB%A6%AC/id6446064796) |
+| 시프티(근태) | 사용자당 | Basic 월 2,000원/인(연간 1,800원), Standard 월 4,000원/인(연간 3,500원), 30일 무료체험 | [부분검증, 블로그 요약](https://tilnote.io/pages/6a68d5faca45b7df56e07c4c); 무료체험은 [시프티 FAQ](https://shiftee.io/ko/help/article/gettingStartedFaq) |
+| Connecteam | 30명 기본료 + 추가 인원 | 10명까지 무료. Hub당 월 $29/$35(30명), 추가 1인 $0.5~$5 | [검증](https://connecteam.com/pricing/) |
+| Trainual | 비공개(데모 후 견적) | — | [검증](https://trainual.com/pricing) |
+| Axonify | 사용자당, 비공개 | — | [부분검증, Capterra](https://www.capterra.com/p/130669/Axonify/) |
+| (참고) EdApp, 360Learning | 사용자당 | 각각 월 $1.95, $8.00부터 | [부분검증, 리뷰사이트 요약] |
+
+- 시장 규모 참고: 가맹점 379,739개, 가맹본부 9,960개(1절). 중기부 2026년 소상공인 'AI 활용지원' 예산 144억 원(선행 보고서 6위 아이디어, [메트로서울](https://www.metroseoul.co.kr/article/20251222500384)).
+
+### Inferences
+- **가격 제안(추론)**: 소상공인은 매장당 월 19,900~29,900원(직원 수 무관, 근태 앱과 비슷한 체감가)으로 한다. 가맹본부는 본부 콘솔과 매장 사례를 집계하는 대시보드를 붙여 매장당 월 1만 원대 일괄 계약으로 한다. 본부는 "매장들의 예외 사례가 모이는 곳"이라 본사 매뉴얼 개정에 쓸 데이터를 얻는다(본사형 챗봇과의 보완 논리, 3절).
+- 단순 계산 예시(추론): 가맹점의 1%(약 3,800곳) × 월 2만 원 = 월 약 7,600만 원, 연 약 9.1억 원이다. 제안서에 넣는다면 반드시 "가정"이라고 표기한다.
+
+### Gaps
+- 캐시노트, 하이오더, 알밤 공식 요금과 시프티 공식 요금 페이지는 확인하지 못했다.
+- 국내 소상공인의 SaaS 지불 의향(월 얼마까지 낼 수 있나) 조사는 찾지 못했다.
+
+---
+
+## 7. 미확인·한계
+
+| 항목 | 상태 | 제출 전 조치 |
+|---|---|---|
+| 숙박·음식점업, 도소매업 **업종별 이직률·입직률** | 미확보(보도자료 본문에 없음, KOSIS·첨부파일 미열람) | [고용노동통계](https://laborstat.moel.go.kr/)나 KOSIS 「사업체노동력조사」 산업별 입직·이직률 표에서 2025년 연평균 값을 직접 확인한다. 못 구하면 "인력부족률 1위 업종"([검증](https://www.korea.kr/news/policyNewsView.do?newsId=156768867))으로 대체한다 |
+| 숙박·음식점업 인력부족률 **수치** | 순위(1위)만 확인 | 같은 보도자료 첨부에서 확인한다 |
+| 알바 평균 근속기간·교육시간·사장님 교육 부담 설문 | 미확보 | '가장 짧은 근속 3개월 미만 69.5%'(2023)로 대체하고, 팀 자체 설문이나 인터뷰(5~10명)를 추가한다 |
+| 2025년 시간제 422.9만 명 | 검색 요약 | 2026년 수치(438.2만, 검증)를 쓴다 |
+| KLI 음식점·주점업 임금 55.6% | PDF 403, 검색 요약 | 인용한다면 [부분검증]으로 표기한다 |
+| 기프티콘·배달 피해 통계 | 언론 재인용, 2020·2021년 자료 섞임 | 소비자원 원문 보도자료와 대조한다. 최신(2025) YTN 수치 위주로 쓴다 |
+| 진상 고객 설문(알바천국 2023, 직장갑질119 2026) | 언론 보도 기준 | 직장갑질119 원 보도자료를 확인한다 |
+| GS25 챗봇조이 현재 기능, CU·스타벅스코리아 직원 AI | 2021~2023 보도 기준 | 최신 기사 1건을 확인한다. 이미 사례 수집 기능이 있으면 차별점 문구를 수정한다 |
+| 스타벅스 Green Dot Assist 전면 도입 여부 | 2025.6 발표 기준 | 확대 여부는 미확인이라고 표기한다 |
+| 사내 위키·메신저(노션·카카오워크·잔디·플로우) | 미조사 | 차별성 표에 넣으려면 기능을 확인한다 |
+| Kacmar 2006, Ton & Huckman 2008, Bitner 1990·1994, Bauer 2007, Hausknecht 2013 요지 | DOI·서지만 검증, 내용은 기억 기반 | 인용 전에 초록 한 줄을 확인한다 |
+| Lu 외 2024, Kim 외 2023, Hu 외 2009, Solnet 2023 | 서지만 검증 | 본문에 쓸 경우 초록을 확인한다 |
+| 수익 추정치(가맹점 1% × 2만 원) | 팀 가정 | "가정"으로 명시한다 |
+
+**해석상 주의**
+- "Z세대 69.5%"는 '가장 짧았던 알바'의 근속기간이다. 평균 근속으로 쓰면 오류다.
+- "반말 61.4%"는 갑질 경험자 중 복수응답 비율이다. 전체 알바의 61.4%가 아니다.
+- "숙박음식업 9.9%"는 비정규직 중 해당 산업 구성비로 보인다. 업종 내 비정규직 비율로 쓰면 오류다.
+- 본사형 AI 챗봇(GS25, 스타벅스)이 이미 있으므로 "국내 최초 직원용 AI 챗봇"이라는 표현은 쓰면 안 된다. 차별점은 "현장 사건에서 판단 이유를 수확하는 바텀업 지식 순환"으로 한정한다.
+
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/bash -lc "rg --files harness; rg -n 'SECI|조직기억|KCS|은닉|Nonaka|Walsh|Connelly' 'research_notes/지식경영학회 스마트서비스 공모전 아이디어/06_선정아이디어_매장위키.md'; git status --short" in /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+ succeeded in 324ms:
+harness/harness.config.json
+harness/policies/forbidden-phrases.json
+5:> 선행 노트(중복 조사 안 함): `reports/지식경영학회 스마트서비스 공모전 아이디어.md`(1위 호텔 현장 지식 코파일럿, 6위 외식 리뷰 코파일럿), `04_지식경영_생성형AI.md`(SECI·Ba·지식은닉·Brynjolfsson 34%·미충원 사유 '경력 부족' 26.9% 등). 이 노트는 그 두 문서에 **없는 내용만** 담았다.
+121:- 심사위원이 "GS25에 이미 있지 않나?"라고 물을 가능성이 높다. 답은 **"본사가 정한 정답(형식지)을 배포하는 도구와, 현장에서 생긴 암묵지를 끌어올리는 도구는 SECI에서 다른 단계"**다. 본사형 챗봇은 연결화·내면화 단계에, 제안 서비스는 **표출화**(사건 → 판단 이유 → 사례 카드)에 무게가 있다. 둘이 보완 관계라고 쓰면 "본사 챗봇과 연동하는 매장 레이어"로 B2B 판로 논리가 생긴다.
+165:- 제안서 1매에 넣을 논문은 세 편이면 충분하다. **Lan 외 2022**(지식공유 → 신입 이직의도 감소, 호텔 현장실험), **Ton & Huckman 2008**(이직의 성과 손실은 프로세스 준수로 완화된다), **Zhang 외 2025**(AI가 암묵지 공유를 위축시킬 수 있으므로 기여자 보호 설계가 필요하다). 선행 노트의 Brynjolfsson(초보자 +34%)과 SECI는 그대로 유지한다.
+ M .omc/wiki/index.md
+ M .omc/wiki/log.md
+?? .fablize/
+?? .omc/.gitignore
+?? .orchestra/
+?? "2026_fall_\352\263\265\353\252\250\354\240\204(\354\226\221\354\213\235)(0).zip"
+?? "2026_fall_\352\263\265\353\252\250\354\240\204(\354\226\221\354\213\235)(0)/"
+?? backend/
+?? data/
+?? docs/
+?? frontend/
+?? harness/
+?? prototype/
+?? research/.omc/
+?? research/kmsk-cx-wiki.zip
+?? "research_notes/\354\247\200\354\213\235\352\262\275\354\230\201\355\225\231\355\232\214 \354\212\244\353\247\210\355\212\270\354\204\234\353\271\204\354\212\244 \352\263\265\353\252\250\354\240\204 \354\225\204\354\235\264\353\224\224\354\226\264/06_\354\204\240\354\240\225\354\225\204\354\235\264\353\224\224\354\226\264_\353\247\244\354\236\245\354\234\204\355\202\244.md"
+?? shared/
+
+hook: PostToolUse
+hook: PostToolUse Completed
+codex
+설정에는 검색 점수 임계값이 없으므로 임의 수치는 넣지 않겠습니다. 근거 노트에는 조직기억·KCS의 인용 근거가 없어, 확인되는 SECI 표출화·사례기반추론 4R·결정적 사건 기법 등을 쓰겠습니다. 실패 처리는 설정의 답변 게이트와 카드 게이트에 맞추겠습니다.
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/bash -lc "rg --files backend shared data | head -60; rg -n 'threshold|score|approved|escalat|citation|onFail' backend shared -g '*.ts' -g '*.py' -g '*.json' | head -100" in /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+ succeeded in 19ms:
+data/seed.json
+shared/contracts.ts
+data/wiki/people.md
+data/wiki/log.md
+data/wiki/index.md
+backend/vitest.config.ts
+backend/tsconfig.json
+backend/package-lock.json
+backend/package.json
+data/wiki/topics/기타.md
+data/wiki/topics/교환-환불.md
+data/wiki/topics/고객-응대.md
+data/wiki/topics/결제-POS.md
+data/wiki/topics/쿠폰-기프티콘.md
+data/wiki/topics/배달앱-주문.md
+data/wiki/topics/품절-대체.md
+backend/test/flows.test.ts
+backend/src/server.ts
+backend/src/paths.ts
+backend/src/demo.ts
+backend/src/store/graph.ts
+backend/src/store/db.ts
+backend/src/agents/capture.ts
+backend/src/agents/answer.ts
+backend/src/agents/keeper.ts
+backend/src/agents/verify.ts
+backend/src/flows/index.ts
+backend/src/tools/policies.ts
+backend/src/tools/search.ts
+backend/src/harness/llm.ts
+backend/src/harness/config.ts
+backend/src/harness/runner.ts
+backend/src/harness/trace.ts
+shared/contracts.ts:6:export type CardStatus = 'pending' | 'approved' | 'rejected' | 'archived';
+shared/contracts.ts:25:  escalateWhen: string;
+shared/contracts.ts:40:export type QuestionStatus = 'answered' | 'escalated' | 'resolved';
+shared/contracts.ts:86:export interface GateDef { id: string; flow: FlowId; agents: string[]; onFail: string }
+shared/contracts.ts:166:export interface AskResult { question: Question; candidates: { id: string; title: string; score: number }[]; runId: string }
+shared/contracts.ts:175:  escalateWhen: string;
+shared/contracts.ts:186:export interface TrainingResult { score: number; good: string[]; missing: string[]; feedback: string; card: Card }
+shared/contracts.ts:195:  escalated: number;
+backend/test/flows.test.ts:8:import { citationChecker, policyChecker, wordingGuard } from '../src/agents/verify.js';
+backend/test/flows.test.ts:25:    expect(search(q, db.approvedCards())[0]?.card.id).toBe(id);
+backend/test/flows.test.ts:29:    const top = search('매장에 고양이가 들어왔어요 어떻게 해요?', db.approvedCards())[0];
+backend/test/flows.test.ts:30:    expect(!top || top.coverage < 0.25 || top.score < 3).toBe(true);
+backend/test/flows.test.ts:35:  const approved = () => new Set(db.approvedCards().map((c) => c.id));
+backend/test/flows.test.ts:37:    const r = citationChecker({ answer: '이렇게 하세요 [C999]', why: '', cited: ['C999'], confidence: 'high', needsManager: false }, approved(), new Set(['C999']));
+backend/test/flows.test.ts:42:    const r = citationChecker({ answer: '근거 있는 줄 [C003]\n지어낸 줄', why: '', cited: ['C003'], confidence: 'high', needsManager: false }, approved(), new Set(['C003']));
+backend/test/flows.test.ts:46:    const r = policyChecker({ answer: '환불 처리 [C006]\n교환 [C007]', why: '', cited: ['C006', 'C007'], confidence: 'high', needsManager: false }, db.approvedCards());
+backend/test/flows.test.ts:69:    expect(agents).toEqual(['orchestrator', 'librarian', 'coach', 'citation-checker', 'policy-checker', 'wording-guard', 'escalator']);
+backend/test/flows.test.ts:75:    expect(first.question.status).toBe('escalated');
+backend/test/flows.test.ts:77:    expect(card.status).toBe('approved');
+backend/src/server.ts:33:  res.json({ rubric: read('rubric.json', { criteria: [], note: '' }), rounds: read('scores.json', { rounds: [] }).rounds });
+backend/src/server.ts:43:  const approved = db.approvedCards();
+backend/src/server.ts:47:  for (const c of approved) {
+backend/src/server.ts:60:  approved.forEach((c) => bump(c.created, 'cards'));
+backend/src/server.ts:63:    cards: approved.length,
+backend/src/server.ts:65:    bySource: { 공식규정: approved.filter((c) => c.source === '공식규정').length, 현장노하우: approved.filter((c) => c.source === '현장노하우').length } as Record<Source, number>,
+backend/src/server.ts:66:    byTopic: d.topics.map((t) => ({ topic: t, n: approved.filter((c) => c.topic === t).length })),
+backend/src/server.ts:69:    escalated: qs.filter((q) => q.status === 'escalated').length,
+backend/src/server.ts:72:    totalReuse: approved.reduce((s, c) => s + c.uses, 0),
+backend/src/server.ts:73:    reasonCoverage: approved.length ? Math.round((approved.filter((c) => c.reason.trim()).length / approved.length) * 100) : 0,
+backend/src/server.ts:131:  const pool = db.approvedCards().filter((c) => c.actions.length >= 2);
+backend/src/server.ts:162:  for (const t of d.topics) d.topicSummaries[t] = (await synthesizer(t, db.approvedCards().filter((c) => c.topic === t))).out;
+backend/src/agents/capture.ts:32:    escalate: !ss.some((s) => ESC_RE.test(s)),
+backend/src/agents/capture.ts:51:      if (qs.length < 2 && m.escalate) qs.push(Q_ESC);
+backend/src/agents/capture.ts:87:  let escalateWhen = pick(ESC_RE).join(' ');
+backend/src/agents/capture.ts:92:    else if (/점장/.test(question)) escalateWhen = [escalateWhen, answer].filter(Boolean).join(' ');
+backend/src/agents/capture.ts:103:    escalateWhen,
+backend/src/agents/capture.ts:118:    escalateWhen: z.string().describe('점장을 불러야 하는 기준'),
+backend/src/agents/capture.ts:127:  const filled = [value.reason && '판단 이유', value.avoid && '금지', value.escalateWhen && '호출 기준'].filter(Boolean);
+backend/src/agents/verify.ts:11:export function citationChecker(ans: Answer, approvedIds: Set<string>, retrievedIds: Set<string>): StepOut<{ answer: Answer; problems: string[] }> {
+backend/src/agents/verify.ts:16:    if (!approvedIds.has(id)) problems.push(`없는 카드 인용: ${id}`);
+backend/src/agents/verify.ts:22:  const valid = ans.cited.filter((id) => approvedIds.has(id) && retrievedIds.has(id));
+backend/src/tools/search.ts:24:export interface Hit { card: Card; score: number; coverage: number }
+backend/src/tools/search.ts:38:      let score = 0;
+backend/src/tools/search.ts:46:        score += (idf * f * 2.2) / (f + 1.2 * (0.25 + 0.75 * (d.length / avg)));
+backend/src/tools/search.ts:48:      return { card: cards[i], score, coverage: matched / q.length };
+backend/src/tools/search.ts:50:    .filter((r) => r.score > 0)
+backend/src/tools/search.ts:51:    .sort((a, b) => b.score - a.score)
+backend/src/agents/answer.ts:22:    summary: hits.length ? `가까운 사례 ${hits.length}개: ${hits.slice(0, 3).map((h) => `${h.card.id}(${h.score.toFixed(1)})`).join(', ')}` : '가까운 사례를 찾지 못했습니다',
+backend/src/agents/answer.ts:32:  if (!top || top.score < 3 || top.coverage < 0.25) return { answer: NO_ANSWER, why: '', cited: [], confidence: 'none', needsManager: true };
+backend/src/agents/answer.ts:34:  const official = hits.find((h) => h.card.source === '공식규정' && h.card.topic === top.card.topic && h.score >= top.score * 0.8);
+backend/src/agents/answer.ts:39:  if (c.escalateWhen) lines.push(`점장 호출: ${c.escalateWhen} [${c.id}]`);
+backend/src/agents/answer.ts:40:  const other = ordered.slice(1).find((h) => h.card.topic === c.topic && h.card.source !== c.source && h.score > top.score * 0.6);
+backend/src/agents/answer.ts:46:  return { answer: lines.join('\n'), why: c.reason, cited, confidence: top.score > 6 ? 'high' : 'low', needsManager: false };
+backend/src/agents/answer.ts:51:    .map(({ card: c }) => `[${c.id}] (${c.source}, 갱신 ${c.updated}) ${c.title}\n상황: ${c.situation}\n판단 이유: ${c.reason}\n대응: ${c.actions.join(' / ')}\n하면 안 되는 것: ${c.avoid || '-'}\n점장 호출 기준: ${c.escalateWhen || '-'}`)
+backend/src/agents/answer.ts:77:export function escalator(question: string, ans: Answer, gatePassed: boolean, cards: Card[]): StepOut<{ escalate: boolean; note: string }> {
+backend/src/agents/answer.ts:78:  if (ans.needsManager || ans.confidence === 'none') return { out: { escalate: true, note: '근거 카드 없음' }, summary: '점장에게 넘겼습니다 (근거 카드 없음)' };
+backend/src/agents/answer.ts:79:  if (!gatePassed && !ans.cited.length) return { out: { escalate: true, note: '검증을 통과한 문장 없음' }, summary: '점장에게 넘겼습니다 (검증 통과 문장 없음)' };
+backend/src/agents/answer.ts:80:  const hit = cards.find((c) => ans.cited.includes(c.id) && c.escalateWhen && containment(c.escalateWhen, question) >= 0.35);
+backend/src/agents/answer.ts:81:  if (hit) return { out: { escalate: false, note: `점장 호출 기준 해당 가능: ${hit.escalateWhen}` }, summary: `답은 주되 호출 기준을 강조 ([${hit.id}])` };
+backend/src/agents/answer.ts:82:  return { out: { escalate: false, note: '' }, summary: '위키 답으로 충분합니다' };
+backend/src/agents/keeper.ts:51:  const approved = db.approvedCards();
+backend/src/agents/keeper.ts:55:  for (const c of approved) {
+backend/src/agents/keeper.ts:61:  for (let i = 0; i < approved.length; i++)
+backend/src/agents/keeper.ts:62:    for (let j = i + 1; j < approved.length; j++) {
+backend/src/agents/keeper.ts:63:      const [a, b] = [approved[i], approved[j]];
+backend/src/agents/keeper.ts:73:        user: `같은 토픽의 카드들이다. 서로 모순되는 지시(한쪽은 하라, 한쪽은 하지 말라)만 찾아라. 단순 중복은 제외.\n\n${approved.map((c) => `[${c.id}] (${c.topic}, ${c.source}) ${c.title} / 대응: ${c.actions.join(' / ')} / 금지: ${c.avoid}`).join('\n')}`,
+backend/src/agents/keeper.ts:76:    () => conflictsByRules(approved),
+backend/src/agents/keeper.ts:84:  const waiting = d.questions.filter((q) => q.status === 'escalated');
+backend/src/agents/keeper.ts:87:    const n = approved.filter((c) => c.topic === topic).length;
+backend/src/agents/keeper.ts:101:export interface Grade { score: number; good: string[]; missing: string[]; feedback: string }
+backend/src/agents/keeper.ts:108:        schema: z.object({ score: z.number().int(), good: z.array(z.string()), missing: z.array(z.string()), feedback: z.string() }),
+backend/src/agents/keeper.ts:113:      const score = Math.round((good.length / Math.max(c.actions.length, 1)) * 100);
+backend/src/agents/keeper.ts:114:      return { score, good, missing, feedback: score >= 60 ? '핵심 대응을 잘 짚었어요. 판단 이유도 함께 기억해 두세요.' : '놓친 대응이 있어요. 카드의 판단 이유를 먼저 읽어 보세요.' };
+backend/src/agents/keeper.ts:118:  return { out: value, via, summary: `${value.score}점 · 맞춘 행동 ${value.good.length}/${c.actions.length}` };
+backend/src/store/db.ts:63:  avoid: string; escalateWhen: string; source: Source; tags: string[];
+backend/src/store/db.ts:76:    escalateWhen: f.escalateWhen ?? '',
+backend/src/store/db.ts:104:export const approvedCards = () => get().cards.filter((c) => c.status === 'approved');
+backend/src/store/db.ts:132:    c.escalateWhen ? `- 점장 호출 기준: ${c.escalateWhen}` : '',
+backend/src/store/db.ts:141:  const approved = approvedCards();
+backend/src/store/db.ts:145:    `갱신 ${now()} · 승인 사례 ${approved.length} · 승인 대기 ${d.cards.filter((c) => c.status === 'pending').length} · 질문 ${d.questions.length}`,
+backend/src/store/db.ts:151:    const cards = approved.filter((c) => c.topic === topic);
+backend/src/store/db.ts:162:    const mine = approved.filter((c) => c.authorId === p.id);
+backend/src/flows/index.ts:6:import { coach, escalator, librarian } from '../agents/answer.js';
+backend/src/flows/index.ts:7:import { citationChecker, policyChecker, wordingGuard } from '../agents/verify.js';
+backend/src/flows/index.ts:22:  const summary = await run.step('synthesizer', () => synthesizer(topic, db.approvedCards().filter((c) => c.topic === topic)));
+backend/src/flows/index.ts:32:  const approved = db.approvedCards();
+backend/src/flows/index.ts:33:  const hits = await run.step('librarian', () => librarian(text, approved));
+backend/src/flows/index.ts:35:  const c1 = await run.step('citation-checker', () => citationChecker(draft, new Set(approved.map((c) => c.id)), new Set(hits.map((h) => h.card.id))));
+backend/src/flows/index.ts:36:  const c2 = await run.step('policy-checker', () => policyChecker(c1.answer, approved));
+backend/src/flows/index.ts:38:  const gate = run.gate('answer-gate', [...c1.problems, ...c2.problems, ...words], config.gates.find((g) => g.id === 'answer-gate')!.onFail);
+backend/src/flows/index.ts:39:  const esc = await run.step('escalator', () => escalator(text, c2.answer, gate.passed, approved));
+backend/src/flows/index.ts:41:  const final = esc.escalate
+backend/src/flows/index.ts:45:  const q = db.createQuestion({ text, askerId, status: esc.escalate ? 'escalated' : 'answered', answer: final.answer, why: final.why, cited: final.cited, confidence: final.confidence, runId: run.runId });
+backend/src/flows/index.ts:48:    op: esc.escalate ? '점장에게 넘김' : '질문에 답함',
+backend/src/flows/index.ts:53:  run.end(true, esc.escalate ? '점장 답을 기다립니다' : `근거 ${final.cited.length}개로 답했습니다`);
+backend/src/flows/index.ts:54:  return { question: q, candidates: hits.map((h) => ({ id: h.card.id, title: h.card.title, score: Number(h.score.toFixed(2)) })), runId: run.runId };
+backend/src/flows/index.ts:66:  const escalate = !solved && q.status === 'answered';
+backend/src/flows/index.ts:67:  if (escalate) q.status = 'escalated';
+backend/src/flows/index.ts:68:  await orchestrate(run, escalate ? '해결 안 됨 → 점장에게 넘김' : '해결됨 → 카드 도움 횟수 반영');
+backend/src/flows/index.ts:84:  run.gate('card-gate', words, config.gates.find((g) => g.id === 'card-gate')!.onFail);
+
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/bash -lc 'cat shared/contracts.ts; cat backend/src/agents/capture.ts; cat backend/src/agents/verify.ts; cat backend/src/agents/keeper.ts; cat backend/src/agents/answer.ts' in /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+ succeeded in 0ms:
+// 백엔드·프론트 공통 타입. 화면과 API가 같은 모양을 보도록 여기 한 곳에서만 정의한다.
+
+// ---------- 매장 지식 ----------
+
+export type Source = '공식규정' | '현장노하우';
+export type CardStatus = 'pending' | 'approved' | 'rejected' | 'archived';
+export type CardOrigin = '시드' | '기록' | '에스컬레이션';
+export type Role = '점장' | '숙련' | '신입';
+
+export interface Person {
+  id: string;
+  name: string;
+  role: Role;
+  tenure: string; // 예: "2년차", "3일차"
+}
+
+export interface Card {
+  id: string;
+  title: string;
+  topic: string;
+  situation: string;
+  reason: string; // 판단 이유 — 이 서비스의 핵심 필드
+  actions: string[];
+  avoid: string;
+  escalateWhen: string;
+  source: Source;
+  authorId: string;
+  status: CardStatus;
+  origin: CardOrigin;
+  created: string;
+  updated: string;
+  expires: string;
+  tags: string[];
+  uses: number;
+  helpful: number;
+  notHelpful: number;
+  fromQuestionId?: string;
+}
+
+export type QuestionStatus = 'answered' | 'escalated' | 'resolved';
+
+export interface Question {
+  id: string;
+  text: string;
+  askerId: string;
+  time: string;
+  status: QuestionStatus;
+  answer: string;
+  why: string;
+  cited: string[];
+  confidence: 'high' | 'low' | 'none';
+  feedback: 'solved' | 'unsolved' | null;
+  managerAnswer?: string;
+  cardId?: string;
+  runId?: string;
+}
+
+export interface LogEntry {
+  time: string;
+  op: string;
+  detail: string;
+  runId?: string;
+}
+
+export interface StoreInfo {
+  name: string;
+  today: string;
+}
+
+export interface Snapshot {
+  store: StoreInfo;
+  topics: string[];
+  people: Person[];
+  cards: Card[];
+  questions: Question[];
+  topicSummaries: Record<string, string>;
+  log: LogEntry[];
+}
+
+// ---------- 하네스 선언 ----------
+
+export type FlowId = 'ask' | 'record' | 'approve' | 'resolve' | 'lint' | 'train';
+
+export interface TeamDef { id: string; name: string; color: string; agents: string[] }
+export interface AgentDef { id: string; team: string; name: string; role: string; card: string; llm: boolean }
+export interface GateDef { id: string; flow: FlowId; agents: string[]; onFail: string }
+
+export interface HarnessConfig {
+  name: string;
+  version: string;
+  llm: { provider: 'anthropic'; model: string; envModel: string; fallbacks: string; offline: string };
+  teams: TeamDef[];
+  agents: AgentDef[];
+  flows: Record<FlowId, { name: string; steps: string[] }>;
+  gates: GateDef[];
+}
+
+// ---------- 실행 기록 (실시간 스트림) ----------
+
+export type Via = 'claude' | 'rules' | 'rules(LLM 실패 대체)';
+export type StepStatus = 'ok' | 'blocked' | 'skipped' | 'error';
+
+export interface AgentStep {
+  agentId: string;
+  team: string;
+  status: StepStatus;
+  via: Via;
+  ms: number;
+  summary: string; // 한 줄, 화면 피드에 그대로 보인다
+  problems?: string[];
+}
+
+export interface GateResult {
+  gateId: string;
+  passed: boolean;
+  problems: string[];
+  action: string;
+}
+
+// 온톨로지 그래프
+export type NodeType = 'topic' | 'card' | 'person' | 'question' | 'source';
+export type EdgeType =
+  | 'belongs' // 카드 → 토픽
+  | 'authored' // 사람 → 카드
+  | 'asked' // 사람 → 질문
+  | 'cites' // 질문 → 카드
+  | 'became' // 질문 → (점장 답으로 생긴) 카드
+  | 'governs' // 출처(공식규정/현장노하우) → 카드
+  | 'conflicts'
+  | 'duplicates';
+
+export interface GraphNode {
+  id: string;
+  type: NodeType;
+  label: string;
+  sub?: string; // 보조 표시 (상태, 역할 등)
+  weight?: number; // 크기 (재사용 횟수 등)
+}
+export interface GraphEdge { id: string; source: string; target: string; type: EdgeType }
+export interface Graph { nodes: GraphNode[]; edges: GraphEdge[] }
+
+export interface WikiChange {
+  op: string; // 예: '질문 추가', '카드 승인 대기', '토픽 재종합'
+  detail: string;
+  nodes: GraphNode[]; // 이번에 새로 생기거나 바뀐 노드
+  edges: GraphEdge[];
+}
+
+export type RunEvent =
+  | { type: 'run-start'; runId: string; flow: FlowId; flowName: string; actor: string; input: string; at: string }
+  | { type: 'agent-start'; runId: string; agentId: string; at: string }
+  | { type: 'agent-end'; runId: string; step: AgentStep; at: string }
+  | { type: 'gate'; runId: string; gate: GateResult; at: string }
+  | { type: 'wiki'; runId: string; change: WikiChange; at: string }
+  | { type: 'run-end'; runId: string; ok: boolean; summary: string; at: string };
+
+export interface RunTrace {
+  runId: string;
+  flow: FlowId;
+  startedAt: string;
+  events: RunEvent[];
+}
+
+// ---------- API 응답 ----------
+
+export interface AskResult { question: Question; candidates: { id: string; title: string; score: number }[]; runId: string }
+
+export interface InterviewDraft {
+  title: string;
+  topic: string;
+  situation: string;
+  reason: string;
+  actions: string[];
+  avoid: string;
+  escalateWhen: string;
+  source: Source;
+  tags: string[];
+  followups: string[];
+  masked: number; // 개인정보 가드가 가린 개수
+  problems: string[]; // 표현 검증에서 걸린 것
+}
+
+export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기'; ids: string[]; detail: string }
+
+export interface TrainingTask { id: string; topic: string; situation: string }
+export interface TrainingResult { score: number; good: string[]; missing: string[]; feedback: string; card: Card }
+
+export interface Metrics {
+  cards: number;
+  pending: number;
+  bySource: Record<Source, number>;
+  byTopic: { topic: string; n: number }[];
+  questions: number;
+  answeredByWiki: number;
+  escalated: number;
+  resolvedToCards: number;
+  solvedRate: number | null;
+  totalReuse: number;
+  reasonCoverage: number; // 판단 이유가 채워진 카드 비율(%)
+  contributors: { personId: string; name: string; cards: number; helped: number }[];
+  timeline: { day: string; cards: number; questions: number }[];
+}
+
+export interface AiStatus { mode: 'claude' | 'rules'; model: string | null; lastError: string | null }
+// 수집팀: 개인정보 가드 → 회고 인터뷰어 → 사례 카드 편집자
+import { z } from 'zod';
+import type { Source } from '@shared/contracts';
+import { ask, llmEnabled } from '../harness/llm.js';
+import { llmOr, type StepOut } from '../harness/runner.js';
+import { maskPii } from '../tools/policies.js';
+import type { CardFields } from '../store/db.js';
+
+export interface FollowupAnswer { question: string; answer: string }
+
+// ---------- 개인정보 가드 (규칙) ----------
+
+export function privacyGuard(raw: string): StepOut<{ text: string; masked: number }> {
+  const r = maskPii(raw);
+  return { out: r, summary: r.masked ? `전화번호·카드번호·고객 이름 ${r.masked}곳을 가렸습니다` : '가릴 개인정보 없음' };
+}
+
+// ---------- 회고 인터뷰어 ----------
+
+const REASON_RE = /(때문|이유|왜냐|해서|라서|면 안|하면|니까|므로)/;
+const AVOID_RE = /(하지 않|하지 말|금지|안 된|절대)/;
+const ESC_RE = /(점장|매니저|사장님께|사장님한테)/;
+
+export const sentences = (text: string) =>
+  text.split(/(?<=[.!?。])\s+|\n+|\s*->\s*|\s*→\s*/).map((s) => s.trim()).filter(Boolean);
+
+function missingFields(raw: string) {
+  const ss = sentences(raw);
+  return {
+    reason: !ss.some((s) => REASON_RE.test(s) && !AVOID_RE.test(s)),
+    avoid: !ss.some((s) => AVOID_RE.test(s)),
+    escalate: !ss.some((s) => ESC_RE.test(s)),
+  };
+}
+
+const Q_REASON = '그렇게 대응한 이유가 무엇인가요? 다르게 하면 어떤 문제가 생기나요?';
+const Q_AVOID = '이 방법을 쓰면 안 되는 경우나, 절대 하면 안 되는 행동이 있나요?';
+const Q_ESC = '어떤 상황이면 혼자 처리하지 말고 점장을 불러야 하나요?';
+
+export async function interviewer(raw: string, answered: boolean): Promise<StepOut<string[]>> {
+  if (answered) return { out: [], summary: '되묻기 답을 받았으니 더 묻지 않습니다', status: 'skipped' };
+  const { value, via } = await llmOr(
+    async () =>
+      (await ask('interviewer', {
+        user: `[직원 기록]\n${raw}\n\n이 기록을 신입이 응용할 수 있는 사례로 만들려면 판단 이유, 하면 안 되는 것, 점장 호출 기준 중 무엇이 빠졌는지 보고, 빠진 것만 되묻는 질문을 0~2개 만들어라. 질문은 직원이 10초 안에 답할 수 있게 구체적으로.`,
+        schema: z.object({ followups: z.array(z.string()) }),
+      }))?.followups.slice(0, 2) ?? null,
+    () => {
+      const m = missingFields(raw);
+      const qs = [m.reason && Q_REASON, m.avoid && Q_AVOID].filter(Boolean) as string[];
+      if (qs.length < 2 && m.escalate) qs.push(Q_ESC);
+      return qs.slice(0, 2);
+    },
+    llmEnabled(),
+  );
+  return { out: value, via, summary: value.length ? `빠진 내용을 ${value.length}개 되묻습니다: ${value[0]}` : '판단 이유까지 들어 있어 되묻지 않습니다' };
+}
+
+// ---------- 사례 카드 편집자 ----------
+
+const TOPIC_KEYWORDS: Record<string, string[]> = {
+  '쿠폰·기프티콘': ['쿠폰', '기프티콘', '바코드', '상품권', '할인', '멤버십'],
+  '품절·대체': ['품절', '대체', '떨어', '재고', '없을'],
+  '교환·환불': ['교환', '환불', '반품', '영수증'],
+  '배달앱 주문': ['배달', '배민', '요기요', '쿠팡이츠', '라이더'],
+  '결제·POS': ['결제', '카드', 'pos', '포스', '단말기', '승인', '현금', '페이'],
+  '고객 응대': ['항의', '화를', '불만', '진상', '소리', '대기', '응대'],
+};
+
+export function guessTopic(text: string, topics: string[]): string {
+  const t = text.toLowerCase();
+  let best = { topic: '기타', hits: 0, first: Infinity };
+  for (const [topic, kws] of Object.entries(TOPIC_KEYWORDS)) {
+    if (!topics.includes(topic)) continue;
+    const found = kws.map((k) => t.indexOf(k)).filter((i) => i >= 0);
+    const cand = { topic, hits: found.length, first: Math.min(...found) };
+    if (cand.hits > best.hits || (cand.hits === best.hits && cand.hits > 0 && cand.first < best.first)) best = cand;
+  }
+  return best.topic;
+}
+
+export function structureByRules(raw: string, answers: FollowupAnswer[], topics: string[]): CardFields {
+  const ss = sentences(raw);
+  const pick = (re: RegExp, not?: RegExp) => ss.filter((s) => re.test(s) && !(not && not.test(s)));
+  let reason = pick(REASON_RE, AVOID_RE).join(' ');
+  let avoid = pick(AVOID_RE).join(' ');
+  let escalateWhen = pick(ESC_RE).join(' ');
+  for (const { question, answer } of answers) {
+    if (!answer?.trim()) continue;
+    if (/이유/.test(question)) reason = [reason, answer].filter(Boolean).join(' ');
+    else if (/안 되는|하면 안/.test(question)) avoid = [avoid, answer].filter(Boolean).join(' ');
+    else if (/점장/.test(question)) escalateWhen = [escalateWhen, answer].filter(Boolean).join(' ');
+  }
+  const actions = ss.slice(1).filter((s) => !REASON_RE.test(s) && !AVOID_RE.test(s) && !ESC_RE.test(s));
+  const topic = guessTopic(raw, topics);
+  return {
+    title: (ss[0] ?? '새 사례').replace(/[.。]$/, '').slice(0, 40),
+    topic,
+    situation: ss[0] ?? '',
+    reason,
+    actions: actions.length ? actions : ss.slice(1, 3),
+    avoid,
+    escalateWhen,
+    source: (/(본사|규정|정책)/.test(raw) ? '공식규정' : '현장노하우') as Source,
+    tags: (TOPIC_KEYWORDS[topic] ?? []).filter((k) => raw.toLowerCase().includes(k)),
+  };
+}
+
+export async function cardWriter(raw: string, answers: FollowupAnswer[], topics: string[]): Promise<StepOut<CardFields>> {
+  const qa = answers.filter((a) => a.answer?.trim()).map((a) => `Q: ${a.question}\nA: ${a.answer}`).join('\n');
+  const schema = z.object({
+    title: z.string().describe('검색하기 쉬운 상황 중심 제목, 30자 이내'),
+    topic: z.enum(topics as [string, ...string[]]),
+    situation: z.string(),
+    reason: z.string().describe('판단 이유. 직원이 말한 근거만'),
+    actions: z.array(z.string()).describe('순서대로 할 일'),
+    avoid: z.string().describe('하면 안 되는 것 / 적용하면 안 되는 조건'),
+    escalateWhen: z.string().describe('점장을 불러야 하는 기준'),
+    source: z.enum(['공식규정', '현장노하우']),
+    tags: z.array(z.string()),
+  });
+  const { value, via } = await llmOr(
+    () => ask('card-writer', { user: `[직원 기록]\n${raw}\n${qa ? `\n[되묻기 답]\n${qa}\n` : ''}\n위 내용을 사례 카드로 구조화하라.`, schema }),
+    () => structureByRules(raw, answers, topics),
+    llmEnabled(),
+  );
+  const filled = [value.reason && '판단 이유', value.avoid && '금지', value.escalateWhen && '호출 기준'].filter(Boolean);
+  return { out: value, via, summary: `'${value.title}' 카드 초안 (${value.topic}, ${value.source}) · 채운 칸: ${filled.join('·') || '대응만'}` };
+}
+// 검증팀: 모두 규칙. LLM이 쓴 답을 LLM이 아닌 규칙으로 확인한다.
+import type { Card } from '@shared/contracts';
+import type { StepOut } from '../harness/runner.js';
+import { forbidden } from '../tools/policies.js';
+import type { Answer } from './answer.js';
+
+const CITE = /\[(C\d{3,})\]/g;
+const HAS_CITE = /\[C\d{3,}\]/;
+
+/** 답에 나온 카드 번호가 실제 승인 카드이고 검색 결과 안에 있는지, 근거가 하나라도 붙었는지 본다. 근거 없는 줄은 뺀다. */
+export function citationChecker(ans: Answer, approvedIds: Set<string>, retrievedIds: Set<string>): StepOut<{ answer: Answer; problems: string[] }> {
+  if (ans.needsManager) return { out: { answer: ans, problems: [] }, summary: '답할 카드가 없어 검사할 인용 없음', status: 'skipped' };
+  const problems: string[] = [];
+  const mentioned = [...ans.answer.matchAll(CITE)].map((m) => m[1]);
+  for (const id of new Set([...mentioned, ...ans.cited])) {
+    if (!approvedIds.has(id)) problems.push(`없는 카드 인용: ${id}`);
+    else if (!retrievedIds.has(id)) problems.push(`검색되지 않은 카드 인용: ${id}`);
+  }
+  const lines = ans.answer.split('\n');
+  const kept = lines.filter((l) => !l.trim() || HAS_CITE.test(l) || /공식규정/.test(l));
+  if (kept.length < lines.length) problems.push(`근거 표시 없는 줄 ${lines.length - kept.length}개를 뺐습니다`);
+  const valid = ans.cited.filter((id) => approvedIds.has(id) && retrievedIds.has(id));
+  if (!valid.length) problems.push('유효한 근거 카드가 없습니다');
+  const fixed: Answer = { ...ans, answer: kept.join('\n'), cited: valid };
+  return { out: { answer: fixed, problems }, status: problems.length ? 'blocked' : 'ok', problems, summary: problems.length ? `인용 문제 ${problems.length}건` : `인용 ${valid.length}개 모두 실제 카드` };
+}
+
+/** 인용한 카드끼리 공식규정과 현장노하우가 같은 토픽에서 만나면, 공식규정 우선 안내가 있는지 본다. 없으면 붙인다. */
+export function policyChecker(ans: Answer, cards: Card[]): StepOut<{ answer: Answer; problems: string[] }> {
+  const cited = cards.filter((c) => ans.cited.includes(c.id));
+  const mixed = cited.some((a) => cited.some((b) => a.topic === b.topic && a.source !== b.source));
+  if (!mixed) return { out: { answer: ans, problems: [] }, summary: '공식규정과 현장노하우가 섞이지 않음' };
+  if (/공식규정/.test(ans.answer)) return { out: { answer: ans, problems: [] }, summary: '규정 우선 안내 있음' };
+  const official = cited.find((c) => c.source === '공식규정')!;
+  const fixed = { ...ans, answer: `${ans.answer}\n공식규정 [${official.id}]과 다른 현장 관행이 있습니다. 공식규정을 따르세요. [${official.id}]` };
+  return { out: { answer: fixed, problems: ['규정 우선 안내 누락 → 덧붙임'] }, status: 'blocked', problems: ['규정 우선 안내 누락'], summary: '규정 우선 안내를 덧붙였습니다' };
+}
+
+export function wordingGuard(text: string): StepOut<string[]> {
+  const hits = forbidden(text).map((f) => `"${f.match}" — ${f.why}`);
+  return { out: hits, status: hits.length ? 'blocked' : 'ok', problems: hits, summary: hits.length ? `금지 표현 ${hits.length}건` : '금지 표현 없음' };
+}
+// 위키 관리팀: 종합 편집자 · 위키 점검관 · 훈련 코치
+import { z } from 'zod';
+import type { Card, EdgeType, LintIssue } from '@shared/contracts';
+import { ask, llmEnabled } from '../harness/llm.js';
+import { llmOr, type StepOut } from '../harness/runner.js';
+import { containment, similarity } from '../tools/search.js';
+import * as db from '../store/db.js';
+
+// ---------- 종합 편집자 ----------
+
+export async function synthesizer(topic: string, cards: Card[]): Promise<StepOut<string>> {
+  if (!cards.length) return { out: '', summary: `'${topic}'에 승인된 카드가 없어 종합하지 않음`, status: 'skipped' };
+  const { value, via } = await llmOr(
+    async () =>
+      (await ask('synthesizer', {
+        user: `토픽: ${topic}\n\n${cards.map((c) => `[${c.id}] ${c.title} / 이유: ${c.reason} / 금지: ${c.avoid}`).join('\n')}\n\n신입이 처음 보는 상황에서도 응용할 수 있게, 이 카드들에 공통으로 드러나는 판단 원칙 3~5개로 종합하라. 원칙마다 끝에 근거 카드 [Cxxx].`,
+        schema: z.object({ principles: z.array(z.string()) }),
+      }))?.principles ?? null,
+    () => cards.filter((c) => c.reason).map((c) => `${c.reason.split(/(?<=[.다])\s/)[0]} [${c.id}]`),
+    llmEnabled(),
+  );
+  return { out: value.map((p) => `- ${p}`).join('\n'), via, summary: `'${topic}' 핵심 원칙 ${value.length}개로 다시 정리` };
+}
+
+// ---------- 위키 점검관 ----------
+
+export interface LintOut { issues: LintIssue[]; links: { source: string; target: string; type: EdgeType }[] }
+
+function conflictsByRules(cards: Card[]) {
+  const no = /(불가|안 된|하지 않|금지|필수)/;
+  const yes = /(해줘도|해도 된|없이 .*(교환|환불)|그냥)/;
+  const out: { ids: string[]; issue: string }[] = [];
+  for (let i = 0; i < cards.length; i++)
+    for (let j = i + 1; j < cards.length; j++) {
+      const [a, b] = [cards[i], cards[j]];
+      if (a.topic !== b.topic || a.source === b.source) continue;
+      const sim = similarity(a.title + a.situation, b.title + b.situation);
+      if (sim <= 0.08 || sim > 0.3) continue; // 0.3 초과는 중복으로 따로 잡는다
+      const ta = a.actions.join(' ') + a.avoid + a.reason;
+      const tb = b.actions.join(' ') + b.avoid + b.reason;
+      if ((no.test(ta) && yes.test(tb)) || (yes.test(ta) && no.test(tb)))
+        out.push({ ids: [a.id, b.id], issue: `${a.source} [${a.id}]와 ${b.source} [${b.id}]의 지시가 서로 다릅니다. 점장이 하나로 정리해야 합니다.` });
+    }
+  return out;
+}
+
+export async function linter(): Promise<StepOut<LintOut>> {
+  const d = db.get();
+  const today = db.today();
+  const soon = db.addDays(today, 14);
+  const approved = db.approvedCards();
+  const issues: LintIssue[] = [];
+  const links: LintOut['links'] = [];
+
+  for (const c of approved) {
+    if (c.expires < today) issues.push({ kind: '만료', ids: [c.id], detail: `만료일(${c.expires})이 지났습니다. 지금도 맞는지 확인하고 갱신하세요.` });
+    else if (c.expires <= soon) issues.push({ kind: '만료 임박', ids: [c.id], detail: `${c.expires} 만료 예정입니다.` });
+    if (c.notHelpful > c.helpful && c.uses >= 3) issues.push({ kind: '효과 낮음', ids: [c.id], detail: `'도움 안 됨'(${c.notHelpful})이 '도움 됨'(${c.helpful})보다 많습니다.` });
+    if (!c.reason.trim()) issues.push({ kind: '이유 없음', ids: [c.id], detail: '판단 이유가 비어 있어 신입이 응용하기 어렵습니다.' });
+  }
+  for (let i = 0; i < approved.length; i++)
+    for (let j = i + 1; j < approved.length; j++) {
+      const [a, b] = [approved[i], approved[j]];
+      if (a.topic === b.topic && similarity(a.title + a.situation, b.title + b.situation) > 0.3) {
+        issues.push({ kind: '중복', ids: [a.id, b.id], detail: '비슷한 상황을 다루는 카드입니다. 하나로 합치면 검색이 정확해집니다.' });
+        links.push({ source: a.id, target: b.id, type: 'duplicates' });
+      }
+    }
+
+  const { value: conflicts, via } = await llmOr(
+    async () =>
+      (await ask('linter', {
+        user: `같은 토픽의 카드들이다. 서로 모순되는 지시(한쪽은 하라, 한쪽은 하지 말라)만 찾아라. 단순 중복은 제외.\n\n${approved.map((c) => `[${c.id}] (${c.topic}, ${c.source}) ${c.title} / 대응: ${c.actions.join(' / ')} / 금지: ${c.avoid}`).join('\n')}`,
+        schema: z.object({ conflicts: z.array(z.object({ ids: z.array(z.string()), issue: z.string() })) }),
+      }))?.conflicts ?? null,
+    () => conflictsByRules(approved),
+    llmEnabled(),
+  );
+  for (const c of conflicts) {
+    issues.push({ kind: '상충', ids: c.ids, detail: c.issue });
+    if (c.ids.length >= 2) links.push({ source: c.ids[0], target: c.ids[1], type: 'conflicts' });
+  }
+
+  const waiting = d.questions.filter((q) => q.status === 'escalated');
+  if (waiting.length) issues.push({ kind: '공백', ids: waiting.map((q) => q.id), detail: `위키가 답하지 못한 질문 ${waiting.length}건이 점장 답을 기다립니다. 답하면 사례로 쌓입니다.` });
+  for (const topic of d.topics.filter((t) => t !== '기타')) {
+    const n = approved.filter((c) => c.topic === topic).length;
+    if (n < 2) issues.push({ kind: '공백', ids: [], detail: `'${topic}' 토픽 사례가 ${n}개뿐입니다. 숙련 직원에게 회고를 요청하세요.` });
+  }
+  const pending = d.cards.filter((c) => c.status === 'pending');
+  if (pending.length) issues.push({ kind: '승인 대기', ids: pending.map((c) => c.id), detail: `승인 대기 사례 ${pending.length}건` });
+
+  const order: LintIssue['kind'][] = ['상충', '만료', '효과 낮음', '공백', '중복', '만료 임박', '이유 없음', '승인 대기'];
+  issues.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+  const count = (k: LintIssue['kind']) => issues.filter((i) => i.kind === k).length;
+  return { out: { issues, links }, via, summary: `할 일 ${issues.length}건 (상충 ${count('상충')}, 만료 ${count('만료')}, 중복 ${count('중복')}, 공백 ${count('공백')})` };
+}
+
+// ---------- 훈련 코치 ----------
+
+export interface Grade { score: number; good: string[]; missing: string[]; feedback: string }
+
+export async function trainer(c: Card, userAnswer: string): Promise<StepOut<Grade>> {
+  const { value, via } = await llmOr(
+    () =>
+      ask('trainer', {
+        user: `[정답 카드]\n${c.title}\n대응: ${c.actions.join(' / ')}\n이유: ${c.reason}\n금지: ${c.avoid}\n\n[신입 답]\n${userAnswer}\n\n핵심 행동, 판단 이유 이해, 금지 행동 회피를 보고 0~100점으로 채점하라. 격려하는 말투로 짧게.`,
+        schema: z.object({ score: z.number().int(), good: z.array(z.string()), missing: z.array(z.string()), feedback: z.string() }),
+      }),
+    () => {
+      const good = c.actions.filter((a) => containment(a, userAnswer) >= 0.3);
+      const missing = c.actions.filter((a) => !good.includes(a));
+      const score = Math.round((good.length / Math.max(c.actions.length, 1)) * 100);
+      return { score, good, missing, feedback: score >= 60 ? '핵심 대응을 잘 짚었어요. 판단 이유도 함께 기억해 두세요.' : '놓친 대응이 있어요. 카드의 판단 이유를 먼저 읽어 보세요.' };
+    },
+    llmEnabled(),
+  );
+  return { out: value, via, summary: `${value.score}점 · 맞춘 행동 ${value.good.length}/${c.actions.length}` };
+}
+// 답변팀: 검색 사서 → 현장 코치 → (검증팀) → 점장 연결
+import { z } from 'zod';
+import type { Card } from '@shared/contracts';
+import { ask, llmEnabled } from '../harness/llm.js';
+import { llmOr, type StepOut } from '../harness/runner.js';
+import { containment, search, type Hit } from '../tools/search.js';
+
+export interface Answer {
+  answer: string;
+  why: string;
+  cited: string[];
+  confidence: 'high' | 'low' | 'none';
+  needsManager: boolean;
+}
+
+// ---------- 검색 사서 (규칙) ----------
+
+export function librarian(question: string, cards: Card[]): StepOut<Hit[]> {
+  const hits = search(question, cards);
+  return {
+    out: hits,
+    summary: hits.length ? `가까운 사례 ${hits.length}개: ${hits.slice(0, 3).map((h) => `${h.card.id}(${h.score.toFixed(1)})`).join(', ')}` : '가까운 사례를 찾지 못했습니다',
+  };
+}
+
+// ---------- 현장 코치 ----------
+
+const NO_ANSWER = '매장 위키에 이 상황에 맞는 사례가 아직 없습니다. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가됩니다.';
+
+export function answerByRules(hits: Hit[]): Answer {
+  const top = hits[0];
+  if (!top || top.score < 3 || top.coverage < 0.25) return { answer: NO_ANSWER, why: '', cited: [], confidence: 'none', needsManager: true };
+  // 같은 상황을 다룬 공식규정 카드가 비슷한 점수로 있으면 그쪽을 앞세운다.
+  const official = hits.find((h) => h.card.source === '공식규정' && h.card.topic === top.card.topic && h.score >= top.score * 0.8);
+  const ordered = official && official !== top ? [official, ...hits.filter((h) => h !== official)] : hits;
+  const c = ordered[0].card;
+  const lines = [`${c.title} [${c.id}]`, ...c.actions.map((a, i) => `${i + 1}. ${a} [${c.id}]`)];
+  if (c.avoid) lines.push(`하지 말 것: ${c.avoid} [${c.id}]`);
+  if (c.escalateWhen) lines.push(`점장 호출: ${c.escalateWhen} [${c.id}]`);
+  const other = ordered.slice(1).find((h) => h.card.topic === c.topic && h.card.source !== c.source && h.score > top.score * 0.6);
+  const cited = [c.id];
+  if (other) {
+    lines.push(`같은 토픽의 ${other.card.source} 카드 [${other.card.id}]도 있습니다. 내용이 다르면 공식규정을 따르세요.`);
+    cited.push(other.card.id);
+  }
+  return { answer: lines.join('\n'), why: c.reason, cited, confidence: top.score > 6 ? 'high' : 'low', needsManager: false };
+}
+
+export async function coach(question: string, hits: Hit[]): Promise<StepOut<Answer>> {
+  const context = hits
+    .map(({ card: c }) => `[${c.id}] (${c.source}, 갱신 ${c.updated}) ${c.title}\n상황: ${c.situation}\n판단 이유: ${c.reason}\n대응: ${c.actions.join(' / ')}\n하면 안 되는 것: ${c.avoid || '-'}\n점장 호출 기준: ${c.escalateWhen || '-'}`)
+    .join('\n\n');
+  const schema = z.object({
+    answer: z.string().describe('신입이 지금 바로 따라 할 3~5줄. 줄마다 끝에 근거 카드 [Cxxx]'),
+    why: z.string().describe('이렇게 하는 이유 한두 문장(카드의 판단 이유에서)'),
+    cited: z.array(z.string()),
+    confidence: z.enum(['high', 'low', 'none']),
+    needsManager: z.boolean(),
+  });
+  const { value, via } = await llmOr(
+    () =>
+      hits.length
+        ? ask('coach', {
+            user: `[사례 카드]\n${context}\n\n[신입의 질문]\n${question}\n\n카드에 있는 내용만 근거로 답하라. 카드에 없는 정책·금액·절차를 추측하지 마라. 공식규정과 현장노하우가 부딪히면 공식규정을 따르라고 적어라. 카드로 답할 수 없으면 confidence는 none, needsManager는 true.`,
+            schema,
+            effort: 'medium',
+          })
+        : Promise.resolve({ answer: NO_ANSWER, why: '', cited: [], confidence: 'none' as const, needsManager: true }),
+    () => answerByRules(hits),
+    llmEnabled(),
+  );
+  return { out: value, via, summary: value.needsManager ? '카드로 답할 수 없다고 판단' : `답변 작성 (근거 ${value.cited.join(', ')}, 확신 ${value.confidence})` };
+}
+
+// ---------- 점장 연결 (규칙) ----------
+
+export function escalator(question: string, ans: Answer, gatePassed: boolean, cards: Card[]): StepOut<{ escalate: boolean; note: string }> {
+  if (ans.needsManager || ans.confidence === 'none') return { out: { escalate: true, note: '근거 카드 없음' }, summary: '점장에게 넘겼습니다 (근거 카드 없음)' };
+  if (!gatePassed && !ans.cited.length) return { out: { escalate: true, note: '검증을 통과한 문장 없음' }, summary: '점장에게 넘겼습니다 (검증 통과 문장 없음)' };
+  const hit = cards.find((c) => ans.cited.includes(c.id) && c.escalateWhen && containment(c.escalateWhen, question) >= 0.35);
+  if (hit) return { out: { escalate: false, note: `점장 호출 기준 해당 가능: ${hit.escalateWhen}` }, summary: `답은 주되 호출 기준을 강조 ([${hit.id}])` };
+  return { out: { escalate: false, note: '' }, summary: '위키 답으로 충분합니다' };
+}
+
+hook: PostToolUse
+hook: PostToolUse Completed

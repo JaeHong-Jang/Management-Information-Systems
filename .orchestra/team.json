@@ -1,0 +1,46 @@
+{
+  "name": "이어받기 개발 오케스트라",
+  "purpose": "공모전 출품작(매장 LLM 위키 + 에이전트 하네스)을 만드는 사람 쪽 개발팀. 제품 안의 에이전트 팀(harness/)과는 별개다.",
+  "leads": [
+    {
+      "id": "lead-claude",
+      "model": "claude-opus-5-5",
+      "runtime": "Claude Code (본 세션)",
+      "owns": ["아키텍처", "백엔드·하네스 런타임 코드", "프론트 골격", "통합·검증", "git"],
+      "why": "코드 작성과 통합 판단"
+    },
+    {
+      "id": "lead-astra",
+      "model": "gpt-6-astra",
+      "runtime": "codex exec -m gpt-6-astra",
+      "owns": ["기획·차별화 전략", "심사 기준 대응 논리", "글 최종 검수"],
+      "why": "기획과 글"
+    }
+  ],
+  "workers": [
+    {
+      "id": "worker-sonnet",
+      "model": "claude-sonnet-5-5",
+      "runtime": "Claude Code 서브에이전트 (model=sonnet)",
+      "owns": ["레퍼런스 repo·수상작 수집", "프론트 기능 화면 구현", "테스트 보강"]
+    },
+    {
+      "id": "worker-sol",
+      "model": "gpt-6.1-sol",
+      "runtime": "codex exec -m gpt-6.1-sol",
+      "owns": ["에이전트 카드·README·발표 문구 초안", "UX 라이팅", "심사위원(독립)"]
+    }
+  ],
+  "rules": [
+    "코드는 Claude 쪽(lead-claude, worker-sonnet)이 쓰고, 사람이 읽는 글은 GPT 쪽(lead-astra, worker-sol)이 먼저 쓴다.",
+    "GPT가 쓴 글은 humanize-korean 윤문을 한 번 거친다. 내용(숫자·출처)은 바꾸지 않는다.",
+    "중간마다 심사(docs/judge)를 돌린다: 공모전 5개 기준 각 20점, 심사위원은 서로의 결과를 보지 않는다.",
+    "작성자와 심사자는 같은 실행 안에서 겹치지 않는다.",
+    "모든 실행 기록은 .orchestra/runs/ 에 남긴다."
+  ],
+  "judges": [
+    { "id": "judge-opus", "model": "claude-opus-5-5", "runtime": "Claude Code 서브에이전트 (model=opus)" },
+    { "id": "judge-astra", "model": "gpt-6-astra", "runtime": "codex exec -m gpt-6-astra -s read-only" }
+  ],
+  "rubric": "docs/judge/rubric.json"
+}

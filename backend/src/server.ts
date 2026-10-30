@@ -1,0 +1,171 @@
+import cors from 'cors';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ROOT_DIR } from './paths.js';
+import express, { type NextFunction, type Request, type Response } from 'express';
+import type { Metrics, Snapshot, Source } from '@shared/contracts';
+import { config } from './harness/config.js';
+import { status as aiStatus } from './harness/llm.js';
+import { bus } from './harness/trace.js';
+import * as flows from './flows/index.js';
+import { isPlaying, playDay } from './demo.js';
+import * as db from './store/db.js';
+import { buildGraph } from './store/graph.js';
+
+export const app = express();
+app.use(cors());
+app.use(express.json());
+
+type Handler = (req: Request, res: Response) => unknown;
+const route = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => Promise.resolve(fn(req, res)).catch(next);
+const bad = (res: Response, msg: string) => res.status(400).json({ error: msg });
+
+// ---------- 조회 ----------
+
+app.get('/api/state', (_req, res) => {
+  const d = db.get();
+  const snap: Snapshot = { store: d.store, topics: d.topics, people: d.people, cards: d.cards, questions: d.questions, topicSummaries: d.topicSummaries, log: d.log.slice(-40).reverse() };
+  res.json({ ...snap, ai: aiStatus, demoPlaying: isPlaying() });
+});
+app.get('/api/harness', (_req, res) => res.json(config));
+app.get('/api/judge', (_req, res) => {
+  const read = (f: string, d: unknown) => (existsSync(join(ROOT_DIR, 'docs', 'judge', f)) ? JSON.parse(readFileSync(join(ROOT_DIR, 'docs', 'judge', f), 'utf8')) : d);
+  res.json({ rubric: read('rubric.json', { criteria: [], note: '' }), rounds: read('scores.json', { rounds: [] }).rounds });
+});
+app.get('/api/graph', (_req, res) => res.json(buildGraph()));
+app.get('/api/runs/:id', (req, res) => {
+  const r = bus.run(req.params.id);
+  return r ? res.json(r) : res.status(404).json({ error: '실행 기록 없음' });
+});
+
+app.get('/api/metrics', (_req, res) => {
+  const d = db.get();
+  const approved = db.approvedCards();
+  const qs = d.questions;
+  const withFb = qs.filter((q) => q.feedback);
+  const contributors = new Map<string, Metrics['contributors'][number]>();
+  for (const c of approved) {
+    const p = db.person(c.authorId);
+    const row = contributors.get(c.authorId) ?? { personId: c.authorId, name: p ? `${p.name}(${p.role})` : c.authorId, cards: 0, helped: 0 };
+    row.cards++;
+    row.helped += c.helpful;
+    contributors.set(c.authorId, row);
+  }
+  const days = new Map<string, { day: string; cards: number; questions: number }>();
+  const bump = (day: string, k: 'cards' | 'questions') => {
+    const row = days.get(day) ?? { day, cards: 0, questions: 0 };
+    row[k]++;
+    days.set(day, row);
+  };
+  approved.forEach((c) => bump(c.created, 'cards'));
+  qs.forEach((q) => bump(q.time.slice(0, 10), 'questions'));
+  const m: Metrics = {
+    cards: approved.length,
+    pending: d.cards.filter((c) => c.status === 'pending').length,
+    bySource: { 공식규정: approved.filter((c) => c.source === '공식규정').length, 현장노하우: approved.filter((c) => c.source === '현장노하우').length } as Record<Source, number>,
+    byTopic: d.topics.map((t) => ({ topic: t, n: approved.filter((c) => c.topic === t).length })),
+    questions: qs.length,
+    answeredByWiki: qs.filter((q) => q.status === 'answered').length,
+    escalated: qs.filter((q) => q.status === 'escalated').length,
+    resolvedToCards: qs.filter((q) => q.cardId).length,
+    solvedRate: withFb.length ? Math.round((withFb.filter((q) => q.feedback === 'solved').length / withFb.length) * 100) : null,
+    totalReuse: approved.reduce((s, c) => s + c.uses, 0),
+    reasonCoverage: approved.length ? Math.round((approved.filter((c) => c.reason.trim()).length / approved.length) * 100) : 0,
+    contributors: [...contributors.values()].sort((a, b) => b.helped - a.helped),
+    timeline: [...days.values()].sort((a, b) => a.day.localeCompare(b.day)),
+  };
+  res.json(m);
+});
+
+// 실시간 스트림: 지금까지의 최근 이벤트를 먼저 재생하고 이어서 새 이벤트를 보낸다.
+app.get('/api/stream', (req, res) => {
+  res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  res.flushHeaders();
+  const send = (e: unknown) => res.write(`data: ${JSON.stringify(e)}\n\n`);
+  bus.replay().forEach(send);
+  const off = bus.subscribe(send);
+  const ping = setInterval(() => res.write(': ping\n\n'), 20000);
+  req.on('close', () => {
+    off();
+    clearInterval(ping);
+  });
+});
+
+// ---------- 흐름 ----------
+
+app.post('/api/ask', route(async (req, res) => {
+  const { text, askerId } = req.body ?? {};
+  if (!text?.trim()) return bad(res, '질문이 비어 있습니다');
+  res.json(await flows.ask(text, askerId || 'P005'));
+}));
+
+app.post('/api/questions/:id/feedback', route(async (req, res) => res.json(await flows.feedback(String(req.params.id), Boolean(req.body?.solved)))));
+
+app.post('/api/questions/:id/resolve', route(async (req, res) => {
+  const { answer, managerId } = req.body ?? {};
+  if (!answer?.trim()) return bad(res, '점장 답이 비어 있습니다');
+  res.json(await flows.resolve(String(req.params.id), answer, managerId || 'P001'));
+}));
+
+app.post('/api/record/interview', route(async (req, res) => {
+  const { raw, authorId, answers } = req.body ?? {};
+  if (!raw?.trim()) return bad(res, '기록이 비어 있습니다');
+  res.json(await flows.interview(raw, authorId || 'P002', answers ?? []));
+}));
+
+app.post('/api/cards', route(async (req, res) => {
+  const { draft, authorId } = req.body ?? {};
+  if (!draft?.title || !draft?.situation || !Array.isArray(draft?.actions)) return bad(res, '제목·상황·대응은 꼭 있어야 합니다');
+  res.json(await flows.submitCard(draft, authorId || 'P002'));
+}));
+
+app.post('/api/cards/:id/:action', route(async (req, res) => {
+  const action = String(req.params.action);
+  if (!['approve', 'reject', 'renew', 'archive'].includes(action)) return bad(res, '알 수 없는 작업');
+  res.json(await flows.cardAction(String(req.params.id), action as 'approve', req.body?.edits));
+}));
+
+app.get('/api/lint', route(async (_req, res) => res.json(await flows.lint())));
+
+app.get('/api/training', (_req, res) => {
+  const pool = db.approvedCards().filter((c) => c.actions.length >= 2);
+  if (!pool.length) return bad(res, '훈련할 사례가 없습니다');
+  const c = pool[Math.floor(Math.random() * pool.length)];
+  res.json({ id: c.id, topic: c.topic, situation: c.situation });
+});
+app.post('/api/training/grade', route(async (req, res) => res.json(await flows.train(req.body?.id, req.body?.answer ?? '', req.body?.personId || 'P005'))));
+
+// ---------- 시연 ----------
+
+app.post('/api/demo/play', (_req, res) => {
+  if (isPlaying()) return bad(res, '이미 재생 중입니다');
+  playDay().catch((e) => console.error('[demo]', e));
+  res.json({ ok: true });
+});
+
+app.post('/api/reset', route(async (_req, res) => {
+  if (isPlaying()) return bad(res, '시연 재생 중에는 초기화할 수 없습니다');
+  db.resetFromSeed();
+  bus.clear();
+  await seedSummaries();
+  res.json({ ok: true });
+}));
+
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: err.message });
+});
+
+async function seedSummaries() {
+  const { synthesizer } = await import('./agents/keeper.js');
+  const d = db.get();
+  for (const t of d.topics) d.topicSummaries[t] = (await synthesizer(t, db.approvedCards().filter((c) => c.topic === t))).out;
+  db.save();
+}
+
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  db.load();
+  if (!Object.keys(db.get().topicSummaries).length) await seedSummaries();
+  const PORT = Number(process.env.PORT) || 8787;
+  app.listen(PORT, () => console.log(`이어받기 백엔드 http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
+}

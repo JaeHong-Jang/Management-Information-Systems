@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"kill $(pgrep -f \\\"tsx src/server.ts\\\") 2>/dev/null; kill $(pgrep -f \\\"^node server.js\\\") 2>/dev/null; sleep 1; pgrep -af \\\"tsx src/server|vite\\\" | grep -v pgrep || echo none\",\"description\"...",
+  "error": "Exit code 144",
+  "timestamp": "2026-10-30T16:29:19.688Z",
+  "retry_count": 1
+}

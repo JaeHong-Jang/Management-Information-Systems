@@ -104,3 +104,43 @@
 - **Pages:** contest-rules.md, kmsk-society-judges.md, korea-problem-statistics.md, papers-ai-cx.md, papers-classic-theory.md, papers-km-genai.md, papers-kmr-journal.md, papers-smart-tourism-hotel.md
 - **Summary:** Lint: 8 issues (0 orphan, 0 stale, 0 broken, 0 contradictions)
 
+## [2026-10-30T16:19:12.258Z] ingest
+- **Pages:** ref-toss-ux-repo-ux-ui.md
+- **Summary:** Created new page "ref-toss-ux (참고 repo: 토스 UX/UI)"
+
+
+## [2026-10-31] manual-ingest
+- **Pages:** ref-winners-kmsk.md, ref-winners-korea-similar.md, ref-winners-international.md, ref-showcase-sites.md, pattern-winners-common.md
+- **Summary:** 수상작·쇼케이스 레퍼런스 5페이지 추가(docs/references/winners.md 분할). wiki_ingest 도구는 한글 슬러그 문제가 있어 파일 직접 작성.
+## [2026-10-30T16:19:56.771Z] ingest
+- **Pages:** ref-graph-viz-repo.md
+- **Summary:** Created new page "ref-graph-viz (참고 repo: 온톨로지 그래프 시각화)"
+
+## [2026-10-30T16:19:57.410Z] ingest
+- **Pages:** ref-llm-wiki-kb-repo-llm-kcs.md
+- **Summary:** Created new page "ref-llm-wiki-kb (참고 repo: LLM 위키/지식베이스/KCS)"
+
+## [2026-10-30T16:19:57.899Z] ingest
+- **Pages:** ref-agent-trace-repo-ui.md
+- **Summary:** Created new page "ref-agent-trace (참고 repo: 에이전트 오케스트레이션/트레이스 UI)"
+
+## [2026-10-30T16:19:58.464Z] ingest
+- **Pages:** ref-dashboard-components-repo.md
+- **Summary:** Created new page "ref-dashboard-components (참고 repo: 대시보드/컴포넌트)"
+
+## [2026-10-30T16:19:59.092Z] ingest
+- **Pages:** ref-frontline-onboarding.md
+- **Summary:** Created new page "ref-frontline-onboarding (참고 사례: 현장 직원 지식/온보딩)"
+
+## [2026-10-30T16:19:59.747Z] ingest
+- **Pages:** ref-adoption-decision-repo.md
+- **Summary:** Created new page "ref-adoption-decision (참고 repo 채택 결정)"
+
+## [2026-10-30T16:20:07.787Z] lint
+- **Pages:** contest-rules.md, idea-1-hotel-knowledge-copilot.md, kmsk-society-judges.md, korea-problem-statistics.md, papers-ai-cx.md, papers-classic-theory.md, papers-km-genai.md, papers-kmr-journal.md, papers-smart-tourism-hotel.md, pattern-winners-common.md, ref-adoption-decision-repo.md, ref-frontline-onboarding.md, ref-llm-wiki-kb-repo-llm-kcs.md, ref-showcase-sites.md, ref-toss-ux-repo-ux-ui.md, ref-winners-international.md, ref-winners-kmsk.md, ref-winners-korea-similar.md
+- **Summary:** Lint: 19 issues (7 orphan, 0 stale, 3 broken, 0 contradictions)
+
+## [2026-10-30T16:20:14.631Z] lint
+- **Pages:** contest-rules.md, idea-1-hotel-knowledge-copilot.md, kmsk-society-judges.md, korea-problem-statistics.md, papers-ai-cx.md, papers-classic-theory.md, papers-km-genai.md, papers-kmr-journal.md, papers-smart-tourism-hotel.md, pattern-winners-common.md, ref-adoption-decision-repo.md, ref-frontline-onboarding.md, ref-llm-wiki-kb-repo-llm-kcs.md, ref-showcase-sites.md, ref-toss-ux-repo-ux-ui.md, ref-winners-international.md, ref-winners-kmsk.md, ref-winners-korea-similar.md
+- **Summary:** Lint: 19 issues (7 orphan, 0 stale, 3 broken, 0 contradictions)
+
