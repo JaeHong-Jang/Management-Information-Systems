@@ -126,7 +126,7 @@ export default function Page() {
 
   const unify = (keep: string, drop: string, reason = '') =>
     guard(drop + 'archive', async () => {
-      await api.cardAction(drop, 'archive');
+      await api.cardAction(drop, 'archive', undefined, reason || `${keep} 기준으로 통일`);
       toast(`${keep} 기준으로 통일하고 ${drop}는 보관했어요${reason ? ` (사유: ${reason})` : ''}`);
       setConfirm(null);
       await refresh();

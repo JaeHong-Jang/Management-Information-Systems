@@ -142,7 +142,7 @@ const slug = (s: string) => s.replace(/[·\s/]/g, '-');
 function cardMd(c: Card): string {
   return [
     `### [${c.id}] ${c.title}`,
-    `- ${c.source} · 작성 ${personLabel(c.authorId)} · 갱신 ${c.updated} · 만료 ${c.expires} · 재사용 ${c.uses}회 (도움 ${c.helpful} / 안 됨 ${c.notHelpful})`,
+    `- ${c.source}${c.source === '공식규정' && !c.ruleRef ? '(원문 미첨부)' : ''} · 작성 ${c.credit === false ? '이름 비공개' : personLabel(c.authorId)} · 갱신 ${c.updated} · 만료 ${c.expires} · 재사용 ${c.uses}회 (도움 ${c.helpful} / 안 됨 ${c.notHelpful})`,
     `- 상황: ${c.situation}`,
     `- 판단 이유: ${c.reason || '(비어 있음)'}`,
     `- 대응:`,

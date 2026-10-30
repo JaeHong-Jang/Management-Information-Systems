@@ -129,7 +129,7 @@ app.post('/api/cards', route(async (req, res) => {
 app.post('/api/cards/:id/:action', route(async (req, res) => {
   const action = String(req.params.action);
   if (!['approve', 'reject', 'renew', 'archive'].includes(action)) return bad(res, '알 수 없는 작업');
-  res.json(await flows.cardAction(String(req.params.id), action as 'approve', req.body?.edits));
+  res.json(await flows.cardAction(String(req.params.id), action as 'approve', req.body?.edits, req.body?.reason));
 }));
 
 app.get('/api/lint', route(async (req, res) => res.json(await flows.lint(req.query.quiet === '1'))));

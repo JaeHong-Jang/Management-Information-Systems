@@ -115,6 +115,7 @@ export function CardDetail({ card, authorName }: { card: CardT; authorName?: str
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         <Badge tone="neutral">{card.id}</Badge>
         <Badge tone={sourceTone(card.source)}>{card.source}</Badge>
+        {card.source === '공식규정' && !card.ruleRef && <Badge tone="warning">규정 원문 미첨부</Badge>}
         <Badge>{card.topic}</Badge>
         {card.status !== 'approved' && <Badge tone="warning">{card.status === 'pending' ? '승인 대기' : card.status}</Badge>}
       </div>
@@ -132,7 +133,8 @@ export function CardDetail({ card, authorName }: { card: CardT; authorName?: str
         )}
         {row('하면 안 되는 것', card.avoid)}
         {row('점장 호출 기준', card.escalateWhen)}
-        {row('남긴 사람', authorName)}
+        {row('남긴 사람', card.credit === false ? '이름 비공개' : authorName)}
+        {row('보관 사유', card.archiveReason)}
         {row('재사용', `${card.uses}회 · 도움 ${card.helpful} · 안 됨 ${card.notHelpful} · 만료 ${card.expires}`)}
       </dl>
     </div>

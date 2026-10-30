@@ -173,10 +173,11 @@ describe('2차 심사 지적 반영', () => {
   });
 
   it('말을 바꾼 안전 상황(두드러기, 때리려고)도 점장에게 넘어간다', async () => {
-    for (const text of ['두유 라떼 마신 손님 얼굴에 두드러기가 났어요', '손님이 때리려고 해요']) {
+    for (const text of ['두유 라떼 마신 손님 얼굴에 두드러기가 났어요', '손님이 때리려고 해요', '컵 깨다가 손을 베었어요', '손님이 숨쉬기 힘들다고 해요', '손님이 경련을 일으켜요', '손님이 칼을 꺼냈어요']) {
       const r = await flows.ask(text, 'P005');
       expect(r.question.status).toBe('escalated');
       expect(r.question.answer).toMatch(/안전과 관련된 상황/);
+      expect(r.question.cited).toEqual([]); // 무관한 카드 행동이 섞이지 않는다
     }
   });
 
@@ -195,5 +196,32 @@ describe('2차 심사 지적 반영', () => {
   it("규칙 모드 카드 편집자는 '안 된다'는 사실 서술을 금지 칸에 넣지 않는다", async () => {
     const { card } = await flows.resolve((await flows.ask('외국인 손님이 알리페이 결제를 원해요', 'P005')).question.id, '우리 단말기는 알리페이가 안 된다. 카드나 현금을 안내한다.', 'P001');
     expect(card.avoid).not.toMatch(/알리페이가 안 된다/);
+  });
+});
+
+describe('3차 심사 지적 반영', () => {
+  it('고쳐서 승인한 점장 답은 승인된 카드 내용으로 다시 보여 주고 원래 금지 문장은 남지 않는다', async () => {
+    const q = (await flows.ask('매장 와이파이 비밀번호를 물어봐요', 'P005')).question;
+    const { card } = await flows.resolve(q.id, '무조건 무료로 드린다. 와이파이 비밀번호는 영수증에 있다.', 'P001');
+    card.actions = ['와이파이 비밀번호는 영수증 하단에 있다고 안내한다'];
+    card.reason = '영수증에 인쇄돼 있다';
+    card.situation = '와이파이 비밀번호 문의';
+    card.title = '와이파이 비밀번호 문의';
+    await flows.cardAction(card.id, 'approve');
+    const after = db.question(q.id)!;
+    expect(after.managerAnswer).not.toMatch(/무조건/);
+    expect(after.managerAnswer).toMatch(/영수증 하단/);
+  });
+
+  it('크레딧을 끈 카드는 위키 변경 기록에 작성자 이름이 나오지 않는다', async () => {
+    const c = await flows.submitCard({ title: '컵홀더 부족', topic: '기타', situation: '컵홀더가 떨어짐', reason: '손님 손이 뜨거울 수 있어서', actions: ['창고 선반 두 번째 칸에서 꺼낸다'], avoid: '', escalateWhen: '', source: '현장노하우', tags: [], credit: false }, 'P002');
+    const log = db.get().log.find((l) => l.detail.includes(c.id))!;
+    expect(log.detail).toMatch(/이름 비공개/);
+    expect(log.detail).not.toMatch(/민지/);
+  });
+
+  it('보관 사유가 서버에 남는다', async () => {
+    const c = await flows.cardAction('C007', 'archive', undefined, '본사 규정 확인 결과 영수증 없는 교환 불가');
+    expect(c.archiveReason).toMatch(/본사 규정/);
   });
 });

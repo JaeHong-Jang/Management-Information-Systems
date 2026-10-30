@@ -36,6 +36,8 @@ export interface Card {
   notHelpful: number;
   fromQuestionId?: string;
   credit?: boolean; // false면 기여 크레딧에 이름을 드러내지 않는다(기록자는 내부에만 남음)
+  ruleRef?: string; // 공식규정의 원문(문서·버전). 없으면 화면에 '원문 미첨부'
+  archiveReason?: string; // 보관할 때 점장이 남긴 사유
 }
 
 export type QuestionStatus = 'answered' | 'escalated' | 'resolved';

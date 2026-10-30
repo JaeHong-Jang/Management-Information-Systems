@@ -49,15 +49,17 @@ export async function ask(rawText: string, askerId: string): Promise<AskResult> 
 
   let final = checked;
   if (esc.why === 'safety') {
-    const steps = checked.cited.length ? checked.answer.split('\n').filter((l) => /\[C\d{3,}\]/.test(l)).slice(0, 2) : [];
-    final = { ...checked, answer: [`안전과 관련된 상황이에요(${esc.safety}). 혼자 처리하지 말고 점장님께 바로 연락하세요. 위급하면 119나 112에 먼저 신고하세요.`, ...(steps.length ? ['참고할 매장 사례:', ...steps] : [])].join('\n'), confidence: 'low', cited: steps.length ? checked.cited : [] };
+    // 안전 상황에는 매장 사례를 덧붙이지 않는다(글자가 비슷한 다른 사례의 행동이 섞이는 것을 막는다)
+    final = { ...checked, answer: `안전과 관련된 상황이에요(${esc.safety}). 혼자 처리하지 말고 점장님께 바로 연락하세요. 위급하면 119나 112에 먼저 신고하세요.`, confidence: 'low', cited: [] };
   } else if (esc.escalate && esc.why === 'call' && esc.callCard) {
     const c = esc.callCard;
-    const interim = c.actions.slice(0, 2).map((a, i) => `${i + 1}. ${a} [${c.id}]`);
+    const interim = c.actions.filter((a) => !forbidden(a).length).slice(0, 2).map((a, i) => `${i + 1}. ${a} [${c.id}]`);
     final = { ...checked, answer: [`점장 호출 기준에 해당해요: ${c.escalateWhen} [${c.id}]`, '점장님께 바로 알렸어요. 그동안 할 수 있는 것:', ...interim].join('\n'), cited: [c.id], confidence: 'low' };
   } else if (esc.escalate) {
     final = { ...checked, answer: '매장 위키에 이 상황에 맞는 사례가 아직 없어요. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가돼요.', cited: [], confidence: 'none' };
   }
+  // 마지막 관문: 어떤 경로로 만든 답이든 신입에게 가기 직전에 금지 표현 줄을 빼고, 이유도 다시 검사한다
+  final = { ...final, answer: dropForbiddenLines(final.answer), why: forbidden(final.why).length || esc.why === 'safety' ? '' : final.why };
   for (const id of final.cited) db.card(id)!.uses++;
   const q = db.createQuestion({ text, askerId, status: esc.escalate ? 'escalated' : 'answered', answer: final.answer, why: final.why, cited: final.cited, confidence: final.confidence, runId: run.runId });
   const asker = db.person(askerId)!;
@@ -117,7 +119,7 @@ export async function submitCard(input: Omit<InterviewDraft, 'followups' | 'mask
   await orchestrate(run, direct ? '점장 작성 → 바로 승인' : problems.length ? `금지 표현 ${problems.length}건 → 승인 대기` : '승인 대기로 저장');
   const c = db.createCard(draft, authorId, direct ? 'approved' : 'pending', '기록');
   if (input.credit === false) c.credit = false;
-  run.wiki({ op: isManager ? '카드 추가' : '카드 승인 대기', detail: `[${c.id}] ${c.title} — ${db.personLabel(authorId)}`, nodes: [c.credit === false ? anonNode() : personNode(db.person(authorId)!), ...withContext(c)], edges: cardEdges(c) });
+  run.wiki({ op: direct ? '카드 추가' : '카드 승인 대기', detail: `[${c.id}] ${c.title} — ${c.credit === false ? '이름 비공개' : db.personLabel(authorId)}`, nodes: [c.credit === false ? anonNode() : personNode(db.person(authorId)!), ...withContext(c)], edges: cardEdges(c) });
   if (direct) await resynthesize(run, c.topic);
   run.end(true, `[${c.id}] 저장`);
   return c;
@@ -125,7 +127,7 @@ export async function submitCard(input: Omit<InterviewDraft, 'followups' | 'mask
 
 // ---------- 점장: 승인·반려·갱신·보관 ----------
 
-export async function cardAction(id: string, action: 'approve' | 'reject' | 'renew' | 'archive', edits?: Partial<Card>): Promise<Card> {
+export async function cardAction(id: string, action: 'approve' | 'reject' | 'renew' | 'archive', edits?: Partial<Card>, reason?: string): Promise<Card> {
   const c = db.card(id);
   if (!c) throw new Error('카드를 찾을 수 없습니다');
   const label = { approve: '승인', reject: '반려', renew: '갱신', archive: '보관' }[action];
@@ -142,14 +144,21 @@ export async function cardAction(id: string, action: 'approve' | 'reject' | 'ren
     c.status = 'approved';
     c.updated = db.today();
     // 점장 답에서 생긴 카드가 승인되면 기다리던 질문을 닫는다
-    for (const q of db.get().questions.filter((x) => x.cardId === c.id && x.status === 'escalated')) q.status = 'resolved';
+    for (const q of db.get().questions.filter((x) => x.cardId === c.id && x.status === 'escalated')) {
+      q.status = 'resolved';
+      q.managerAnswer = [...c.actions.map((a, i) => `${i + 1}. ${a} [${c.id}]`), c.avoid ? `하지 말 것: ${c.avoid} [${c.id}]` : ''].filter(Boolean).join('\n');
+      q.cited = [c.id];
+    }
   } else if (action === 'reject') c.status = 'rejected';
-  else if (action === 'archive') c.status = 'archived';
+  else if (action === 'archive') {
+    c.status = 'archived';
+    if (reason) c.archiveReason = reason.slice(0, 200);
+  }
   else {
     c.updated = db.today();
     c.expires = db.addDays(db.today(), c.source === '공식규정' ? 180 : 120);
   }
-  run.wiki({ op: `카드 ${label}`, detail: `[${c.id}] ${c.title}`, nodes: action === 'approve' ? withContext(c) : [cardNode(c)], edges: action === 'approve' ? cardEdges(c) : [] });
+  run.wiki({ op: `카드 ${label}`, detail: `[${c.id}] ${c.title}${c.archiveReason && action === 'archive' ? ` — 사유: ${c.archiveReason}` : ''}`, nodes: action === 'approve' ? withContext(c) : [cardNode(c)], edges: action === 'approve' ? cardEdges(c) : [] });
   if (action === 'approve' || action === 'archive') await resynthesize(run, c.topic);
   run.end(true, `[${c.id}] ${label}`);
   return c;
