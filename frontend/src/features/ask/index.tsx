@@ -16,6 +16,11 @@ function statusBadge(q: Question) {
   return <Badge tone="success">점장이 답함</Badge>;
 }
 
+function expLabel(d: string) {
+  const m = d.match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `만료 ${Number(m[2])}월 ${Number(m[3])}일` : '';
+}
+
 function Progress({ run, names }: { run: RunView | undefined; names: Record<string, string> }) {
   return (
     <Panel title="에이전트 팀이 확인하고 있어요">
@@ -49,11 +54,15 @@ function Progress({ run, names }: { run: RunView | undefined; names: Record<stri
 }
 
 function AnswerCard({ q, cards, people, today, onCite, onFeedback }: { q: Question; cards: Card[]; people: Person[]; today: string; onCite: (id: string) => void; onFeedback?: (solved: boolean) => void }) {
-  const [whyOpen, setWhyOpen] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(true);
   const manager = people.find((p) => p.role === '점장');
   const evidence = q.cited.map((id) => cards.find((c) => c.id === id)).filter((c): c is Card => !!c);
   const hasCallRule = q.answer.includes('점장 호출 기준');
-  const conf = q.confidence === 'none' ? null : q.confidence;
+  const isSafety = q.answer.startsWith('안전과 관련된 상황이에요');
+  const plain = q.answer.split('\n').map((l) => l.replace(/\s*\[C\d{3,}\]/g, '').trimEnd()).join('\n');
+  const citedIds = [...new Set([...q.cited, ...(q.answer.match(/C\d{3,}(?=\])/g) ?? [])])];
+  // 안전 상황에는 확신 배지를 붙이지 않는다(위키 답이 아니라 점장 연결이 답이다)
+  const conf = q.confidence === 'none' || isSafety ? null : q.confidence;
   return (
     <Panel>
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
@@ -62,7 +71,7 @@ function AnswerCard({ q, cards, people, today, onCite, onFeedback }: { q: Questi
       </div>
       <p className="mb-2 text-[13px] text-ink-weak">{q.text}</p>
 
-      {q.status === 'escalated' && (
+      {q.status === 'escalated' && !isSafety && (
         <div className="mb-3 rounded-xl bg-warning-weak p-4 text-[14px] text-ink-strong">
           <p className="font-semibold">이건 점장님이 직접 봐 주셔야 해요.</p>
           <p className="mt-1 text-ink-body">담당자: {manager ? `${manager.name} 점장` : '점장'} · {fmtTime(q.time)}에 물어봤고 점장 확인 중이에요.</p>
@@ -72,31 +81,36 @@ function AnswerCard({ q, cards, people, today, onCite, onFeedback }: { q: Questi
       )}
 
       <p className="mb-1 text-[13px] font-semibold text-ink-body">지금 할 일</p>
-      {hasCallRule ? (
-        <div className="rounded-xl bg-warning-weak p-4 text-[15px] leading-6 text-ink-strong">
-          <CiteText text={q.answer} onCite={onCite} />
-        </div>
-      ) : (
-        <div className="text-[15px] leading-6 text-ink-strong">
-          <CiteText text={q.answer} onCite={onCite} />
+      <div className={cx('text-[15px] leading-6 text-ink-strong', isSafety ? 'rounded-xl bg-danger-weak p-4 text-danger' : hasCallRule && 'rounded-xl bg-warning-weak p-4')}>
+        <CiteText text={plain} />
+        {citedIds.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[12px] text-ink-weak">근거</span>
+            {citedIds.map((id) => (
+              <button key={id} onClick={() => onCite(id)} className="rounded bg-brand-weak px-1.5 py-px text-[12px] font-semibold text-brand-strong hover:bg-[#D6E8FF]">
+                {id}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {q.why && (
+        <div className="mt-3 rounded-xl bg-surface-subtle px-4 py-3 text-[14px]">
+          <button onClick={() => setWhyOpen((o) => !o)} aria-expanded={whyOpen} className="flex w-full items-center justify-between text-left font-semibold text-ink-body">
+            왜 이렇게 하나요
+            <ChevronDown size={16} className={cx('transition-transform', whyOpen && 'rotate-180')} />
+          </button>
+          {whyOpen && <p className="mt-1 text-ink-strong">{q.why}</p>}
         </div>
       )}
 
+      {q.status === 'escalated' && q.managerAnswer && <p className="mt-3 text-[14px] text-ink-weak">점장님 답을 확인하고 있어요</p>}
       {q.status === 'resolved' && q.managerAnswer && (
         <div className="mt-3 rounded-xl bg-success-weak p-4 text-[14px]">
           <p className="mb-1 font-semibold text-success">점장님이 답했어요</p>
           <p className="text-ink-strong">{q.managerAnswer}</p>
           {q.cardId && <button onClick={() => onCite(q.cardId!)} className="mt-2 text-[13px] font-semibold text-brand-strong">위키 카드 {q.cardId} 보기</button>}
-        </div>
-      )}
-
-      {q.why && (
-        <div className="mt-4">
-          <button onClick={() => setWhyOpen((o) => !o)} aria-expanded={whyOpen} className="flex w-full items-center justify-between rounded-xl bg-surface-subtle px-4 py-3 text-left text-[14px] font-semibold text-ink-body">
-            왜 이렇게 하나요
-            <ChevronDown size={16} className={cx('transition-transform', whyOpen && 'rotate-180')} />
-          </button>
-          {whyOpen && <p className="rounded-b-xl bg-surface-subtle px-4 pb-4 text-[14px] text-ink-strong">{q.why}</p>}
         </div>
       )}
 
@@ -111,6 +125,7 @@ function AnswerCard({ q, cards, people, today, onCite, onFeedback }: { q: Questi
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <Badge tone={sourceTone(c.source)}>{c.source}</Badge>
                     <span className="text-[12px] text-ink-weak">갱신 {fmtTime(c.updated)}</span>
+                    <span className="text-[12px] text-ink-weak">{expLabel(c.expires)}</span>
                     {c.expires < today && <Badge tone="warning">만료됨</Badge>}
                   </div>
                 </button>

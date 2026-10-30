@@ -4,6 +4,7 @@ import type { Card } from '@shared/contracts';
 import { ask, llmEnabled } from '../harness/llm.js';
 import { llmOr, type StepOut } from '../harness/runner.js';
 import { containment, search, tokens, type Hit } from '../tools/search.js';
+import { safetyHit } from '../tools/policies.js';
 
 export interface Answer {
   answer: string;
@@ -76,19 +77,35 @@ export async function coach(question: string, hits: Hit[]): Promise<StepOut<Answ
 // ---------- 점장 연결 (규칙) ----------
 
 // 호출 기준 문장의 흔한 말(조건 연결어 등)은 일치로 세지 않는다
-const COMMON = new Set(['있거', '거나', '이상', '하거', '고객', '손님', '경우', '해요', '하면', '면서', '요구', '구할', '언급', '급할']);
+const COMMON = new Set(['있거', '거나', '이상', '하거', '고객', '손님', '경우', '해요', '하면', '면서', '요구', '구할', '언급', '급할', '금액', '만원', '액이', '원이']);
+
+/** '3만원', '30,000원' → 30000 */
+function amounts(text: string): number[] {
+  return [...text.matchAll(/(\d[\d,]*)\s*(만\s*)?원/g)].map((m) => Number(m[1].replace(/,/g, '')) * (m[2] ? 10000 : 1));
+}
+
+/** 조건의 금액 기준(이상·초과)을 질문의 금액이 넘는가. 질문에 금액이 없으면 판단하지 않는다(null) */
+function amountMatch(condition: string, question: string): boolean | null {
+  const limit = /(이상|초과|넘)/.test(condition) ? amounts(condition)[0] : undefined;
+  const asked = amounts(question);
+  if (limit === undefined || !asked.length) return null;
+  return Math.max(...asked) >= limit;
+}
 
 /** 질문이 카드의 점장 호출 기준에 해당하는가: 핵심 2-gram이 2개 이상 겹치거나, 기준 문장의 35% 이상이 질문에 들어 있다 */
 export function matchesCondition(condition: string, question: string): boolean {
+  if (amountMatch(condition, question)) return true;
   const q = new Set(tokens(question));
   const shared = new Set(tokens(condition).filter((t) => t.length === 2 && !COMMON.has(t) && q.has(t)));
   return shared.size >= 2 || containment(condition, question) >= 0.35;
 }
 
-export interface Escalation { escalate: boolean; why: 'none' | 'no-evidence' | 'gate' | 'call'; callCard?: Card }
+export interface Escalation { escalate: boolean; why: 'none' | 'no-evidence' | 'gate' | 'call' | 'safety'; callCard?: Card; safety?: string }
 
 /** 넘기는 조건: 근거 카드 없음 / 검증을 통과한 근거 줄이 남지 않음 / 카드의 점장 호출 기준에 질문이 해당 */
 export function escalator(question: string, ans: Answer, cards: Card[]): StepOut<Escalation> {
+  const danger = safetyHit(question);
+  if (danger) return { out: { escalate: true, why: 'safety', safety: `${danger.why}("${danger.match}")` }, summary: `안전 어휘 "${danger.match}"(${danger.why}) → 위키 답 대신 점장에게 바로 넘겼습니다` };
   if (ans.needsManager || ans.confidence === 'none') return { out: { escalate: true, why: 'no-evidence' }, summary: '점장에게 넘겼습니다 (근거 카드 없음)' };
   const hasEvidenceLine = ans.answer.split('\n').some((l) => /\[C\d{3,}\]/.test(l));
   if (!ans.cited.length || !hasEvidenceLine) return { out: { escalate: true, why: 'gate' }, summary: '점장에게 넘겼습니다 (검증을 통과한 근거 줄이 없음)' };

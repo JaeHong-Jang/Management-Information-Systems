@@ -93,9 +93,8 @@ export default function Overview() {
         <Panel title="사람이 남긴 것" className="mt-5">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {state.people.map((p) => {
-              const cards = state.cards.filter((c) => c.authorId === p.id && c.status === 'approved');
+              const cards = state.cards.filter((c) => c.authorId === p.id && c.status === 'approved' && c.credit !== false);
               const helped = cards.reduce((s, c) => s + c.helpful, 0);
-              const asked = state.questions.filter((q) => q.askerId === p.id).length;
               return (
                 <div key={p.id} className={cx('rounded-xl bg-surface-subtle p-3', fresh.has(p.id) && 'ring-2 ring-brand')}>
                   <div className="flex items-center gap-2">
@@ -107,7 +106,7 @@ export default function Overview() {
                       </p>
                     </div>
                   </div>
-                  <p className="mt-2 text-[13px] text-ink-body">{p.role === '신입' ? `질문 ${asked}개` : `사례 ${cards.length}개 · 도움 ${helped}회`}</p>
+                  <p className="mt-2 text-[13px] text-ink-body">{p.role === '신입' ? '질문은 개인별로 세지 않아요' : `사례 ${cards.length}개 · 도움 ${helped}회`}</p>
                 </div>
               );
             })}

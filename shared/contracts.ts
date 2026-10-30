@@ -179,6 +179,7 @@ export interface InterviewDraft {
   followups: string[];
   masked: number; // 개인정보 가드가 가린 개수
   problems: string[]; // 표현 검증에서 걸린 것
+  via?: string; // 카드 편집자가 Claude였는지 규칙이었는지
 }
 
 export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기'; ids: string[]; detail: string }

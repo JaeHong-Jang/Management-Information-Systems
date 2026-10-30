@@ -60,6 +60,9 @@ export default function Page() {
   const [linting, setLinting] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [renewId, setRenewId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{ keep: string; drop: string } | null>(null);
+  const [reason, setReason] = useState('');
+  const [showAll, setShowAll] = useState(false);
 
   const people = state?.people ?? [];
   const nameOf = (id: string) => people.find((p) => p.id === id)?.name ?? id;
@@ -70,10 +73,10 @@ export default function Page() {
   const renewCard = state?.cards.find((c) => c.id === renewId);
   const cardOf = (id: string) => state?.cards.find((c) => c.id === id);
 
-  const runLint = useCallback(async () => {
+  const runLint = useCallback(async (quiet = false) => {
     setLinting(true);
     try {
-      setIssues((await api.lint()).issues);
+      setIssues((await api.lint(quiet)).issues);
     } catch (e) {
       toast(e instanceof Error ? e.message : '점검하지 못했어요');
     } finally {
@@ -82,7 +85,7 @@ export default function Page() {
   }, [toast]);
 
   useEffect(() => {
-    void runLint();
+    void runLint(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -121,13 +124,21 @@ export default function Page() {
       await runLint();
     });
 
-  const unify = (keep: string, drop: string) =>
+  const unify = (keep: string, drop: string, reason = '') =>
     guard(drop + 'archive', async () => {
       await api.cardAction(drop, 'archive');
-      toast(`${keep} 기준으로 통일하고 ${drop}는 보관했어요`);
+      toast(`${keep} 기준으로 통일하고 ${drop}는 보관했어요${reason ? ` (사유: ${reason})` : ''}`);
+      setConfirm(null);
       await refresh();
       await runLint();
     });
+
+  const pickSide = (keep: Card, drop: Card) => {
+    if (drop.source === '공식규정') {
+      setReason('');
+      setConfirm({ keep: keep.id, drop: drop.id });
+    } else void unify(keep.id, drop.id);
+  };
 
   const goto = (elId: string) => document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
@@ -147,7 +158,7 @@ export default function Page() {
     [...questions]
       .sort((a, b) => a.time.localeCompare(b.time))
       .forEach((q) => list.push({ key: q.id, text: `질문 · ${q.text}`, cta: '답하러 가기', go: () => goto('q-' + q.id) }));
-    (issues ?? []).filter((i) => i.kind === '상충').forEach((i, n) => list.push({ key: '상충' + n, text: `${i.ids.join('와 ')} 내용이 서로 달라요`, cta: '정리하기', go: () => goto('lint-' + i.ids[0]) }));
+    (issues ?? []).filter((i) => i.kind === '상충').forEach((i, n) => list.push({ key: '상충' + n, text: `${i.ids.join('와 ')} 내용이 서로 달라요`, cta: '정리하기', go: () => { setShowAll(true); setTimeout(() => goto('lint-' + i.ids[0]), 50); } }));
     (issues ?? []).filter((i) => i.kind === '만료').forEach((i, n) => list.push({ key: '만료' + n, text: `${i.ids.join(', ')} 만료됐어요`, cta: '확인하기', go: () => (i.ids[0] ? setRenewId(i.ids[0]) : undefined) }));
     return list.slice(0, 3);
   }, [questions, issues]);
@@ -173,10 +184,15 @@ export default function Page() {
           </ul>
         )}
       </Panel>
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         <Tile label="승인 대기" n={pending.length} />
         <Tile label="답 기다리는 질문" n={questions.length} />
         <Tile label="점검 할 일" n={issues?.length ?? 0} />
+        {(issues?.length ?? 0) > 0 && (
+          <button onClick={() => setShowAll((v) => !v)} aria-expanded={showAll} className="text-[13px] font-semibold text-brand-strong">
+            {showAll ? '점검 결과 접기' : `점검 결과 ${issues!.length}건 모두 보기`}
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
@@ -243,6 +259,8 @@ export default function Page() {
         >
           {issues === null ? (
             <Empty>점검하는 중이에요</Empty>
+          ) : !showAll && issues.length > 0 ? (
+            <Empty>{`점검 결과 ${issues.length}건은 위에서 '모두 보기'를 누르면 펼쳐져요`}</Empty>
           ) : perCard.length === 0 && others.length === 0 ? (
             <Empty>문제가 없어요</Empty>
           ) : (
@@ -274,9 +292,25 @@ export default function Page() {
                       const l = cardOf(i.ids[0]);
                       const r = cardOf(i.ids[1]);
                       return l && r ? (
-                        <div key={i.ids.join()} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          <Mini card={l} side="왼쪽으로 통일" busy={busy === r.id + 'archive'} onPick={() => void unify(l.id, r.id)} />
-                          <Mini card={r} side="오른쪽으로 통일" busy={busy === l.id + 'archive'} onPick={() => void unify(r.id, l.id)} />
+                        <div key={i.ids.join()} className="mt-3">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <Mini card={l} side="왼쪽으로 통일" busy={busy === r.id + 'archive'} onPick={() => pickSide(l, r)} />
+                            <Mini card={r} side="오른쪽으로 통일" busy={busy === l.id + 'archive'} onPick={() => pickSide(r, l)} />
+                          </div>
+                          {confirm && [l.id, r.id].includes(confirm.drop) && [l.id, r.id].includes(confirm.keep) && (
+                            <div className="mt-2 rounded-xl bg-warning-weak p-3">
+                              <p className="text-[14px] font-semibold text-ink-strong">공식규정 카드를 보관하려고 해요. 본사·매장 규정이 바뀐 게 맞나요?</p>
+                              <input className={`${inputCls} mt-2`} placeholder="바뀐 이유를 짧게 적어 주세요" value={reason} onChange={(e) => setReason(e.target.value)} />
+                              <div className="mt-2 flex gap-2">
+                                <Button size="sm" className="flex-1" disabled={!reason.trim()} loading={busy === confirm.drop + 'archive'} onClick={() => void unify(confirm.keep, confirm.drop, reason.trim())}>
+                                  맞아요, 보관할게요
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setConfirm(null)}>
+                                  취소
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : null;
                     })}

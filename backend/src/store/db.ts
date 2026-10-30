@@ -177,11 +177,12 @@ export function compileWiki() {
   }
   index.push('', '## 사람', '', '[기여자 목록](people.md)');
   writeFileSync(join(WIKI_DIR, 'index.md'), index.join('\n') + '\n');
-  const people = d.people.map((p) => {
-    const mine = approved.filter((c) => c.authorId === p.id);
-    const asked = d.questions.filter((q) => q.askerId === p.id).length;
-    return `- ${p.name} (${p.role} ${p.tenure}) · 남긴 사례 ${mine.length}${mine.length ? ` (${mine.map((c) => c.id).join(', ')})` : ''} · 질문 ${asked}`;
+  // 기여 크레딧만 남긴다. 질문 수는 개인별로 세지 않고, 크레딧을 끈 카드는 이름 없이 합계만
+  const people = d.people.flatMap((p) => {
+    const mine = approved.filter((c) => c.authorId === p.id && c.credit !== false);
+    return mine.length ? [`- ${p.name} (${p.role} ${p.tenure}) · 남긴 사례 ${mine.length} (${mine.map((c) => c.id).join(', ')}) · 도움 ${mine.reduce((s, c) => s + c.helpful, 0)}회`] : [];
   });
-  writeFileSync(join(WIKI_DIR, 'people.md'), ['# 사람', '', ...people].join('\n') + '\n');
+  const anon = approved.filter((c) => c.credit === false).length;
+  writeFileSync(join(WIKI_DIR, 'people.md'), ['# 노하우를 남긴 사람', '', ...people, anon ? `- 이름 비공개 기여 ${anon}건` : '', '', '질문한 사람은 개인별로 기록하지 않는다.'].join('\n') + '\n');
   writeFileSync(join(WIKI_DIR, 'log.md'), ['# 변경 기록', '', ...d.log.map((l) => `- ${l.time} · ${l.op} · ${l.detail}`)].join('\n') + '\n');
 }

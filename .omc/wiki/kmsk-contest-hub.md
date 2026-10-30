@@ -101,3 +101,9 @@ schemaVersion: 1
 - 공식 자료: `공모전자료/` (세부안내.docx, 포스터.pdf, 참가신청서·아이디어개요서·개인정보활용동의서 양식)
 - 위키 원칙: 사실은 출처에서 그대로 옮겼고, 미검증 표기는 유지했다. 새 주장은 추가하지 않았다(위키 작성자 메모는 그렇게 표시).
 
+
+## 선정 방향과 프로토타입
+
+- 선정 아이디어와 구조 결정, 심사 라운드 기록: [[eoeobatgi-decisions]]
+- 참고 repo·디자인: [[ref-adoption-decision-repo]] · [[ref-toss-ux-repo-ux-ui]] · [[ref-graph-viz-repo]] · [[ref-llm-wiki-kb-repo-llm-kcs]] · [[ref-agent-trace-repo-ui]] · [[ref-dashboard-components-repo]] · [[ref-frontline-onboarding]]
+- 수상작·쇼케이스: [[pattern-winners-common]] · [[ref-winners-kmsk]] · [[ref-winners-korea-similar]] · [[ref-winners-international]] · [[ref-showcase-sites]]

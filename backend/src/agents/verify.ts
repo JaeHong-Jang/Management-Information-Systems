@@ -24,7 +24,7 @@ export function citationChecker(ans: Answer, approvedIds: Set<string>, retrieved
     if (!l.trim()) return true;
     const ids = [...l.matchAll(CITE)].map((m) => m[1]);
     if (ids.some((id) => !ok(id))) return false;
-    return HAS_CITE.test(l) || /공식규정/.test(l);
+    return HAS_CITE.test(l); // 어떤 줄이든 실제 카드 근거가 붙어야 남는다
   });
   if (kept.length < lines.length) problems.push(`근거가 없거나 잘못된 줄 ${lines.length - kept.length}개를 뺐습니다`);
   if (!valid.length) problems.push('유효한 근거 카드가 없습니다');

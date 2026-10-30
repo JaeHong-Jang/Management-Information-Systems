@@ -144,3 +144,11 @@
 - **Pages:** contest-rules.md, idea-1-hotel-knowledge-copilot.md, kmsk-society-judges.md, korea-problem-statistics.md, papers-ai-cx.md, papers-classic-theory.md, papers-km-genai.md, papers-kmr-journal.md, papers-smart-tourism-hotel.md, pattern-winners-common.md, ref-adoption-decision-repo.md, ref-frontline-onboarding.md, ref-llm-wiki-kb-repo-llm-kcs.md, ref-showcase-sites.md, ref-toss-ux-repo-ux-ui.md, ref-winners-international.md, ref-winners-kmsk.md, ref-winners-korea-similar.md
 - **Summary:** Lint: 19 issues (7 orphan, 0 stale, 3 broken, 0 contradictions)
 
+## [2026-10-30T16:52:22.592Z] ingest
+- **Pages:** eoeobatgi-decisions.md
+- **Summary:** Created new page "이어받기 프로토타입 결정 기록 (eoeobatgi-decisions)"
+
+## [2026-10-30T16:52:26.307Z] lint
+- **Pages:** contest-rules.md, eoeobatgi-decisions.md, idea-1-hotel-knowledge-copilot.md, kmsk-society-judges.md, korea-problem-statistics.md, papers-ai-cx.md, papers-classic-theory.md, papers-km-genai.md, papers-kmr-journal.md, papers-smart-tourism-hotel.md, ref-showcase-sites.md, ref-winners-international.md, ref-winners-kmsk.md, ref-winners-korea-similar.md
+- **Summary:** Lint: 14 issues (5 orphan, 0 stale, 0 broken, 0 contradictions)
+

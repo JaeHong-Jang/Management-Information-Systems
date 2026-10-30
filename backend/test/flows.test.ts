@@ -136,7 +136,7 @@ describe('1차 심사 지적 반영: 잘못된 답은 보이지 않거나 점장
   });
 
   it('점장 호출 기준에 해당하면 답 대신 점장에게 넘기고 그동안 할 일만 보여 준다', async () => {
-    const r = await flows.ask('손님이 욕설을 하면서 위협해요', 'P005');
+    const r = await flows.ask('기프티콘이 사용 완료라는데 사용 매장이 우리 매장으로 조회돼요', 'P005');
     expect(r.question.status).toBe('escalated');
     expect(r.question.answer).toMatch(/점장 호출 기준에 해당해요/);
   });
@@ -156,5 +156,44 @@ describe('1차 심사 지적 반영: 잘못된 답은 보이지 않거나 점장
     const c = await flows.submitCard({ title: '시험 카드', topic: '기타', situation: '시험', reason: '시험', actions: ['무조건 환불한다'], avoid: '', escalateWhen: '', source: '현장노하우', tags: [] }, 'P002');
     await expect(flows.cardAction(c.id, 'approve')).rejects.toThrow(/표현을 다듬어야/);
     expect(db.card(c.id)?.status).toBe('pending');
+  });
+});
+
+describe('2차 심사 지적 반영', () => {
+  it("'공식규정'이라는 말만 있고 카드 근거가 없는 줄은 빠진다", () => {
+    const r = citationChecker({ answer: '결제 내역을 확인한다 [C006]\n공식규정상 50만원을 지급하세요', why: '', cited: ['C006'], confidence: 'high', needsManager: false }, new Set(['C006']), new Set(['C006']));
+    expect(r.out.answer.answer).toBe('결제 내역을 확인한다 [C006]');
+  });
+
+  it('금액 기준은 숫자로 비교한다: 3만원 이상 기준에 2만원은 해당하지 않는다', async () => {
+    const low = await flows.ask('영수증 없이 2만원 환불해 달래요', 'P005');
+    expect(low.question.status).toBe('answered');
+    const high = await flows.ask('영수증 없이 5만원 환불해 달래요', 'P005');
+    expect(high.question.status).toBe('escalated');
+  });
+
+  it('말을 바꾼 안전 상황(두드러기, 때리려고)도 점장에게 넘어간다', async () => {
+    for (const text of ['두유 라떼 마신 손님 얼굴에 두드러기가 났어요', '손님이 때리려고 해요']) {
+      const r = await flows.ask(text, 'P005');
+      expect(r.question.status).toBe('escalated');
+      expect(r.question.answer).toMatch(/안전과 관련된 상황/);
+    }
+  });
+
+  it('승인 대기인 점장 답은 신입에게 닫힌 질문으로 보이지 않고, 승인되면 닫힌다', async () => {
+    const q = (await flows.ask('매장 와이파이 비밀번호를 물어봐요', 'P005')).question;
+    const { card } = await flows.resolve(q.id, '무조건 무료로 드린다. 와이파이 비밀번호는 영수증에 있다.', 'P001');
+    expect(card.status).toBe('pending');
+    expect(db.question(q.id)?.status).toBe('escalated');
+    card.actions = ['와이파이 비밀번호는 영수증 하단에 있다고 안내한다'];
+    card.reason = '영수증에 인쇄돼 있어 직원이 따로 알려 줄 필요가 없다';
+    card.situation = '매장 와이파이 비밀번호 문의';
+    await flows.cardAction(card.id, 'approve');
+    expect(db.question(q.id)?.status).toBe('resolved');
+  });
+
+  it("규칙 모드 카드 편집자는 '안 된다'는 사실 서술을 금지 칸에 넣지 않는다", async () => {
+    const { card } = await flows.resolve((await flows.ask('외국인 손님이 알리페이 결제를 원해요', 'P005')).question.id, '우리 단말기는 알리페이가 안 된다. 카드나 현금을 안내한다.', 'P001');
+    expect(card.avoid).not.toMatch(/알리페이가 안 된다/);
   });
 });

@@ -26,7 +26,7 @@ export const api = {
   interview: (raw: string, authorId: string, answers: FollowupAnswer[] = []) => post<InterviewDraft>('/record/interview', { raw, authorId, answers }),
   submitCard: (draft: DraftFields, authorId: string) => post<Card>('/cards', { draft, authorId }),
   cardAction: (id: string, action: 'approve' | 'reject' | 'renew' | 'archive', edits?: Partial<Card>) => post<Card>(`/cards/${id}/${action}`, { edits }),
-  lint: () => call<{ issues: LintIssue[]; runId: string }>('/lint'),
+  lint: (quiet = false) => call<{ issues: LintIssue[]; runId: string }>(`/lint${quiet ? '?quiet=1' : ''}`),
   trainingTask: () => call<TrainingTask>('/training'),
   grade: (id: string, answer: string, personId: string) => post<TrainingResult>('/training/grade', { id, answer, personId }),
   playDemo: () => post<{ ok: boolean }>('/demo/play'),

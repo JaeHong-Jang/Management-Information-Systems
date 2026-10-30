@@ -1,6 +1,6 @@
 // 흐름(오케스트레이터가 정한 에이전트 순서). 각 흐름은 harness.config.json의 flows와 같은 순서로 에이전트를 부른다.
 import type { AskResult, Card, InterviewDraft, LintIssue, TrainingResult } from '@shared/contracts';
-import { config } from '../harness/config.js';
+import { agentDef, config } from '../harness/config.js';
 import { Run } from '../harness/runner.js';
 import { cardWriter, interviewer, privacyGuard, type FollowupAnswer } from '../agents/capture.js';
 import { coach, escalator, librarian } from '../agents/answer.js';
@@ -11,12 +11,12 @@ const forbiddenIn = (text: string) => forbidden(text).map((f) => `"${f.match}" �
 import { search } from '../tools/search.js';
 import { linter, synthesizer, trainer } from '../agents/keeper.js';
 import * as db from '../store/db.js';
-import { cardEdges, cardNode, edge, personNode, questionEdges, questionNode, sourceNode, topicNode } from '../store/graph.js';
+import { anonNode, cardEdges, cardNode, edge, personNode, questionEdges, questionNode, roleNode, sourceNode, topicNode } from '../store/graph.js';
 
 // 카드 노드를 내보낼 때는 연결 대상(토픽·출처)도 함께 보낸다. 화면에 아직 없는 토픽이면 관계가 버려지기 때문이다.
 const withContext = (c: Card) => [cardNode(c), topicNode(c.topic), sourceNode(c.source)];
 
-const plan = (flow: keyof typeof config.flows) => config.flows[flow].steps.filter((s) => s !== 'orchestrator').join(' → ');
+const plan = (flow: keyof typeof config.flows) => config.flows[flow].steps.filter((s) => s !== 'orchestrator').map((s) => agentDef(s).name).join(' → ');
 
 async function orchestrate(run: Run, note = '') {
   await run.step('orchestrator', () => ({ out: null, summary: `${config.flows[run.flow].name}: ${plan(run.flow)}${note ? ` · ${note}` : ''}` }));
@@ -48,7 +48,10 @@ export async function ask(rawText: string, askerId: string): Promise<AskResult> 
   const esc = await run.step('escalator', () => escalator(text, checked, approved));
 
   let final = checked;
-  if (esc.escalate && esc.why === 'call' && esc.callCard) {
+  if (esc.why === 'safety') {
+    const steps = checked.cited.length ? checked.answer.split('\n').filter((l) => /\[C\d{3,}\]/.test(l)).slice(0, 2) : [];
+    final = { ...checked, answer: [`안전과 관련된 상황이에요(${esc.safety}). 혼자 처리하지 말고 점장님께 바로 연락하세요. 위급하면 119나 112에 먼저 신고하세요.`, ...(steps.length ? ['참고할 매장 사례:', ...steps] : [])].join('\n'), confidence: 'low', cited: steps.length ? checked.cited : [] };
+  } else if (esc.escalate && esc.why === 'call' && esc.callCard) {
     const c = esc.callCard;
     const interim = c.actions.slice(0, 2).map((a, i) => `${i + 1}. ${a} [${c.id}]`);
     final = { ...checked, answer: [`점장 호출 기준에 해당해요: ${c.escalateWhen} [${c.id}]`, '점장님께 바로 알렸어요. 그동안 할 수 있는 것:', ...interim].join('\n'), cited: [c.id], confidence: 'low' };
@@ -61,7 +64,7 @@ export async function ask(rawText: string, askerId: string): Promise<AskResult> 
   run.wiki({
     op: esc.escalate ? '점장에게 넘김' : '질문에 답함',
     detail: `[${q.id}] ${text.slice(0, 40)}${final.cited.length ? ` → ${final.cited.join(', ')}` : ''}`,
-    nodes: [personNode(asker), questionNode(q), ...final.cited.map((id) => cardNode(db.card(id)!))],
+    nodes: [roleNode(asker.role), questionNode(q), ...final.cited.map((id) => cardNode(db.card(id)!))],
     edges: questionEdges(q),
   });
   run.end(true, esc.escalate ? '점장 답을 기다립니다' : `근거 ${final.cited.length}개로 답했습니다`);
@@ -97,7 +100,8 @@ export async function interview(raw: string, authorId: string, answers: Followup
   const words = await run.step('wording-guard', () => wordingGuard([draft.title, draft.reason, ...draft.actions, draft.avoid].join('\n')));
   run.gate('card-gate', words, config.gates.find((g) => g.id === 'card-gate')!.onFail);
   run.end(true, followups.length ? `되묻기 ${followups.length}개` : '카드 초안 완성');
-  return { ...draft, followups, masked: safe.masked, problems: words };
+  const via = run.steps.find((s) => s.agentId === 'card-writer')?.via;
+  return { ...draft, followups, masked: safe.masked, problems: words, via };
 }
 
 const cardText = (c: Pick<Card, 'title' | 'situation' | 'reason' | 'actions' | 'avoid' | 'escalateWhen'>) => [c.title, c.situation, c.reason, ...c.actions, c.avoid, c.escalateWhen].join('\n');
@@ -113,7 +117,7 @@ export async function submitCard(input: Omit<InterviewDraft, 'followups' | 'mask
   await orchestrate(run, direct ? '점장 작성 → 바로 승인' : problems.length ? `금지 표현 ${problems.length}건 → 승인 대기` : '승인 대기로 저장');
   const c = db.createCard(draft, authorId, direct ? 'approved' : 'pending', '기록');
   if (input.credit === false) c.credit = false;
-  run.wiki({ op: isManager ? '카드 추가' : '카드 승인 대기', detail: `[${c.id}] ${c.title} — ${db.personLabel(authorId)}`, nodes: [personNode(db.person(authorId)!), ...withContext(c)], edges: cardEdges(c) });
+  run.wiki({ op: isManager ? '카드 추가' : '카드 승인 대기', detail: `[${c.id}] ${c.title} — ${db.personLabel(authorId)}`, nodes: [c.credit === false ? anonNode() : personNode(db.person(authorId)!), ...withContext(c)], edges: cardEdges(c) });
   if (direct) await resynthesize(run, c.topic);
   run.end(true, `[${c.id}] 저장`);
   return c;
@@ -137,6 +141,8 @@ export async function cardAction(id: string, action: 'approve' | 'reject' | 'ren
     }
     c.status = 'approved';
     c.updated = db.today();
+    // 점장 답에서 생긴 카드가 승인되면 기다리던 질문을 닫는다
+    for (const q of db.get().questions.filter((x) => x.cardId === c.id && x.status === 'escalated')) q.status = 'resolved';
   } else if (action === 'reject') c.status = 'rejected';
   else if (action === 'archive') c.status = 'archived';
   else {
@@ -160,7 +166,8 @@ export async function resolve(questionId: string, managerAnswer: string, manager
   const words = await run.step('wording-guard', () => wordingGuard(cardText(draft)));
   run.gate('card-gate', words, '금지 표현이 있어 승인 대기로 저장(점장이 고친 뒤 승인)');
   const c = db.createCard({ ...draft, title: q.text.slice(0, 40), situation: q.text }, managerId, words.length ? 'pending' : 'approved', '에스컬레이션', q.id);
-  q.status = 'resolved';
+  // 표현 검사에 걸려 승인 대기가 된 답은 신입에게 보이지 않게 질문을 열어 둔다(승인될 때 닫힌다)
+  q.status = c.status === 'approved' ? 'resolved' : 'escalated';
   q.managerAnswer = answer;
   q.cardId = c.id;
   run.wiki({
@@ -184,7 +191,12 @@ export async function resolve(questionId: string, managerAnswer: string, manager
 
 let lastLintKey = '';
 
-export async function lint(): Promise<{ issues: LintIssue[]; runId: string }> {
+export async function lint(quiet = false): Promise<{ issues: LintIssue[]; runId: string }> {
+  if (quiet) {
+    const r = await linter();
+    db.get().links = r.out.links;
+    return { issues: r.out.issues, runId: '' };
+  }
   const run = new Run('lint', '위키 점검관', '정기 점검');
   await orchestrate(run);
   const { issues, links } = await run.step('linter', () => linter());

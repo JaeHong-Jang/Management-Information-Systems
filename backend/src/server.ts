@@ -132,7 +132,7 @@ app.post('/api/cards/:id/:action', route(async (req, res) => {
   res.json(await flows.cardAction(String(req.params.id), action as 'approve', req.body?.edits));
 }));
 
-app.get('/api/lint', route(async (_req, res) => res.json(await flows.lint())));
+app.get('/api/lint', route(async (req, res) => res.json(await flows.lint(req.query.quiet === '1'))));
 
 app.get('/api/training', (_req, res) => {
   const pool = db.usableCards().usable.filter((c) => c.actions.length >= 2);

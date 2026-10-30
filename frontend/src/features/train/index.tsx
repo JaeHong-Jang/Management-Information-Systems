@@ -56,7 +56,11 @@ export default function Page() {
 
           {!result ? (
             <div className="space-y-3">
-              <textarea className={cx(inputCls, 'min-h-[120px] resize-none')} placeholder="내가 한다면 이렇게 해요" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+              <div className="rounded-xl bg-surface-subtle p-4 text-[13px] text-ink-body">
+                <p className="font-semibold text-ink-strong">무엇을 할지 · 왜 그렇게 하는지 · 하면 안 되는 것</p>
+                <p className="mt-1">세 가지를 나눠 적으면 더 정확히 채점돼요.</p>
+              </div>
+              <textarea className={cx(inputCls, 'min-h-[120px] resize-none')} placeholder="예: 우유를 먼저 폐기하고 점장님께 알려요. 상한 걸 팔면 손님이 위험해서예요. 문 앞쪽 것만 골라 쓰면 안 돼요." value={answer} onChange={(e) => setAnswer(e.target.value)} />
               <Button size="lg" loading={busy} disabled={!answer.trim()} onClick={() => void grade()}>채점받기</Button>
             </div>
           ) : (
@@ -64,6 +68,7 @@ export default function Page() {
               <Panel>
                 <p className="text-caption text-ink-weak">내 점수</p>
                 <p className={cx('mt-1 text-[56px] font-bold leading-none', tone)}>{result.score}<span className="ml-1 text-[20px] text-ink-weak">점</span></p>
+                <p className="mt-1 text-[12px] text-ink-weak">실제 사례의 상황 그대로 나와요</p>
                 <p className="mt-4 text-[14px] text-ink-strong">{result.feedback}</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl bg-success-weak p-3">

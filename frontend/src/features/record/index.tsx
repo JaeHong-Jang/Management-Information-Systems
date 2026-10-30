@@ -183,6 +183,9 @@ export default function Page() {
 
   const set = <K extends keyof InterviewDraft>(k: K, v: InterviewDraft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
 
+  const via = (draft as { via?: string } | null)?.via;
+  const basicQ = !!via && via !== 'claude';
+
   const progress = (busy || run) && step <= 3 && (
     <Panel title="AI가 일하는 중이에요" className="mt-4 bg-surface-subtle">
       {run ? (
@@ -191,14 +194,14 @@ export default function Page() {
             <li key={i} className="flex items-start gap-2 text-[14px]">
               <Check size={16} className="mt-0.5 shrink-0 text-success" />
               <span>
-                <b className="text-ink-strong">{AGENT_NAMES[s.agentId] ?? s.agentId}</b> <span className="text-ink-body">{s.summary}</span>
+                <b className="text-ink-strong">{AGENT_NAMES[s.agentId] ?? 'AI 도우미'}</b> <span className="text-ink-body">{s.summary}</span>
               </span>
             </li>
           ))}
           {run.running && (
             <li className="flex items-center gap-2 text-[14px] text-ink-weak">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-              {AGENT_NAMES[run.running] ?? run.running}
+              {AGENT_NAMES[run.running] ?? 'AI 도우미'}
             </li>
           )}
         </ul>
@@ -244,9 +247,10 @@ export default function Page() {
         <>
           <h2 className="mb-3 text-sub text-ink-strong">조금만 더 알려 주세요</h2>
           {draft.masked > 0 && <p className="mb-3 text-[13px] font-semibold text-brand-strong">개인정보 {draft.masked}곳을 가렸어요</p>}
+          {basicQ && <p className="mb-3 text-[13px] text-ink-weak">AI 연결 전에는 빠진 칸을 묻는 기본 질문이 나와요</p>}
           <div className="space-y-3">
             {draft.followups.map((q, i) => (
-              <Panel key={i} title={<span className="text-[13px] text-brand-strong">AI가 궁금한 점</span>}>
+              <Panel key={i} title={<span className="text-[13px] text-brand-strong">{basicQ ? '기본 질문' : 'AI가 궁금한 점'}</span>}>
                 <p className="mb-3 text-[16px] font-semibold text-ink-strong">{q}</p>
                 <textarea className={cx(inputCls, 'min-h-20')} value={answers[i] ?? ''} placeholder="아는 만큼만 적어 주세요" onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))} />
                 <p className="mt-2 text-[12px] text-ink-weak">실제로 확인한 조건이나 겪은 일을 적어 주세요. 모르면 비워 둬도 돼요.</p>

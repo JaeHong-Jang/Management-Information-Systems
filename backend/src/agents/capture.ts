@@ -18,7 +18,7 @@ export function privacyGuard(raw: string): StepOut<{ text: string; masked: numbe
 // ---------- 회고 인터뷰어 ----------
 
 const REASON_RE = /(때문|이유|왜냐|해서|라서|면 안|하면|니까|므로)/;
-const AVOID_RE = /(하지 않|하지 말|금지|안 된|절대)/;
+const AVOID_RE = /(하지 않|하지 말|금지|절대|면 안 된|면 안 돼|주지 않|받지 않)/;
 const ESC_RE = /(점장|매니저|사장님께|사장님한테)/;
 
 export const sentences = (text: string) =>

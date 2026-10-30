@@ -1,6 +1,6 @@
 # Wiki Index
 
-> 33 pages | Last updated: 2026-10-30T16:19:59.821Z
+> 34 pages | Last updated: 2026-10-30T16:52:22.727Z
 
 ## architecture
 
@@ -9,6 +9,7 @@
 ## decision
 
 - [A4 1매 개요서 초안 (a4-proposal-drafts)](a4-proposal-drafts.md) — # A4 1매 개요서 초안 (a4-proposal-drafts)
+- [이어받기 프로토타입 결정 기록 (eoeobatgi-decisions)](eoeobatgi-decisions.md) — # 이어받기 프로토타입 결정 기록 (eoeobatgi-decisions)
 - [아이디어 후보(1위): 호텔 현장 지식 코파일럿 (idea-1-hotel-knowledge-copilot)](idea-1-hotel-knowledge-copilot.md) — # 아이디어 후보(1위): 호텔 현장 지식 코파일럿 (idea-1-hotel-knowledge-copilot)
 - [아이디어 후보(2위): 무장애 AI 여행 동반자 (idea-2-barrier-free-travel)](idea-2-barrier-free-travel.md) — # 아이디어 후보(2위): 무장애 AI 여행 동반자 (idea-2-barrier-free-travel)
 - [아이디어 후보(3위): 혼잡 분산·주민 상생 AI 큐레이터 (idea-3-crowd-dispersal-curator)](idea-3-crowd-dispersal-curator.md) — # 아이디어 후보(3위): 혼잡 분산·주민 상생 AI 큐레이터 (idea-3-crowd-dispersal-curator)
