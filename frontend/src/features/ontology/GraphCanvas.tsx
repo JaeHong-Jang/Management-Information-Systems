@@ -38,6 +38,9 @@ const STYLE: cytoscape.Stylesheet[] = [
   { selector: 'node[type = "topic"]', style: { 'font-size': 13, 'font-weight': 700, color: '#191F28', 'text-valign': 'center', 'text-margin-y': 0, 'text-outline-color': '#FFFFFF', 'text-outline-width': 2 } },
   { selector: 'node[type = "person"]', style: { 'font-size': 12, 'font-weight': 600, color: '#191F28' } },
   { selector: 'node[type = "source"]', style: { 'font-size': 11, color: '#191F28' } },
+  // 카드·질문 라벨은 기본으로 숨기고, 방금 바뀐 것·선택·마우스를 올린 것만 보여 준다(겹침 방지)
+  { selector: 'node[type = "card"], node[type = "question"]', style: { 'text-opacity': 0 } },
+  { selector: 'node.fresh, node.hover, node:selected, node.near', style: { 'text-opacity': 1, 'font-size': 12, color: '#191F28', 'z-index': 10 } },
   { selector: 'node[pending = 1]', style: { 'background-opacity': 0.35, 'border-width': 2, 'border-style': 'dashed', 'border-color': '#0891B2' } },
   { selector: 'node.fresh', style: { 'border-width': 5, 'border-color': '#3182F6', 'border-opacity': 0.55 } },
   { selector: 'node:selected', style: { 'border-width': 4, 'border-color': '#191F28' } },
@@ -50,7 +53,7 @@ const STYLE: cytoscape.Stylesheet[] = [
   { selector: 'edge.dim', style: { opacity: 0.08 } },
 ];
 
-export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect, focusId }: { graph: Graph; fresh: Set<string>; height?: number; hidden?: NodeType[]; onSelect?: (id: string | null) => void; focusId?: string | null }) {
+export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect, focusId, spotlight }: { graph: Graph; fresh: Set<string>; height?: number; hidden?: NodeType[]; onSelect?: (id: string | null) => void; focusId?: string | null; spotlight?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const selectRef = useRef(onSelect);
@@ -60,6 +63,8 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
     const cy = cytoscape({ container: box.current, style: STYLE, minZoom: 0.25, maxZoom: 2.5 });
     cy.on('tap', 'node', (e) => selectRef.current?.(e.target.id()));
     cy.on('tap', (e) => e.target === cy && selectRef.current?.(null));
+    cy.on('mouseover', 'node', (e) => e.target.addClass('hover'));
+    cy.on('mouseout', 'node', (e) => e.target.removeClass('hover'));
     cyRef.current = cy;
     return () => cy.destroy();
   }, []);
@@ -72,6 +77,7 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
     const removed = cy.elements().filter((el) => !want.has(el.id()));
     const first = cy.nodes().length === 0;
     let added = 0;
+    const before = cy.nodes();
     cy.batch(() => {
       removed.remove();
       for (const n of graph.nodes) {
@@ -94,7 +100,10 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
       }
     });
     if (added || removed.nonempty()) {
-      cy.layout({
+      // 이미 있던 노드는 제자리에 두고 새 노드만 자리를 잡게 한다(새 지식이 어디 붙었는지 눈으로 따라갈 수 있게)
+      const keep = first ? cy.collection() : before.filter((n) => n.inside());
+      keep.lock();
+      const layout = cy.layout({
         name: 'fcose',
         animate: !first,
         animationDuration: 700,
@@ -104,7 +113,9 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
         nodeRepulsion: () => 9000,
         idealEdgeLength: (edge: cytoscape.EdgeSingular) => (edge.data('type') === 'belongs' ? 70 : edge.data('type') === 'governs' ? 140 : 95),
         quality: 'default',
-      } as cytoscape.LayoutOptions).run();
+      } as cytoscape.LayoutOptions);
+      layout.one('layoutstop', () => keep.unlock());
+      layout.run();
     }
   }, [graph]);
 
@@ -113,7 +124,17 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
     if (!cy) return;
     cy.elements().removeClass('fresh');
     fresh.forEach((id) => cy.getElementById(id).addClass('fresh'));
-  }, [fresh, graph]);
+    // 개요 화면: 방금 실행된 경로(질문→카드→사람)만 또렷하게, 나머지는 잠시 흐리게
+    if (spotlight && !focusId) {
+      cy.elements().removeClass('dim near');
+      const lit = cy.elements('.fresh');
+      if (lit.nonempty()) {
+        const path = lit.union(lit.connectedNodes());
+        path.nodes().addClass('near');
+        cy.elements().not(path).addClass('dim');
+      }
+    }
+  }, [fresh, graph, spotlight, focusId]);
 
   useEffect(() => {
     const cy = cyRef.current;

@@ -102,6 +102,25 @@ export const card = (id: string) => get().cards.find((c) => c.id === id);
 export const question = (id: string) => get().questions.find((q) => q.id === id);
 export const person = (id: string) => get().people.find((p) => p.id === id);
 export const approvedCards = () => get().cards.filter((c) => c.status === 'approved');
+export const isExpired = (c: Card) => c.expires < today();
+
+/** 신입 답의 근거로 쓸 수 있는 카드: 승인됐고, 만료 전이고, 공식규정과 상충한다고 표시된 현장노하우가 아닌 것 */
+export function usableCards(): { usable: Card[]; excluded: { id: string; why: string }[] } {
+  const d = get();
+  const conflicted = new Set<string>();
+  for (const l of d.links.filter((x) => x.type === 'conflicts')) {
+    const [a, b] = [card(l.source), card(l.target)];
+    if (a && b && a.source !== b.source) conflicted.add((a.source === '현장노하우' ? a : b).id);
+  }
+  const usable: Card[] = [];
+  const excluded: { id: string; why: string }[] = [];
+  for (const c of approvedCards()) {
+    if (isExpired(c)) excluded.push({ id: c.id, why: `만료(${c.expires})` });
+    else if (conflicted.has(c.id)) excluded.push({ id: c.id, why: '공식규정과 상충' });
+    else usable.push(c);
+  }
+  return { usable, excluded };
+}
 export const personLabel = (id: string) => {
   const p = person(id);
   return p ? `${p.name}(${p.role} ${p.tenure})` : id;

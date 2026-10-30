@@ -4,7 +4,11 @@ import { config } from '../harness/config.js';
 import { Run } from '../harness/runner.js';
 import { cardWriter, interviewer, privacyGuard, type FollowupAnswer } from '../agents/capture.js';
 import { coach, escalator, librarian } from '../agents/answer.js';
-import { citationChecker, policyChecker, wordingGuard } from '../agents/verify.js';
+import { citationChecker, dropForbiddenLines, policyChecker, wordingGuard } from '../agents/verify.js';
+import { forbidden, maskPii } from '../tools/policies.js';
+
+const forbiddenIn = (text: string) => forbidden(text).map((f) => `"${f.match}" — ${f.why}`);
+import { search } from '../tools/search.js';
 import { linter, synthesizer, trainer } from '../agents/keeper.js';
 import * as db from '../store/db.js';
 import { cardEdges, cardNode, edge, personNode, questionEdges, questionNode, sourceNode, topicNode } from '../store/graph.js';
@@ -19,28 +23,38 @@ async function orchestrate(run: Run, note = '') {
 }
 
 async function resynthesize(run: Run, topic: string) {
-  const summary = await run.step('synthesizer', () => synthesizer(topic, db.approvedCards().filter((c) => c.topic === topic)));
+  const summary = await run.step('synthesizer', () => synthesizer(topic, db.usableCards().usable.filter((c) => c.topic === topic)));
   db.get().topicSummaries[topic] = summary;
   run.wiki({ op: '토픽 재종합', detail: `'${topic}' 핵심 원칙을 다시 정리`, nodes: [topicNode(topic)], edges: [] });
 }
 
 // ---------- 신입 질문 ----------
 
-export async function ask(text: string, askerId: string): Promise<AskResult> {
+export async function ask(rawText: string, askerId: string): Promise<AskResult> {
+  // 개인정보는 실행 기록·모델 입력·저장보다 먼저 가린다
+  const text = maskPii(rawText).text;
   const run = new Run('ask', db.personLabel(askerId), text);
   await orchestrate(run);
-  const approved = db.approvedCards();
-  const hits = await run.step('librarian', () => librarian(text, approved));
+  await run.step('privacy-guard', () => privacyGuard(rawText));
+  const { usable: approved, excluded } = db.usableCards();
+  const hits = await run.step('librarian', () => librarian(text, approved, excluded));
   const draft = await run.step('coach', () => coach(text, hits));
   const c1 = await run.step('citation-checker', () => citationChecker(draft, new Set(approved.map((c) => c.id)), new Set(hits.map((h) => h.card.id))));
   const c2 = await run.step('policy-checker', () => policyChecker(c1.answer, approved));
   const words = await run.step('wording-guard', () => wordingGuard(c2.answer.answer));
-  const gate = run.gate('answer-gate', [...c1.problems, ...c2.problems, ...words], config.gates.find((g) => g.id === 'answer-gate')!.onFail);
-  const esc = await run.step('escalator', () => escalator(text, c2.answer, gate.passed, approved));
+  run.gate('answer-gate', [...c1.problems, ...c2.problems, ...words], config.gates.find((g) => g.id === 'answer-gate')!.onFail);
+  // 게이트는 경고가 아니라 출력 통제다: 금지 표현 줄은 신입에게 보이지 않는다
+  const checked = { ...c2.answer, answer: dropForbiddenLines(c2.answer.answer) };
+  const esc = await run.step('escalator', () => escalator(text, checked, approved));
 
-  const final = esc.escalate
-    ? { ...c2.answer, answer: '매장 위키에 이 상황에 맞는 사례가 아직 없습니다. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가됩니다.', cited: [], confidence: 'none' as const }
-    : { ...c2.answer, answer: esc.note ? `${c2.answer.answer}\n${esc.note}` : c2.answer.answer };
+  let final = checked;
+  if (esc.escalate && esc.why === 'call' && esc.callCard) {
+    const c = esc.callCard;
+    const interim = c.actions.slice(0, 2).map((a, i) => `${i + 1}. ${a} [${c.id}]`);
+    final = { ...checked, answer: [`점장 호출 기준에 해당해요: ${c.escalateWhen} [${c.id}]`, '점장님께 바로 알렸어요. 그동안 할 수 있는 것:', ...interim].join('\n'), cited: [c.id], confidence: 'low' };
+  } else if (esc.escalate) {
+    final = { ...checked, answer: '매장 위키에 이 상황에 맞는 사례가 아직 없어요. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가돼요.', cited: [], confidence: 'none' };
+  }
   for (const id of final.cited) db.card(id)!.uses++;
   const q = db.createQuestion({ text, askerId, status: esc.escalate ? 'escalated' : 'answered', answer: final.answer, why: final.why, cited: final.cited, confidence: final.confidence, runId: run.runId });
   const asker = db.person(askerId)!;
@@ -74,7 +88,7 @@ export async function feedback(questionId: string, solved: boolean) {
 // ---------- 노하우 기록 ----------
 
 export async function interview(raw: string, authorId: string, answers: FollowupAnswer[] = []): Promise<InterviewDraft> {
-  const run = new Run('record', db.personLabel(authorId), raw);
+  const run = new Run('record', db.personLabel(authorId), maskPii(raw).text);
   await orchestrate(run, answers.length ? '되묻기 답 반영' : '첫 기록');
   const safe = await run.step('privacy-guard', () => privacyGuard(raw));
   const safeAnswers = answers.map((a) => ({ ...a, answer: privacyGuard(a.answer).out.text }));
@@ -86,13 +100,21 @@ export async function interview(raw: string, authorId: string, answers: Followup
   return { ...draft, followups, masked: safe.masked, problems: words };
 }
 
-export async function submitCard(draft: Omit<InterviewDraft, 'followups' | 'masked' | 'problems'>, authorId: string): Promise<Card> {
+const cardText = (c: Pick<Card, 'title' | 'situation' | 'reason' | 'actions' | 'avoid' | 'escalateWhen'>) => [c.title, c.situation, c.reason, ...c.actions, c.avoid, c.escalateWhen].join('\n');
+
+export async function submitCard(input: Omit<InterviewDraft, 'followups' | 'masked' | 'problems'> & { credit?: boolean }, authorId: string): Promise<Card> {
+  // 사람이 고친 필드도 저장 전에 다시 가리고 다시 검사한다
+  const mask = (s: string) => maskPii(s ?? '').text;
+  const draft = { ...input, title: mask(input.title), situation: mask(input.situation), reason: mask(input.reason), actions: input.actions.map(mask), avoid: mask(input.avoid), escalateWhen: mask(input.escalateWhen) };
+  const problems = forbiddenIn(cardText(draft));
   const isManager = db.person(authorId)?.role === '점장';
+  const direct = isManager && !problems.length;
   const run = new Run('record', db.personLabel(authorId), draft.title);
-  await orchestrate(run, isManager ? '점장 작성 → 바로 승인' : '승인 대기로 저장');
-  const c = db.createCard(draft, authorId, isManager ? 'approved' : 'pending', '기록');
+  await orchestrate(run, direct ? '점장 작성 → 바로 승인' : problems.length ? `금지 표현 ${problems.length}건 → 승인 대기` : '승인 대기로 저장');
+  const c = db.createCard(draft, authorId, direct ? 'approved' : 'pending', '기록');
+  if (input.credit === false) c.credit = false;
   run.wiki({ op: isManager ? '카드 추가' : '카드 승인 대기', detail: `[${c.id}] ${c.title} — ${db.personLabel(authorId)}`, nodes: [personNode(db.person(authorId)!), ...withContext(c)], edges: cardEdges(c) });
-  if (isManager) await resynthesize(run, c.topic);
+  if (direct) await resynthesize(run, c.topic);
   run.end(true, `[${c.id}] 저장`);
   return c;
 }
@@ -107,6 +129,12 @@ export async function cardAction(id: string, action: 'approve' | 'reject' | 'ren
   await orchestrate(run, label);
   if (action === 'approve') {
     if (edits) Object.assign(c, edits);
+    const problems = forbiddenIn(cardText(c));
+    if (problems.length) {
+      run.gate('card-gate', problems, '승인하지 않음: 표현을 고친 뒤 다시 승인');
+      run.end(false, '승인 막힘');
+      throw Object.assign(new Error(`표현을 다듬어야 승인할 수 있어요: ${problems.join(' / ')}`), { status: 400 });
+    }
     c.status = 'approved';
     c.updated = db.today();
   } else if (action === 'reject') c.status = 'rejected';
@@ -124,15 +152,16 @@ export async function cardAction(id: string, action: 'approve' | 'reject' | 'ren
 export async function resolve(questionId: string, managerAnswer: string, managerId: string) {
   const q = db.question(questionId);
   if (!q) throw new Error('질문을 찾을 수 없습니다');
-  const run = new Run('resolve', db.personLabel(managerId), managerAnswer);
+  const answer = maskPii(managerAnswer).text;
+  const run = new Run('resolve', db.personLabel(managerId), answer);
   await orchestrate(run, `[${q.id}] 점장 답을 사례로`);
   const safe = await run.step('privacy-guard', () => privacyGuard(`${q.text}\n${managerAnswer}`));
   const draft = await run.step('card-writer', () => cardWriter(safe.text, [], db.get().topics));
-  const words = await run.step('wording-guard', () => wordingGuard([draft.reason, ...draft.actions].join('\n')));
-  run.gate('card-gate', words, '점장 작성이라 저장하되 문제 표현을 표시');
-  const c = db.createCard({ ...draft, title: q.text.slice(0, 40), situation: q.text }, managerId, 'approved', '에스컬레이션', q.id);
+  const words = await run.step('wording-guard', () => wordingGuard(cardText(draft)));
+  run.gate('card-gate', words, '금지 표현이 있어 승인 대기로 저장(점장이 고친 뒤 승인)');
+  const c = db.createCard({ ...draft, title: q.text.slice(0, 40), situation: q.text }, managerId, words.length ? 'pending' : 'approved', '에스컬레이션', q.id);
   q.status = 'resolved';
-  q.managerAnswer = managerAnswer;
+  q.managerAnswer = answer;
   q.cardId = c.id;
   run.wiki({
     op: '점장 답 → 새 카드',
@@ -140,19 +169,30 @@ export async function resolve(questionId: string, managerAnswer: string, manager
     nodes: [questionNode(q), ...withContext(c), personNode(db.person(managerId)!)],
     edges: [...cardEdges(c), edge(q.id, c.id, 'became')],
   });
-  await resynthesize(run, c.topic);
-  run.end(true, `질문이 사례 [${c.id}]가 되었습니다`);
-  return { question: q, card: c };
+  // 같은 내용을 기다리던 다른 질문도 이 카드로 함께 닫는다(점장이 같은 설명을 반복하지 않게)
+  const also = c.status === 'approved' ? db.get().questions.filter((x) => x.status === 'escalated' && x.id !== q.id && (search(x.text, [c])[0]?.coverage ?? 0) >= 0.35 && (search(x.text, [c])[0]?.score ?? 0) >= 1) : [];
+  for (const x of also) {
+    Object.assign(x, { status: 'resolved', managerAnswer: answer, cardId: c.id, cited: [c.id] });
+    run.wiki({ op: '비슷한 질문 함께 해결', detail: `[${x.id}] → [${c.id}]`, nodes: [questionNode(x)], edges: [edge(x.id, c.id, 'became')] });
+  }
+  if (c.status === 'approved') await resynthesize(run, c.topic);
+  run.end(true, c.status === 'approved' ? `질문이 사례 [${c.id}]가 되었습니다${also.length ? ` · 비슷한 대기 질문 ${also.length}건도 해결` : ''}` : `[${c.id}] 표현 확인 필요 → 승인 대기`);
+  return { question: q, card: c, alsoResolved: also.map((x) => x.id) };
 }
 
 // ---------- 점검·훈련 ----------
+
+let lastLintKey = '';
 
 export async function lint(): Promise<{ issues: LintIssue[]; runId: string }> {
   const run = new Run('lint', '위키 점검관', '정기 점검');
   await orchestrate(run);
   const { issues, links } = await run.step('linter', () => linter());
   db.get().links = links;
-  run.wiki({ op: '위키 점검', detail: `할 일 ${issues.length}건`, nodes: [], edges: links.map((l) => edge(l.source, l.target, l.type)) });
+  // 결과가 지난 점검과 같으면 위키 변경 기록에 다시 남기지 않는다(화면을 열 때마다 기록이 쌓이지 않게)
+  const key = issues.map((i) => `${i.kind}:${i.ids.join(',')}`).join('|');
+  if (key !== lastLintKey) run.wiki({ op: '위키 점검', detail: `할 일 ${issues.length}건`, nodes: [], edges: links.map((l) => edge(l.source, l.target, l.type)) });
+  lastLintKey = key;
   run.end(true, `할 일 ${issues.length}건`);
   return { issues, runId: run.runId };
 }

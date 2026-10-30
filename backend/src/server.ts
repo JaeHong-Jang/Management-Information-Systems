@@ -38,18 +38,21 @@ app.get('/api/runs/:id', (req, res) => {
   return r ? res.json(r) : res.status(404).json({ error: '실행 기록 없음' });
 });
 
-app.get('/api/metrics', (_req, res) => {
+app.get('/api/metrics', (req, res) => {
   const d = db.get();
-  const approved = db.approvedCards();
-  const qs = d.questions;
+  // live: 시드 데이터를 빼고 이번 시연에서 생긴 것만 (시드 질문에는 runId가 없다)
+  const live = req.query.scope === 'live';
+  const approved = db.approvedCards().filter((c) => !live || c.origin !== '시드');
+  const qs = d.questions.filter((q) => !live || q.runId);
   const withFb = qs.filter((q) => q.feedback);
   const contributors = new Map<string, Metrics['contributors'][number]>();
   for (const c of approved) {
+    const key = c.credit === false ? 'anon' : c.authorId;
     const p = db.person(c.authorId);
-    const row = contributors.get(c.authorId) ?? { personId: c.authorId, name: p ? `${p.name}(${p.role})` : c.authorId, cards: 0, helped: 0 };
+    const row = contributors.get(key) ?? { personId: key, name: c.credit === false ? '이름 비공개 기여' : p ? `${p.name}(${p.role})` : c.authorId, cards: 0, helped: 0 };
     row.cards++;
     row.helped += c.helpful;
-    contributors.set(c.authorId, row);
+    contributors.set(key, row);
   }
   const days = new Map<string, { day: string; cards: number; questions: number }>();
   const bump = (day: string, k: 'cards' | 'questions') => {
@@ -69,9 +72,13 @@ app.get('/api/metrics', (_req, res) => {
     escalated: qs.filter((q) => q.status === 'escalated').length,
     resolvedToCards: qs.filter((q) => q.cardId).length,
     solvedRate: withFb.length ? Math.round((withFb.filter((q) => q.feedback === 'solved').length / withFb.length) * 100) : null,
-    totalReuse: approved.reduce((s, c) => s + c.uses, 0),
+    solvedN: withFb.filter((q) => q.feedback === 'solved').length,
+    feedbackN: withFb.length,
+    noFeedback: qs.filter((q) => q.status === 'answered' && !q.feedback).length,
+    scope: live ? 'live' : 'all',
+    totalReuse: live ? qs.reduce((s, q) => s + q.cited.length, 0) : approved.reduce((s, c) => s + c.uses, 0),
     reasonCoverage: approved.length ? Math.round((approved.filter((c) => c.reason.trim()).length / approved.length) * 100) : 0,
-    contributors: [...contributors.values()].sort((a, b) => b.helped - a.helped),
+    contributors: [...contributors.values()].sort((a, b) => a.name.localeCompare(b.name, 'ko')), // 순위가 아니라 이름 순
     timeline: [...days.values()].sort((a, b) => a.day.localeCompare(b.day)),
   };
   res.json(m);
@@ -128,7 +135,7 @@ app.post('/api/cards/:id/:action', route(async (req, res) => {
 app.get('/api/lint', route(async (_req, res) => res.json(await flows.lint())));
 
 app.get('/api/training', (_req, res) => {
-  const pool = db.approvedCards().filter((c) => c.actions.length >= 2);
+  const pool = db.usableCards().usable.filter((c) => c.actions.length >= 2);
   if (!pool.length) return bad(res, '훈련할 사례가 없습니다');
   const c = pool[Math.floor(Math.random() * pool.length)];
   res.json({ id: c.id, topic: c.topic, situation: c.situation });
@@ -151,21 +158,23 @@ app.post('/api/reset', route(async (_req, res) => {
   res.json({ ok: true });
 }));
 
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
-  res.status(500).json({ error: err.message });
+app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
+  if (!err.status) console.error(err);
+  res.status(err.status ?? 500).json({ error: err.message });
 });
 
 async function seedSummaries() {
-  const { synthesizer } = await import('./agents/keeper.js');
+  const { synthesizer, linter } = await import('./agents/keeper.js');
   const d = db.get();
+  // 시작할 때 상충·중복 표시를 미리 계산해 둔다(상충한 현장노하우는 답의 근거에서 빠진다)
+  d.links = (await linter()).out.links;
   for (const t of d.topics) d.topicSummaries[t] = (await synthesizer(t, db.approvedCards().filter((c) => c.topic === t))).out;
   db.save();
 }
 
 if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   db.load();
-  if (!Object.keys(db.get().topicSummaries).length) await seedSummaries();
+  if (!Object.keys(db.get().topicSummaries).length || !db.get().links.length) await seedSummaries();
   const PORT = Number(process.env.PORT) || 8787;
   app.listen(PORT, () => console.log(`이어받기 백엔드 http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
 }

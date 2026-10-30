@@ -10,10 +10,13 @@
 - `docs/strategy/차별화_전략.md` — 차별화·평가 기준 대응 논리
 - `harness/harness.config.json`, `harness/agents/` (있으면), `harness/policies/forbidden-phrases.json`
 - `docs/judge/demo_run.md` — 시연 1회 실제 결과
-- `docs/screenshots/*.png` — 실제 화면 (볼 수 있으면 반드시 확인: overview, graph, ask, record, manager, wiki, train, agents, metrics, live-14s, live-40s)
+- `docs/screenshots/*.png` — 실제 화면 (볼 수 있으면 반드시 확인: welcome, ask-answer, record-step2, manager, overview-live, graph, agents, metrics, wiki, train, mobile-*)
 - `research_notes/지식경영학회 스마트서비스 공모전 아이디어/06_선정아이디어_매장위키.md` — 경쟁 서비스(GS25 챗봇지니, 스타벅스 Green Dot Assist, Trainual 등)와 문제 근거
 - `docs/references/winners.md` — 과거 수상작 패턴
 - 필요하면 `backend/src/`, `frontend/src/features/` 코드
+
+## 라운드 정보
+2차 이후 라운드라면 `docs/judge/scores.json`의 이전 라운드 `changes`(개발팀이 바꿨다고 주장하는 것)와 `docs/strategy/차별화_전략.md` 끝의 1차 지적 반영 표를 읽고, 주장이 코드·화면에서 실제로 확인되는지 검증한다. 확인되지 않으면 그렇다고 쓴다. `docs/judge/llm_vs_rules.md`(규칙 vs LLM 비교, LLM 열 미실행)도 읽는다. 이전 라운드 심사위원 파일은 읽지 않는다.
 
 ## 평가 항목 (공모전 공식 기준, 각 20점)
 1. 문제 정의 및 필요성 (problem): 문제의 구체성, 중요성, 이용자 수요

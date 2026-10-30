@@ -23,8 +23,10 @@ interface Live {
   runs: RunView[]; // 최신 순
   wikiFeed: { at: string; op: string; detail: string; runId: string }[];
   connected: boolean;
-  me: string; // 지금 화면을 쓰는 사람(역할 전환)
+  me: string; // 지금 화면을 쓰는 사람. 빈 문자열이면 아직 역할을 고르지 않음
   setMe: (id: string) => void;
+  mode: 'work' | 'demo'; // work: 내 역할 메뉴만, demo: 시연·심사용 전체 메뉴
+  setMode: (m: 'work' | 'demo') => void;
   refresh: () => Promise<void>;
 }
 
@@ -50,7 +52,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [runs, setRuns] = useState<RunView[]>([]);
   const [wikiFeed, setWikiFeed] = useState<Live['wikiFeed']>([]);
   const [connected, setConnected] = useState(false);
-  const [me, setMe] = useState(() => localStorage.getItem('me') ?? 'P005');
+  const [me, setMe] = useState(() => localStorage.getItem('me') ?? '');
+  const [mode, setMode] = useState<'work' | 'demo'>(() => (localStorage.getItem('mode') as 'work' | 'demo') ?? 'work');
   const timer = useRef<number>();
 
   const refresh = useCallback(async () => {
@@ -87,8 +90,9 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   }, [refresh, scheduleRefresh]);
 
   useEffect(() => localStorage.setItem('me', me), [me]);
+  useEffect(() => localStorage.setItem('mode', mode), [mode]);
 
-  const value = useMemo(() => ({ state, graph, fresh, runs, wikiFeed, connected, me, setMe, refresh }), [state, graph, fresh, runs, wikiFeed, connected, me, refresh]);
+  const value = useMemo(() => ({ state, graph, fresh, runs, wikiFeed, connected, me, setMe, mode, setMode, refresh }), [state, graph, fresh, runs, wikiFeed, connected, me, mode, refresh]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

@@ -1135,3 +1135,244 @@ export function escalator(question: string, ans: Answer, gatePassed: boolean, ca
 
 hook: PostToolUse
 hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/bash -lc "cat > /tmp/write_agent_cards.py <<'PY'
+import json
+from pathlib import Path
+root=Path('harness')
+cfg=json.loads((root/'harness.config.json').read_text())
+data={
+'orchestrator': dict(
+ work=['요청을 여섯 흐름 중 하나에 배정한다.', '설정에 적힌 순서로 에이전트를 실행하고 게이트 결과를 요약한다.'],
+ inp=['"'`flow`: 실행할 흐름. 예: `ask`.'"', '"'`input`: 요청 내용. 예: `쿠폰 바코드가 읽히지 않아요`.'"'],
+ out=['"'`runId`: 실행 식별자. 예: `run-example`.'"', '"'`summary`: 실행 결과 요약. 예: `점장 답을 기다립니다`.'"'],
+ rules=['흐름은 ask·record·approve·resolve·lint·train 중에서 고른다.', '실행 순서는 해당 흐름의 steps 배열을 따른다.', 'ask는 인용·규정·표현 검증 뒤에 점장 연결을 실행한다.', 'record는 개인정보를 가린 뒤에 인터뷰와 카드 편집을 실행한다.', '게이트 실패를 성공으로 바꾸지 않는다. 실패 사유와 후속 처리를 남긴다.'],
+ no=['LLM을 호출하지 않는다. 흐름 선택과 실행 순서는 규칙이 맡는다.', '답변을 직접 쓰거나 점장 대신 사례를 승인하지 않는다.'],
+ fail=['answer-gate 실패 시 근거 없는 문장을 빼고 다시 확인한다.', '남는 문장이 없으면 점장에게 넘긴다.', 'card-gate 실패 시 막힌 표현을 표시하고 작성자에게 돌려보낸다. 저장 상태는 승인 대기로 둔다.'],
+ theory=['Aamodt & Plaza(1994)의 사례기반추론 4R을 흐름 설계에 적용한다.', '검색·적용·수정·저장이 이어지도록 실행 순서를 묶는 역할이다.', '이 역할 배정은 서비스 설계다. 논문이 특정 에이전트 구성을 제시한 것은 아니다.'],
+ feel='질문과 기록을 어디에 넣어야 할지 따로 고민하지 않는다.'),
+'privacy-guard': dict(
+ work=['직원 기록에서 정책 파일의 개인정보 패턴을 찾는다.', '일치한 부분을 가리고 치환 횟수를 남긴다.'],
+ inp=['"'`raw`: 직원 원문. 예: `010-1234-5678로 연락했어요`.'"', '"'`pii`: 적용할 정책 목록. 예: `phone` 규칙.'"'],
+ out=['"'`text`: 가린 기록. 예: `[전화번호]로 연락했어요`.'"', '"'`masked`: 치환 횟수. 예: `1`.'"'],
+ rules=['전화번호는 pii의 phone 정규식으로 찾아 [전화번호]로 바꾼다.', '16자리 카드번호 패턴은 [카드번호]로 바꾼다.', 'customer-name 패턴에 맞는 고객 실명은 [고객]으로 바꾼다.', '뒤 에이전트에는 가린 text를 넘긴다. 원문을 요약에 다시 적지 않는다.', 'masked가 0이어도 개인정보가 전혀 없다고 단정하지 않는다. 패턴 밖 표현은 놓칠 수 있다.'],
+ no=['LLM으로 사람 이름을 추정하지 않는다. 정책 정규식이 치환을 맡는다.', '전화번호 주인을 찾거나 가린 값을 복원하지 않는다.'],
+ fail=['개인정보 치환에는 별도 게이트 onFail이 없다.', '치환을 수행하지 못하면 원문을 다음 작성 단계로 넘기지 않는다.', '뒤의 card-gate가 실패하면 표현을 표시해 돌려보내고 승인 대기로 저장한다.'],
+ theory=['Zhang, Wang & Zhang(2025)은 AI 인식과 암묵지 공유 감소의 관계를 다뤘다.', '참고 노트 5절은 기여자 보호 설계에 개인정보 마스킹을 포함한다.', '마스킹은 이 설계의 일부다. 논문이 마스킹의 효과를 검증했다는 뜻은 아니다.'],
+ feel='남긴 기록에 고객 전화번호가 그대로 보이지 않는다.'),
+'interviewer': dict(
+ work=['기록에서 판단 이유·금지 행동·점장 호출 기준 중 빠진 내용을 찾는다.', '직원이 짧게 답할 수 있는 질문만 되묻는다.'],
+ inp=['"'`raw`: 개인정보를 가린 기록. 예: `쿠폰을 다시 스캔했어요`.'"', '"'`answered`: 되묻기 답을 받았는지 여부. 예: `false`.'"'],
+ out=['"'`followups`: 되묻기 질문 목록. 예: `["다시 스캔한 이유는 무엇인가요?"]`.'"', '"'`summary`: 질문 개수 요약. 예: `빠진 내용을 1개 되묻습니다`.'"'],
+ rules=['되묻기는 한 번에 0~2개로 제한한다.', '이미 answered가 true이면 추가 질문을 만들지 않는다.', '이유·금지·호출 기준 중 기록에 없는 항목을 묻는다.', '규칙 모드는 판단 이유와 금지 행동을 먼저 묻고, 자리가 남으면 호출 기준을 묻는다.', '직원이 말하지 않은 이유를 질문의 전제로 넣지 않는다.'],
+ no=['LLM은 누락된 맥락을 읽고 질문을 만든다. 직원 대신 답을 채우지 않는다.', '질문 수 제한과 답변 후 생략은 규칙이 맡는다.'],
+ fail=['LLM 호출에 실패하면 같은 질문 목록 형식으로 규칙 결과를 낸다.', '화면에는 규칙 모드로 표시한다. 별도 인터뷰 게이트는 없다.', '뒤의 card-gate 실패 시 막힌 표현을 표시하고 작성자에게 돌려보내며 승인 대기로 저장한다.'],
+ theory=['참고 노트 3절은 사건에서 판단 이유를 꺼내는 일을 SECI 표출화로 설명한다.', '회고를 행동 목록에서 끝내지 않고 이유까지 묻는 설계 근거다.', '결정적 사건 기법은 노트의 상황·행동·결과·이유 수집 틀과 연결된다.'],
+ feel='무엇을 했는지뿐 아니라 왜 했는지도 짧게 남길 수 있다.'),
+'card-writer': dict(
+ work=['가린 기록과 되묻기 답을 사례 카드 초안으로 정리한다.', '상황·이유·대응·금지·호출 기준을 구분해 적는다.'],
+ inp=['"'`raw`: 가린 회고나 점장 답변. 예: `바코드를 다시 스캔했다`.'"', '"'`answers`: 되묻기 답 목록. 예: `[{"question":"이유는?","answer":"인식 오류라서"}]`.'"'],
+ out=['"'`situation`, `reason`, `actions`: 상황·이유·행동. 예: `actions: ["다시 스캔한다"]`.'"', '"'`avoid`, `escalateWhen`, `source`: 금지·호출·출처. 예: `source: "현장노하우"`.'"'],
+ rules=['판단 이유는 기록이나 되묻기 답에 있는 내용만 쓴다.', '행동은 actions 배열에 실행 순서대로 적는다.', 'topic은 제공된 토픽 목록 안에서 고른다.', 'source는 공식규정과 현장노하우를 구분한다. 출처 표시는 점장 검토 대상이다.', '초안은 표현 검증을 거친다. record의 저장 상태는 승인 대기다.'],
+ no=['LLM은 내용을 나누고 문장을 다듬는다. 없는 정책이나 보상 금액을 만들지 않는다.', '저장 상태와 승인 권한은 흐름과 규칙이 맡는다. 편집자가 스스로 승인하지 않는다.'],
+ fail=['LLM 호출 실패 시 규칙으로 같은 카드 필드를 채우고 규칙 모드로 표시한다.', 'record의 card-gate 실패 시 막힌 표현을 표시하고 작성자에게 수정 요청을 돌려보낸다.', '저장은 승인 대기로 둔다. 빈 판단 이유를 추측으로 채우지 않는다.'],
+ theory=['SECI 표출화는 말로 남긴 판단을 읽을 수 있는 사례로 바꾸는 근거다.', '노트는 Bitner 외(1990·1994)의 결정적 사건 기법과 상황·행동·결과·이유 구조를 연결한다.', '이 카드의 필드 구성은 그 연결을 적용한 설계이며 논문의 원문 양식은 아니다.'],
+ feel='선배의 짧은 회고에서 따라 할 행동과 판단 이유를 나눠 읽는다.'),
+'librarian': dict(
+ work=['승인된 사례 카드에서 질문과 가까운 사례를 찾는다.', '한국어 2-gram BM25 점수로 후보를 정렬한다.'],
+ inp=['"'`question`: 신입 질문. 예: `쿠폰이 인식되지 않아요`.'"', '"'`cards`: 승인 카드 목록. 예: `[{id: "C003", status: "approved", ...}]`.'"'],
+ out=['"'`card`: 검색 후보 카드. 예: `id: "C003"`.'"', '"'`score`, `coverage`: 검색 점수와 질문 일치 비율. 예: `4.2`, `0.4`.'"'],
+ rules=['검색 대상은 status가 approved인 카드다.', '질문과 문서의 한국어 2-gram을 비교한다.', 'BM25 점수가 0보다 큰 후보를 점수 내림차순으로 넘긴다.', 'score는 검색 순위용 값이다. 답의 정확도 확률로 읽지 않는다.', '후보가 0개이면 빈 목록을 넘긴다. 승인 대기 카드로 메우지 않는다.'],
+ no=['LLM을 호출하지 않는다. 검색 점수와 정렬은 규칙이 맡는다.', '후보를 찾았다는 이유로 답변 가능 여부나 환불 허용 여부를 결정하지 않는다.'],
+ fail=['검색 결과가 없으면 현장 코치가 근거 없음으로 처리할 수 있게 빈 목록을 넘긴다.', '별도 검색 게이트 onFail은 없다.', 'answer-gate 실패 시 근거 없는 문장을 빼고 다시 확인하며, 남는 문장이 없으면 점장에게 넘긴다.'],
+ theory=['Aamodt & Plaza(1994)의 4R 중 Retrieve에 해당한다.', '새 질문을 과거 사례와 연결하는 역할이다.', 'BM25는 이 서비스의 검색 방식이다. 4R 이론이 정한 검색 알고리즘은 아니다.'],
+ feel='비슷한 일을 겪은 선배의 승인 사례부터 찾는다.'),
+'coach': dict(
+ work=['검색된 사례 카드만 읽고 신입이 따라 할 답을 쓴다.', '행동과 판단 이유를 짧게 적고 근거 카드 번호를 붙인다.'],
+ inp=['"'`question`: 현장 질문. 예: `쿠폰을 두 번 찍어도 안 돼요`.'"', '"'`hits`: 검색 카드와 점수. 예: `[{card: {id: "C003", ...}, score: 4.2, coverage: 0.4}]`.'"'],
+ out=['"'`answer`, `why`, `cited`: 답·이유·근거. 예: `cited: ["C003"]`.'"', '"'`confidence`, `needsManager`: 확신 구분과 점장 필요 여부. 예: `none`, `true`.'"'],
+ rules=['답은 3~5줄을 목표로 쓴다. 각 행동 문장 끝에 [C003] 같은 근거를 붙인다.', '카드에 없는 정책·금액·절차를 추측하지 않는다.', '공식규정과 현장노하우가 다르면 공식규정을 따르라고 안내한다.', '카드로 답할 수 없으면 confidence를 none, needsManager를 true로 둔다.', '규칙 모드는 최상위 점수가 3 미만이거나 coverage가 0.25 미만이면 답변을 보류한다. 이 수치를 LLM 공통 기준으로 쓰지 않는다.'],
+ no=['LLM은 카드 내용을 현장 행동으로 풀어 쓴다. 새 규정을 만들지 않는다.', '카드 번호의 실재 여부와 금지 표현 검사는 검증팀의 규칙이 맡는다.'],
+ fail=['LLM 호출 실패 시 규칙 답변을 만들고 규칙 모드로 표시한다.', 'answer-gate 실패 시 근거 없는 문장을 빼고 다시 확인한다.', '남는 문장이 없으면 점장에게 넘긴다. 근거 없이 답을 늘리지 않는다.'],
+ theory=['Aamodt & Plaza(1994)의 4R 중 Reuse에 해당한다.', '찾은 과거 사례를 지금 질문에 적용하는 역할이다.', '적용이 어려운 사례는 점장 수정과 재축적 단계로 이어진다.'],
+ feel='지금 할 일과 그 이유를 같은 답에서 확인한다.'),
+'escalator': dict(
+ work=['근거 부족과 검증 결과를 보고 점장 연결 여부를 정한다.', '카드의 호출 기준에 해당할 수 있으면 그 기준을 알린다.'],
+ inp=['"'`question`, `ans`: 질문과 검증된 답. 예: `ans.needsManager: true`.'"', '"'`gatePassed`, `cards`: 게이트 통과 여부와 카드. 예: `false`, `[{id: "C003", ...}]`.'"'],
+ out=['"'`escalate`: 점장에게 넘길지 여부. 예: `true`.'"', '"'`note`: 연결 사유나 호출 안내. 예: `근거 카드 없음`.'"'],
+ rules=['needsManager가 true이거나 confidence가 none이면 점장에게 넘긴다.', '게이트 실패 뒤 유효한 인용도 없으면 점장에게 넘긴다.', '호출 기준은 인용한 카드의 escalateWhen에서 읽는다.', '현재 규칙은 질문과 호출 기준의 containment가 0.35 이상이면 호출 가능성을 안내한다. 이 조건만으로 자동 연결하지는 않는다.', '노트의 큰 환불·안전·폭언 사례는 위험 예시다. 공통 금액 기준을 새로 정하지 않는다.'],
+ no=['LLM을 호출하지 않는다. 연결 여부와 사유 표시는 규칙이 맡는다.', '점장 대신 보상을 승인하거나 아직 오지 않은 점장 답을 만들지 않는다.'],
+ fail=['answer-gate의 onFail에 따라 근거 없는 문장을 빼고 다시 확인한다.', '남는 문장이 없으면 점장에게 넘긴다.', '점장 답변은 resolve 흐름에서 가림·카드 편집·표현 검증·종합을 거쳐 재축적한다.'],
+ theory=['Aamodt & Plaza(1994)의 4R 중 Revise와 Retain으로 넘어가는 연결점이다.', '참고 노트 5절은 위험한 예외를 매니저에게 넘기고 결정을 다시 위키에 남기도록 제안한다.', '지금 답하지 못한 질문도 다음에 쓸 사례가 되도록 하는 설계다.'],
+ feel='혼자 판단하기 어려운 질문을 점장에게 넘길 수 있다.'),
+'citation-checker': dict(
+ work=['답에 붙은 카드 번호가 실제 승인 카드인지 확인한다.', '검색한 카드인지도 확인하고 근거 표시가 빠진 부분을 찾는다.'],
+ inp=['"'`ans`: 코치 답. 예: `answer: "바코드를 확인하세요 [C003]"`.'"', '"'`approvedIds`, `retrievedIds`: 승인·검색 카드 집합. 예: 각각 `{"C003"}`.'"'],
+ out=['"'`answer`: 검사를 반영한 답. 예: `cited: ["C003"]`.'"', '"'`problems`: 근거 문제 목록. 예: `["검색되지 않은 카드 인용: C999"]`.'"'],
+ rules=['[C003]처럼 C와 세 자리 이상 숫자로 된 카드 번호를 찾는다.', '본문과 cited의 카드 번호가 승인 집합에 없으면 문제로 기록한다.', '승인 카드라도 검색 집합에 없으면 문제로 기록한다.', '근거 표시가 없는 행동 문장은 answer-gate에서 제거 후 재확인할 대상이다.', '번호의 존재 검사는 문장의 의미가 카드와 같다는 보증이 아니다. 의미 검증을 마쳤다고 표시하지 않는다.'],
+ no=['LLM을 호출하지 않는다. 카드 집합 대조와 표식 검사는 규칙이 맡는다.', '번호가 없는 문장에 비슷해 보이는 카드 번호를 임의로 붙이지 않는다.'],
+ fail=['answer-gate 실패 시 근거 없는 문장을 빼고 다시 확인한다.', '남는 문장이 없으면 점장에게 넘긴다.', '없는 카드 번호를 새 카드 생성으로 맞추지 않는다.'],
+ theory=['Aamodt & Plaza(1994)의 4R 중 Reuse를 과거 사례에 묶어 두는 검사다.', '새 답이 어느 사례를 재사용했는지 추적하려는 설계다.', '카드 번호 검사 방식 자체가 해당 논문에서 검증된 것은 아니다.'],
+ feel='답에 붙은 카드 번호를 보고 실제 승인 사례를 찾아볼 수 있다.'),
+'policy-checker': dict(
+ work=['인용 카드에서 공식규정과 현장노하우가 함께 쓰였는지 본다.', '같은 토픽에서 두 출처가 섞이면 공식규정 우선 안내를 확인한다.'],
+ inp=['"'`ans`: 인용 검사를 거친 답. 예: `cited: ["C006", "C007"]`.'"', '"'`cards`: 승인 카드 목록. 예: `source: "공식규정", topic: "교환·환불"`.'"'],
+ out=['"'`answer`: 우선 안내를 반영한 답. 예: `공식규정을 따르세요. [C006]`.'"', '"'`problems`: 안내 누락 목록. 예: `["규정 우선 안내 누락"]`.'"'],
+ rules=['검사는 ans.cited에 든 승인 카드를 대상으로 한다.', '같은 토픽에 서로 다른 source가 있으면 혼합 인용으로 본다.', '혼합 인용인데 답에 공식규정 안내가 없으면 누락으로 기록하고 안내를 덧붙인다.', '같은 토픽의 혼합 인용은 보수적인 확인 조건이다. 실제 모순을 뜻한다고 단정하지 않는다.', '공식규정 카드가 없으면 현장노하우를 공식규정으로 바꾸지 않는다.'],
+ no=['LLM을 호출하지 않는다. 토픽·출처 비교와 안내 누락 검사는 규칙이 맡는다.', '법률 해석이나 본사 규정 개정을 하지 않는다.'],
+ fail=['안내 누락도 answer-gate 문제로 남긴다. 안내 추가만으로 통과를 선언하지 않는다.', '게이트 실패 시 근거 없는 문장을 빼고 다시 확인한다.', '남는 문장이 없으면 점장에게 넘긴다.'],
+ theory=['Aamodt & Plaza(1994)의 4R은 과거 사례의 재사용과 수정을 구분한다.', '다른 조건의 현장 관행을 그대로 적용하지 않도록 확인하는 설계에 이 구분을 쓴다.', '공식규정 우선순위는 이 서비스의 정책이다. 4R이 정한 규정 체계는 아니다.'],
+ feel='선배의 관행과 공식규정이 함께 나와도 무엇을 따라야 할지 안다.'),
+'wording-guard': dict(
+ work=['답변과 사례 카드 문장을 금지 표현 정책과 대조한다.', '일치한 표현과 차단 이유를 작성자나 게이트에 돌려준다.'],
+ inp=['"'`text`: 검사할 문장. 예: `확인한 뒤 점장에게 보고한다`.'"', '"'`rules`: 금지 표현 정책. 예: `blame-customer` 규칙.'"'],
+ out=['"'`problems`: 일치 표현과 이유 목록. 예: `[]`.'"', '"'`status`: 검사 상태. 예: `ok`; 한 건 이상이면 `blocked`.'"'],
+ rules=['금지 표현 일치가 0건이면 이 검사에서 통과한다.', '1건 이상이면 blocked로 표시하고 정책의 why를 함께 남긴다.', '고객 비난·보상 단정·임의 무료 약속을 정책 정규식으로 검사한다.', '예외를 지우는 단정·AI 확신 표현·점장 보고 금지도 같은 정책으로 검사한다.', '정규식에 걸리지 않았다는 사실을 내용 전체가 적절하다는 보증으로 쓰지 않는다.'],
+ no=['LLM을 호출하지 않는다. 일치 탐지와 차단 사유는 정책 규칙이 맡는다.', '금지 표현을 몰래 순화해 원래 작성자가 동의한 문장으로 취급하지 않는다.'],
+ fail=['ask의 answer-gate 실패 시 근거 없는 문장을 빼고 다시 확인한다.', '남는 문장이 없으면 점장에게 넘긴다. 표현 문제도 재확인 대상으로 남긴다.', 'record의 card-gate 실패 시 막힌 표현을 표시하고 작성자에게 돌려보낸다. 저장은 승인 대기로 둔다.'],
+ theory=['참고 노트 5절은 위험한 예외를 점장에게 넘기는 설계를 제안한다.', '표현 검사는 AI의 문장이 임의 보상이나 보고 차단 지시로 쓰이는 일을 막는 보조 장치다.', '이는 서비스 설계 근거다. 노트의 논문이 이 정규식 정책의 효과를 검증한 것은 아니다.'],
+ feel='고객 응대에 그대로 쓰기 어려운 표현을 미리 확인한다.'),
+'synthesizer': dict(
+ work=['승인 카드가 추가되거나 바뀐 토픽의 판단 원칙을 다시 정리한다.', '여러 카드의 이유와 금지 조건을 읽고 근거 번호가 붙은 요약을 만든다.'],
+ inp=['"'`topic`: 갱신할 토픽. 예: `쿠폰·기프티콘`.'"', '"'`cards`: 해당 토픽의 승인 카드. 예: `[{id: "C003", reason: "중복 처리 방지", ...}]`.'"'],
+ out=['"'`out`: 토픽 원칙을 적은 문자열. 예: `- 중복 처리를 막는다 [C003]`.'"', '"'`summary`: 갱신 요약. 예: `핵심 원칙 3개로 다시 정리`.'"'],
+ rules=['승인된 해당 토픽 카드만 종합한다.', '카드가 0개이면 빈 문자열을 내고 종합을 생략한다.', 'LLM에는 공통 판단 원칙 3~5개를 요청한다. 카드 수가 부족한데 개수를 채우려고 지어내지 않는다.', '원칙마다 근거 카드 번호를 붙인다.', '규칙 모드는 판단 이유가 있는 카드의 이유 문장을 근거 번호와 함께 나열한다.'],
+ no=['LLM은 여러 사례의 공통 판단을 요약한다. 새 공식규정을 만들지 않는다.', '승인 상태와 토픽별 대상 선택은 규칙이 맡는다. 요약자가 카드를 승인하지 않는다.'],
+ fail=['LLM 호출 실패 시 규칙 요약을 내고 규칙 모드로 표시한다.', 'approve와 resolve에는 설정상 별도 종합 게이트 onFail이 없다.', 'record에서 card-gate에 막힌 초안을 승인 카드인 것처럼 종합하지 않는다.'],
+ theory=['참고 노트 3절의 SECI 연결화는 이미 적힌 지식을 묶는 단계다.', '사건의 판단 이유를 꺼내는 표출화와 토픽 원칙을 묶는 이 역할을 구분한다.', 'Aamodt & Plaza(1994)의 Retain과도 연결해 새 사례가 다음 활용에 남도록 한다.'],
+ feel='카드를 모두 읽기 전에 토픽에서 공통으로 지킬 판단 원칙을 본다.'),
+'linter': dict(
+ work=['카드와 질문의 관리 상태를 점검해 점장이 확인할 일을 만든다.', '수치·날짜는 규칙으로 확인하고 문장 간 상충은 LLM이나 대체 규칙으로 찾는다.'],
+ inp=['"'`cards`, `questions`: 카드와 질문 목록. 예: `status: "pending"`인 카드.'"', '"'`topics`, `today`: 토픽 목록과 매장 기준일. 예: `today: "2026-10-31"`.'"'],
+ out=['"'`issues`: 종류·카드 번호·설명. 예: `{kind: "만료", ids: ["C003"], detail: "만료일 경과"}`.'"', '"'`links`: 카드 관계 목록. 예: `{source: "C003", target: "C004", type: "duplicates"}`.'"'],
+ rules=['expires가 기준일보다 이르면 만료다. 기준일부터 14일 이내이면 만료 임박이다.', 'uses가 3 이상이고 notHelpful가 helpful보다 크면 효과 낮음으로 표시한다.', '같은 토픽 카드의 제목·상황 유사도가 0.3을 넘으면 중복 후보로 표시한다.', '기타를 뺀 토픽의 승인 카드가 2개 미만이면 공백이다. 점장 답 대기 질문도 공백으로 모은다.', '판단 이유가 비었거나 pending 카드가 있으면 각각 이유 없음·승인 대기로 남긴다.', '상충 후보를 먼저 보여 준다. 후보 탐지는 점장의 최종 판단을 대신하지 않는다.'],
+ no=['LLM은 서로 모순되는 지시를 찾는다. 만료일이나 도움 횟수를 추측하지 않는다.', '날짜·횟수·유사도 검사는 규칙이 맡는다. 카드 삭제·병합·승인은 자동 실행하지 않는다.'],
+ fail=['LLM 호출 실패 시 상충 탐지도 규칙으로 바꾸고 규칙 모드로 표시한다.', 'lint 흐름에는 별도 게이트 onFail이 없다.', '검사하지 못한 부분을 문제없음으로 보고하지 않는다. 점검 결과는 점장 할 일로 남긴다.'],
+ theory=['Aamodt & Plaza(1994)의 Revise와 Retain을 지식 관리에 적용한다.', '저장한 사례도 재사용 결과와 바뀐 조건에 맞춰 다시 살펴야 한다는 설계다.', '14일·3회 같은 임계값은 구현 규칙이다. 논문에서 가져온 수치는 아니다.'],
+ feel='오래됐거나 서로 다른 안내를 점장이 다시 확인할 수 있다.'),
+ 'trainer': dict(
+ work=['실제 사례의 상황을 보고 쓴 신입 답을 원래 카드와 비교한다.', '맞춘 행동과 놓친 내용을 나눠 짧게 피드백한다.'],
+ inp=['"'`c`: 훈련 기준 카드. 예: `id: "C003", actions: ["바코드 확인", "점장 호출"]`.'"', '"'`userAnswer`: 신입이 쓴 대응. 예: `바코드를 확인하겠습니다`.'"'],
+ out=['"'`score`, `good`, `missing`: 점수·맞춘 행동·빠진 행동. 예: `50`, `["바코드 확인"]`, `["점장 호출"]`.'"', '"'`feedback`: 짧은 학습 안내. 예: `점장 호출 조건도 확인하세요`.'"'],
+ rules=['문제 단계에는 상황을 보여 준다. 대응 정답은 답하기 전에 노출하지 않는다.', 'LLM 채점은 핵심 행동·판단 이유 이해·금지 행동 회피를 기준으로 0~100점을 요청한다.', '규칙 모드는 카드 행동과 답의 containment가 0.3 이상이면 해당 행동을 맞춘 것으로 센다.', '규칙 점수는 맞춘 행동 수를 전체 행동 수로 나눈 백분율을 반올림한다. 분모는 최소 1이다.', '규칙 피드백은 60점 이상과 미만을 나눈다. 이 수치는 자격 합격선이 아니다.', '규칙 점수는 행동 일치 점수다. 판단 이유와 금지 조건까지 이해했다고 단정하지 않는다.'],
+ no=['LLM은 카드에 비춰 학습 피드백을 쓴다. 인사 평가나 근무 등급을 매기지 않는다.', '규칙 모드의 일치 계산은 정해진 식이 맡는다. 모드별 점수를 같은 정밀도로 설명하지 않는다.'],
+ fail=['LLM 호출 실패 시 행동 일치 기반 점수와 피드백을 내고 규칙 모드로 표시한다.', 'train 흐름에는 별도 게이트 onFail이 없다.', '기준 카드를 읽지 못하면 임의의 정답으로 채점하지 않는다.'],
+ theory=['참고 노트의 SECI 내면화는 적힌 지식을 행동에 익히는 단계와 연결된다.', '사례 상황에 직접 답하고 판단 이유를 다시 읽게 하는 설계 근거다.', 'Lan, Wong & Wong(2022)은 호텔 신입의 지식공유 개입을 다뤘다. 이 채점 방식의 효과를 검증한 연구는 아니다.'],
+ feel='실제 응대 전에 상황에 답해 보고 놓친 행동을 확인한다.')
+}
+for a in cfg['agents']:
+ d=data[a['id']]
+ team=next(t['name'] for t in cfg['teams'] if t['id']==a['team'])
+ adjacency=[]
+ for fid,f in cfg['flows'].items():
+  if a['id'] in f['steps']:
+   ix=f['steps'].index(a['id'])
+   prev=f['steps'][ix-1] if ix else '요청 진입'
+   nxt=f['steps'][ix+1] if ix+1<len(f['steps']) else '흐름 종료'
+   adjacency.append(f'{fid}: {prev} → 본인 → {nxt}')
+ lines=[f\"# {a['name']} ({a['id']})\",'',f'- 팀: {team} ({a[\"team\"]})',f'- LLM 사용: {\"예. 호출 실패나 키 없음 시 규칙 모드로 대체한다.\" if a[\"llm\"] else \"아니요. 규칙으로 실행한다.\"}', '- 앞뒤 에이전트: '+' / '.join(adjacency), '', '## 하는 일','',*d['work'],'','## 입력 / 출력','',*[f'- 입력 {v}' for v in d['inp']],*[f'- 출력 {v}' for v in d['out']],'','## 판단 규칙','',*[f'{i}. {v}' for i,v in enumerate(d['rules'],1)],'','## 하지 않는 일','',*d['no'],'','## 실패하면','',*d['fail'],'','## 근거 이론','',*d['theory'],'','근거 범위: 참고 노트 「06_선정아이디어_매장위키」의 3~5절.', '이론은 역할의 설계 근거다. 이 하네스의 성능 검증 결과는 아니다.','','## 신입이 체감하는 것','',d['feel']]
+ assert 40 <= len(lines)<=70,(a['id'],len(lines))
+ path=root/a['card']
+ assert path.is_relative_to(root/'agents')
+ path.parent.mkdir(parents=True,exist_ok=True)
+ path.write_text('\\n'.join(lines)+'\\n',encoding='utf-8')
+ print(f'{path}: {len(lines)}줄')
+PY
+python /tmp/write_agent_cards.py" in /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+ exited 127 in 0ms:
+/bin/bash: line 143: python: command not found
+
+hook: PostToolUse
+hook: PostToolUse Completed
+codex
+카드 초안 13개를 준비했습니다. 코드에 확인되는 검색·점검·훈련 임계값은 적용 모드를 구분해 적었습니다. 점장 호출 기준은 현재 구현상 자동 연결이 아닌 안내만 하는 경우도 있어, 그 차이를 카드에 명시했습니다. 이제 파일을 저장하고 형식과 금지 표현을 검사하겠습니다.
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/bash -lc "python3 /tmp/write_agent_cards.py; python3 - <<'PY'
+import json,re
+from pathlib import Path
+root=Path('harness')
+cfg=json.loads((root/'harness.config.json').read_text())
+policy=json.loads((root/'policies/forbidden-phrases.json').read_text())
+headers=['## 하는 일','## 입력 / 출력','## 판단 규칙','## 하지 않는 일','## 실패하면','## 근거 이론','## 신입이 체감하는 것']
+issues=[]
+for a in cfg['agents']:
+ p=root/a['card']; text=p.read_text(); lines=text.splitlines()
+ if not 40<=len(lines)<=70: issues.append(f'{p}: 줄 수 {len(lines)}')
+ if lines[0]"'!=f"# {a['"'name']} ({a['id']})\": issues.append(f'{p}: 제목')
+ for h in headers:
+  if text.count(h)"'!=1: issues.append(f'"'{p}: {h}')
+ for phrase in ['혁신적','획기적','를 통해','을 통해','에 있어서']:
+  if phrase in text: issues.append(f'{p}: {phrase}')
+ for rule in policy['rules']:
+  if re.search(rule['pattern'],text): issues.append(f\"{p}: 정책 {rule['id']}\")
+actual=set((root/'agents').rglob('*.md'))
+expected={root/a['card'] for a in cfg['agents']}
+if actual"'!=expected: issues.append('"'파일 목록 불일치')
+assert not issues,'\\n'.join(issues)
+print(f'검사 통과: {len(expected)}개 파일, 줄 수·제목·필수 절·금지 문구·정책 패턴 확인')
+PY" in /mnt/c/Users/User/Desktop/대학교/3학년/경영정보학회
+ succeeded in 107ms:
+harness/agents/lead/orchestrator.md: 49줄
+harness/agents/capture/privacy-guard.md: 49줄
+harness/agents/capture/interviewer.md: 49줄
+harness/agents/capture/card-writer.md: 49줄
+harness/agents/answer/librarian.md: 49줄
+harness/agents/answer/coach.md: 49줄
+harness/agents/answer/escalator.md: 49줄
+harness/agents/verify/citation-checker.md: 49줄
+harness/agents/verify/policy-checker.md: 49줄
+harness/agents/verify/wording-guard.md: 49줄
+harness/agents/keeper/synthesizer.md: 49줄
+harness/agents/keeper/linter.md: 50줄
+harness/agents/keeper/trainer.md: 50줄
+검사 통과: 13개 파일, 줄 수·제목·필수 절·금지 문구·정책 패턴 확인
+
+hook: PostToolUse
+hook: PostToolUse Completed
+codex
+카드 13개를 작성했습니다. 각 49~50줄이며 필수 항목과 금지 표현 검사를 통과했습니다. 작업 폴더에서는 카드 파일만 추가했습니다.
+
+만든 파일:
+
+```text
+harness/agents/lead/orchestrator.md
+harness/agents/capture/privacy-guard.md
+harness/agents/capture/interviewer.md
+harness/agents/capture/card-writer.md
+harness/agents/answer/librarian.md
+harness/agents/answer/coach.md
+harness/agents/answer/escalator.md
+harness/agents/verify/citation-checker.md
+harness/agents/verify/policy-checker.md
+harness/agents/verify/wording-guard.md
+harness/agents/keeper/synthesizer.md
+harness/agents/keeper/linter.md
+harness/agents/keeper/trainer.md
+```
+hook: Stop
+hook: Stop Completed
+tokens used
+43,517
+카드 13개를 작성했습니다. 각 49~50줄이며 필수 항목과 금지 표현 검사를 통과했습니다. 작업 폴더에서는 카드 파일만 추가했습니다.
+
+만든 파일:
+
+```text
+harness/agents/lead/orchestrator.md
+harness/agents/capture/privacy-guard.md
+harness/agents/capture/interviewer.md
+harness/agents/capture/card-writer.md
+harness/agents/answer/librarian.md
+harness/agents/answer/coach.md
+harness/agents/answer/escalator.md
+harness/agents/verify/citation-checker.md
+harness/agents/verify/policy-checker.md
+harness/agents/verify/wording-guard.md
+harness/agents/keeper/synthesizer.md
+harness/agents/keeper/linter.md
+harness/agents/keeper/trainer.md
+```

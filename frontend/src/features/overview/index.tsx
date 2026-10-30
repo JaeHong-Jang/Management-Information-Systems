@@ -68,7 +68,7 @@ export default function Overview() {
             </Link>
           }
         >
-          <GraphCanvas graph={graph} fresh={fresh} height={470} />
+          <GraphCanvas graph={graph} fresh={fresh} height={470} spotlight />
           <div className="mt-3">
             <Legend compact />
           </div>

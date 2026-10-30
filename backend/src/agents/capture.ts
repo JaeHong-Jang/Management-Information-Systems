@@ -37,6 +37,13 @@ const Q_REASON = '그렇게 대응한 이유가 무엇인가요? 다르게 하�
 const Q_AVOID = '이 방법을 쓰면 안 되는 경우나, 절대 하면 안 되는 행동이 있나요?';
 const Q_ESC = '어떤 상황이면 혼자 처리하지 말고 점장을 불러야 하나요?';
 
+export function followupsByRules(raw: string): string[] {
+  const m = missingFields(raw);
+  const qs = [m.reason && Q_REASON, m.avoid && Q_AVOID].filter(Boolean) as string[];
+  if (qs.length < 2 && m.escalate) qs.push(Q_ESC);
+  return qs.slice(0, 2);
+}
+
 export async function interviewer(raw: string, answered: boolean): Promise<StepOut<string[]>> {
   if (answered) return { out: [], summary: '되묻기 답을 받았으니 더 묻지 않습니다', status: 'skipped' };
   const { value, via } = await llmOr(
@@ -45,12 +52,7 @@ export async function interviewer(raw: string, answered: boolean): Promise<StepO
         user: `[직원 기록]\n${raw}\n\n이 기록을 신입이 응용할 수 있는 사례로 만들려면 판단 이유, 하면 안 되는 것, 점장 호출 기준 중 무엇이 빠졌는지 보고, 빠진 것만 되묻는 질문을 0~2개 만들어라. 질문은 직원이 10초 안에 답할 수 있게 구체적으로.`,
         schema: z.object({ followups: z.array(z.string()) }),
       }))?.followups.slice(0, 2) ?? null,
-    () => {
-      const m = missingFields(raw);
-      const qs = [m.reason && Q_REASON, m.avoid && Q_AVOID].filter(Boolean) as string[];
-      if (qs.length < 2 && m.escalate) qs.push(Q_ESC);
-      return qs.slice(0, 2);
-    },
+    () => followupsByRules(raw),
     llmEnabled(),
   );
   return { out: value, via, summary: value.length ? `빠진 내용을 ${value.length}개 되묻습니다: ${value[0]}` : '판단 이유까지 들어 있어 되묻지 않습니다' };

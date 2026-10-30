@@ -35,6 +35,7 @@ export interface Card {
   helpful: number;
   notHelpful: number;
   fromQuestionId?: string;
+  credit?: boolean; // false면 기여 크레딧에 이름을 드러내지 않는다(기록자는 내부에만 남음)
 }
 
 export type QuestionStatus = 'answered' | 'escalated' | 'resolved';
@@ -195,6 +196,10 @@ export interface Metrics {
   escalated: number;
   resolvedToCards: number;
   solvedRate: number | null;
+  solvedN: number; // 해결됐다고 답한 수 (분자)
+  feedbackN: number; // 피드백을 준 질문 수 (분모)
+  noFeedback: number; // 답은 받았지만 피드백이 없는 질문
+  scope: 'all' | 'live'; // live = 시드 데이터를 빼고 이번 시연에서 생긴 것만
   totalReuse: number;
   reasonCoverage: number; // 판단 이유가 채워진 카드 비율(%)
   contributors: { personId: string; name: string; cards: number; helped: number }[];

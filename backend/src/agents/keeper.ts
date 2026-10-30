@@ -16,7 +16,10 @@ export async function synthesizer(topic: string, cards: Card[]): Promise<StepOut
         user: `토픽: ${topic}\n\n${cards.map((c) => `[${c.id}] ${c.title} / 이유: ${c.reason} / 금지: ${c.avoid}`).join('\n')}\n\n신입이 처음 보는 상황에서도 응용할 수 있게, 이 카드들에 공통으로 드러나는 판단 원칙 3~5개로 종합하라. 원칙마다 끝에 근거 카드 [Cxxx].`,
         schema: z.object({ principles: z.array(z.string()) }),
       }))?.principles ?? null,
-    () => cards.filter((c) => c.reason).map((c) => `${c.reason.split(/(?<=[.다])\s/)[0]} [${c.id}]`),
+    () =>
+      cards
+        .filter((c) => c.reason && c.actions.length)
+        .map((c) => `${c.reason.split(/(?<=[.다])\s/)[0].replace(/[.]$/, '')}. 그래서 ${c.actions[0].replace(/[.]$/, '')} [${c.id}]`),
     llmEnabled(),
   );
   return { out: value.map((p) => `- ${p}`).join('\n'), via, summary: `'${topic}' 핵심 원칙 ${value.length}개로 다시 정리` };

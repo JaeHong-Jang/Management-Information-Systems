@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Mic, Square } from 'lucide-react';
 import type { InterviewDraft, Source } from '@shared/contracts';
-import { api, type FollowupAnswer } from '@/shared/api/client';
+import { api, type DraftFields, type FollowupAnswer } from '@/shared/api/client';
 import { useLive } from '@/shared/api/live';
 import { Badge, Button, Empty, Field, PageHeader, Panel, cx, inputCls, useToast } from '@/shared/ui';
 
@@ -30,12 +30,16 @@ const getRecognition = (): RecognitionCtor | undefined => {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition;
 };
 
-function exampleChips(q: string): string[] {
-  if (/이유|왜/.test(q)) return ['손님이 안전하지 않을 수 있어서요', '나중에 더 큰 비용이 들어서요'];
-  if (/금지|하면 안|절대/.test(q)) return ['절대 그냥 두면 안 돼요', '혼자 판단해서 처리하지 마세요'];
-  if (/점장|호출|부르/.test(q)) return ['두 번 해도 안 되면 점장님께 알려요', '손님이 화를 내면 바로 불러요'];
-  return [];
-}
+const DRAFT_KEY = 'record-draft';
+interface Saved { step: Step; raw: string; draft: InterviewDraft | null; answers: string[]; actionsText: string; credit: boolean }
+const loadSaved = (): Partial<Saved> => {
+  try {
+    const v = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? '{}') as Partial<Saved>;
+    return v && typeof v === 'object' ? v : {};
+  } catch {
+    return {};
+  }
+};
 
 function Stepper({ step }: { step: Step }) {
   return (
@@ -61,13 +65,15 @@ function Stepper({ step }: { step: Step }) {
 export default function Page() {
   const { state, runs, me, refresh } = useLive();
   const toast = useToast();
-  const [step, setStep] = useState<Step>(1);
-  const [raw, setRaw] = useState('');
-  const [draft, setDraft] = useState<InterviewDraft | null>(null);
-  const [answers, setAnswers] = useState<string[]>([]);
+  const saved = useMemo(loadSaved, []);
+  const [step, setStep] = useState<Step>(saved.draft && saved.step && saved.step >= 2 && saved.step <= 3 ? saved.step : 1);
+  const [raw, setRaw] = useState(saved.raw ?? '');
+  const [draft, setDraft] = useState<InterviewDraft | null>(saved.draft ?? null);
+  const [answers, setAnswers] = useState<string[]>(saved.answers ?? []);
+  const [credit, setCredit] = useState(saved.credit ?? true);
   const [busy, setBusy] = useState(false);
   const [startedAt, setStartedAt] = useState<string>('');
-  const [actionsText, setActionsText] = useState('');
+  const [actionsText, setActionsText] = useState(saved.actionsText ?? '');
   const [result, setResult] = useState<'approved' | 'pending' | null>(null);
   const [listening, setListening] = useState(false);
   const recRef = useRef<RecognitionLike | null>(null);
@@ -77,6 +83,13 @@ export default function Page() {
   const run = useMemo(() => (startedAt ? runs.find((r) => r.flowName === '노하우 기록' && r.at >= startedAt) : undefined), [runs, startedAt]);
 
   useEffect(() => () => recRef.current?.stop(), []);
+
+  const hasSaved = step < 4 && (raw.trim() !== '' || draft !== null);
+  useEffect(() => {
+    if (!hasSaved) return;
+    const v: Saved = { step, raw, draft, answers, actionsText, credit };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(v));
+  }, [hasSaved, step, raw, draft, answers, actionsText, credit]);
 
   const toggleVoice = () => {
     if (!Rec) return;
@@ -144,7 +157,9 @@ export default function Page() {
     try {
       const { followups: _f, masked: _m, problems: _p, ...fields } = draft;
       const actions = actionsText.split('\n').map((s) => s.trim()).filter(Boolean);
-      const card = await api.submitCard({ ...fields, actions }, me);
+      const payload: DraftFields & { credit: boolean } = { ...fields, actions, credit };
+      const card = await api.submitCard(payload, me);
+      localStorage.removeItem(DRAFT_KEY);
       setResult(card.status === 'approved' ? 'approved' : 'pending');
       setStep(4);
       void refresh();
@@ -163,6 +178,7 @@ export default function Page() {
     setActionsText('');
     setResult(null);
     setStartedAt('');
+    setCredit(true);
   };
 
   const set = <K extends keyof InterviewDraft>(k: K, v: InterviewDraft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
@@ -200,13 +216,15 @@ export default function Page() {
 
       {step === 1 && (
         <>
-          <h2 className="mb-3 text-sub text-ink-strong">방금 있었던 일을 30초만 남겨 주세요</h2>
+          <h2 className="mb-3 text-sub text-ink-strong">방금 있었던 일을 남겨 주세요</h2>
+          <p className="mb-3 text-[14px] text-ink-body">짧게 남겨 두면 돼요. 정리와 확인은 나중에 해도 돼요.</p>
           <textarea
             className={cx(inputCls, 'min-h-40')}
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
             placeholder="예: 오늘 아침에 냉장고 온도가 9도까지 올라가 있었어요. 우유랑 생크림을 확인하고 문 앞쪽 것만 버렸어요. 점장님께 바로 알렸고요."
           />
+          {raw.trim() !== '' && <p className="mt-2 text-[12px] text-ink-weak">임시 저장됨</p>}
           <div className="mt-3 flex gap-2">
             {Rec && (
               <Button variant="ghost" onClick={toggleVoice} type="button">
@@ -230,14 +248,8 @@ export default function Page() {
             {draft.followups.map((q, i) => (
               <Panel key={i} title={<span className="text-[13px] text-brand-strong">AI가 궁금한 점</span>}>
                 <p className="mb-3 text-[16px] font-semibold text-ink-strong">{q}</p>
-                <textarea className={cx(inputCls, 'min-h-20')} value={answers[i] ?? ''} placeholder="짧게 한두 문장이면 돼요" onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))} />
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {exampleChips(q).map((c) => (
-                    <button key={c} type="button" className="rounded-full bg-brand-weak px-3 py-1.5 text-[13px] font-medium text-brand-strong hover:bg-[#D6E8FF]" onClick={() => setAnswers((a) => a.map((x, j) => (j === i ? c : x)))}>
-                      {c}
-                    </button>
-                  ))}
-                </div>
+                <textarea className={cx(inputCls, 'min-h-20')} value={answers[i] ?? ''} placeholder="아는 만큼만 적어 주세요" onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))} />
+                <p className="mt-2 text-[12px] text-ink-weak">실제로 확인한 조건이나 겪은 일을 적어 주세요. 모르면 비워 둬도 돼요.</p>
               </Panel>
             ))}
           </div>
@@ -267,6 +279,10 @@ export default function Page() {
               ))}
             </div>
           )}
+          <div className="mb-4 rounded-xl bg-surface-subtle p-4">
+            <p className="mb-1 text-[13px] font-semibold text-ink-weak">내가 남긴 말</p>
+            <p className="whitespace-pre-wrap text-[14px] text-ink-body">{raw}</p>
+          </div>
           <div className="space-y-4 rounded-card bg-surface p-5">
             <Field label="제목">
               <input className={inputCls} value={draft.title} onChange={(e) => set('title', e.target.value)} />
@@ -305,10 +321,23 @@ export default function Page() {
             <Field label="점장을 불러야 할 때">
               <textarea className={cx(inputCls, 'min-h-16')} value={draft.escalateWhen} onChange={(e) => set('escalateWhen', e.target.value)} />
             </Field>
+            <label className="flex items-center gap-2 text-[14px] text-ink-body">
+              <input type="checkbox" className="h-4 w-4 accent-brand" checked={credit} onChange={(e) => setCredit(e.target.checked)} />
+              기여 크레딧에 내 이름 표시하기
+            </label>
           </div>
           <div className="mt-4 flex gap-2">
             <Button variant="ghost" onClick={() => setStep(draft.followups.length ? 2 : 1)}>
               이전
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setStep(1);
+                toast('임시 저장해 뒀어요. 나중에 이어서 확인해요');
+              }}
+            >
+              나중에 확인하기
             </Button>
             <Button className="flex-1" loading={busy} disabled={!draft.title.trim()} onClick={() => void submit()}>
               위키에 올리기

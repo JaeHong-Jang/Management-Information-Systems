@@ -13,19 +13,33 @@ const tip = { contentStyle: { borderRadius: 12, border: '1px solid #E5E8EB', fon
 export default function MetricsPage() {
   const { state } = useLive();
   const [m, setM] = useState<Metrics | null>(null);
-  useEffect(() => void api.metrics().then(setM), [state]);
+  const [scope, setScope] = useState<'all' | 'live'>('live');
+  useEffect(() => void api.metrics(scope).then(setM), [state, scope]);
   if (!m) return null;
 
   const outcome = [{ name: '질문', 위키가답함: m.answeredByWiki, 점장대기: m.escalated, 점장답카드: m.resolvedToCards }];
 
   return (
     <>
-      <PageHeader eyebrow="시스템" title="지표" desc="문서 수보다 다시 쓰였는지를 봐요. 시연 데이터라 실제 매장 효과를 뜻하지 않아요. 현장 검증에서 같은 지표로 측정할 계획이에요." />
+      <PageHeader
+        eyebrow="시스템"
+        title="지표"
+        desc="문서 수보다 다시 쓰였는지를 봐요. 모두 가상 시연 데이터라 실제 매장 효과를 뜻하지 않아요. 현장 파일럿에서 같은 지표로 잴 계획이에요."
+        action={
+          <div className="flex rounded-xl bg-surface-subtle p-1 text-[13px] font-semibold">
+            {(['live', 'all'] as const).map((s) => (
+              <button key={s} onClick={() => setScope(s)} className={`rounded-lg px-3 py-1.5 ${scope === s ? 'bg-surface text-ink-strong' : 'text-ink-weak'}`}>
+                {s === 'live' ? '이번 시연만' : '시드 포함 전체'}
+              </button>
+            ))}
+          </div>
+        }
+      />
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile label="재사용된 횟수(누적)" value={m.totalReuse} />
-        <Tile label="해결됐다고 답한 비율" value={m.solvedRate === null ? '-' : `${m.solvedRate}%`} />
-        <Tile label="판단 이유가 채워진 카드" value={`${m.reasonCoverage}%`} />
-        <Tile label="공식규정 : 현장노하우" value={`${m.bySource['공식규정']} : ${m.bySource['현장노하우']}`} />
+        <Tile label={m.scope === 'live' ? '이번 시연에서 근거로 쓰인 횟수' : '재사용된 횟수 (시드 값 포함)'} value={m.totalReuse} note={`질문 ${m.questions}건 기준`} />
+        <Tile label="해결됐다고 답한 비율" value={m.solvedRate === null ? '-' : `${m.solvedRate}%`} note={`${m.solvedN}/${m.feedbackN}건 · 피드백 없음 ${m.noFeedback}건`} />
+        <Tile label="판단 이유가 채워진 카드" value={`${m.reasonCoverage}%`} note={`승인 카드 ${m.cards}장`} />
+        <Tile label="공식규정 : 현장노하우" value={`${m.bySource['공식규정']} : ${m.bySource['현장노하우']}`} note="승인 카드 기준" />
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel title="토픽별 승인 사례">
@@ -72,7 +86,7 @@ export default function MetricsPage() {
             <Empty>하루치 데이터만 있어요.</Empty>
           )}
         </Panel>
-        <Panel title="노하우 기여 크레딧">
+        <Panel title="노하우 기여 크레딧 (이름 순)">
           <table className="w-full text-[14px]">
             <thead>
               <tr className="text-left text-[12px] text-ink-weak">
@@ -98,11 +112,12 @@ export default function MetricsPage() {
   );
 }
 
-function Tile({ label, value }: { label: string; value: number | string }) {
+function Tile({ label, value, note }: { label: string; value: number | string; note?: string }) {
   return (
     <div className="rounded-card bg-surface p-4">
       <p className="text-[13px] text-ink-weak">{label}</p>
       <p className="mt-1 text-[26px] font-bold leading-9 text-ink-strong">{value}</p>
+      {note && <p className="mt-0.5 text-[12px] text-ink-weak">{note}</p>}
     </div>
   );
 }

@@ -31,7 +31,7 @@
     { "id": "trainer", "team": "keeper", "name": "훈련 코치", "role": "실제 사례의 상황만 보여 주고 신입의 답을 카드와 비교해 피드백한다", "card": "agents/keeper/trainer.md", "llm": true }
   ],
   "flows": {
-    "ask": { "name": "신입 질문", "steps": ["orchestrator", "librarian", "coach", "citation-checker", "policy-checker", "wording-guard", "escalator"] },
+    "ask": { "name": "신입 질문", "steps": ["orchestrator", "privacy-guard", "librarian", "coach", "citation-checker", "policy-checker", "wording-guard", "escalator"] },
     "record": { "name": "노하우 기록", "steps": ["orchestrator", "privacy-guard", "interviewer", "card-writer", "wording-guard"] },
     "approve": { "name": "점장 승인", "steps": ["orchestrator", "synthesizer"] },
     "resolve": { "name": "점장 답변 재축적", "steps": ["orchestrator", "privacy-guard", "card-writer", "wording-guard", "synthesizer"] },

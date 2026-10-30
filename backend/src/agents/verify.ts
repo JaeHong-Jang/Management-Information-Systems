@@ -13,13 +13,20 @@ export function citationChecker(ans: Answer, approvedIds: Set<string>, retrieved
   const problems: string[] = [];
   const mentioned = [...ans.answer.matchAll(CITE)].map((m) => m[1]);
   for (const id of new Set([...mentioned, ...ans.cited])) {
-    if (!approvedIds.has(id)) problems.push(`없는 카드 인용: ${id}`);
+    if (!approvedIds.has(id)) problems.push(`쓸 수 없는 카드 인용(없음·만료·상충): ${id}`);
     else if (!retrievedIds.has(id)) problems.push(`검색되지 않은 카드 인용: ${id}`);
   }
-  const lines = ans.answer.split('\n');
-  const kept = lines.filter((l) => !l.trim() || HAS_CITE.test(l) || /공식규정/.test(l));
-  if (kept.length < lines.length) problems.push(`근거 표시 없는 줄 ${lines.length - kept.length}개를 뺐습니다`);
   const valid = ans.cited.filter((id) => approvedIds.has(id) && retrievedIds.has(id));
+  const ok = (id: string) => approvedIds.has(id) && retrievedIds.has(id);
+  const lines = ans.answer.split('\n');
+  // 근거 표시가 없거나, 쓸 수 없는 카드를 하나라도 인용한 줄은 뺀다
+  const kept = lines.filter((l) => {
+    if (!l.trim()) return true;
+    const ids = [...l.matchAll(CITE)].map((m) => m[1]);
+    if (ids.some((id) => !ok(id))) return false;
+    return HAS_CITE.test(l) || /공식규정/.test(l);
+  });
+  if (kept.length < lines.length) problems.push(`근거가 없거나 잘못된 줄 ${lines.length - kept.length}개를 뺐습니다`);
   if (!valid.length) problems.push('유효한 근거 카드가 없습니다');
   const fixed: Answer = { ...ans, answer: kept.join('\n'), cited: valid };
   return { out: { answer: fixed, problems }, status: problems.length ? 'blocked' : 'ok', problems, summary: problems.length ? `인용 문제 ${problems.length}건` : `인용 ${valid.length}개 모두 실제 카드` };
@@ -34,6 +41,11 @@ export function policyChecker(ans: Answer, cards: Card[]): StepOut<{ answer: Ans
   const official = cited.find((c) => c.source === '공식규정')!;
   const fixed = { ...ans, answer: `${ans.answer}\n공식규정 [${official.id}]과 다른 현장 관행이 있습니다. 공식규정을 따르세요. [${official.id}]` };
   return { out: { answer: fixed, problems: ['규정 우선 안내 누락 → 덧붙임'] }, status: 'blocked', problems: ['규정 우선 안내 누락'], summary: '규정 우선 안내를 덧붙였습니다' };
+}
+
+/** 금지 표현이 든 줄을 뺀 글 */
+export function dropForbiddenLines(text: string): string {
+  return text.split('\n').filter((l) => forbidden(l).length === 0).join('\n');
 }
 
 export function wordingGuard(text: string): StepOut<string[]> {

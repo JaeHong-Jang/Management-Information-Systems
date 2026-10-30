@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { LintIssue } from '@shared/contracts';
+import type { Card, LintIssue } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useLive } from '@/shared/api/live';
-import { Badge, Button, CardDetail, Empty, PageHeader, Panel, Sheet, inputCls, useToast, fmtTime } from '@/shared/ui';
+import { Badge, Button, CardDetail, Empty, PageHeader, Panel, Sheet, inputCls, sourceTone, useToast, fmtTime } from '@/shared/ui';
 
 type Tone = 'danger' | 'warning' | 'neutral';
 const KIND_TONE: Record<LintIssue['kind'], Tone> = {
@@ -18,9 +18,35 @@ const KIND_TONE: Record<LintIssue['kind'], Tone> = {
 
 function Tile({ label, n }: { label: string; n: number }) {
   return (
-    <div className="rounded-card bg-surface p-5">
-      <p className="text-caption text-ink-weak">{label}</p>
-      <p className="mt-1 text-[32px] font-bold leading-10 text-ink-strong">{n}</p>
+    <span className="rounded-lg bg-surface px-3 py-1.5 text-[13px] text-ink-weak">
+      {label} <b className="text-ink-body">{n}</b>
+    </span>
+  );
+}
+
+function Mini({ card, side, onPick, busy }: { card: Card; side: string; onPick: () => void; busy: boolean }) {
+  return (
+    <div className="flex flex-col rounded-xl bg-surface p-3">
+      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+        <Badge>{card.id}</Badge>
+        <Badge tone={sourceTone(card.source)}>{card.source}</Badge>
+      </div>
+      <p className="text-[14px] font-semibold text-ink-strong">{card.title}</p>
+      <p className="mt-2 text-[12px] text-ink-weak">대응</p>
+      <ol className="list-decimal pl-4 text-[13px] text-ink-body">
+        {card.actions.map((x, i) => (
+          <li key={i}>{x}</li>
+        ))}
+      </ol>
+      {card.avoid && (
+        <>
+          <p className="mt-2 text-[12px] text-ink-weak">하면 안 되는 것</p>
+          <p className="text-[13px] text-ink-body">{card.avoid}</p>
+        </>
+      )}
+      <Button size="sm" variant="secondary" className="mt-3" loading={busy} onClick={onPick}>
+        {side}
+      </Button>
     </div>
   );
 }
@@ -33,6 +59,7 @@ export default function Page() {
   const [issues, setIssues] = useState<LintIssue[] | null>(null);
   const [linting, setLinting] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [renewId, setRenewId] = useState<string | null>(null);
 
   const people = state?.people ?? [];
   const nameOf = (id: string) => people.find((p) => p.id === id)?.name ?? id;
@@ -40,6 +67,8 @@ export default function Page() {
   const questions = useMemo(() => (state?.questions ?? []).filter((q) => q.status === 'escalated'), [state]);
   const pending = useMemo(() => (state?.cards ?? []).filter((c) => c.status === 'pending'), [state]);
   const openCard = state?.cards.find((c) => c.id === openId);
+  const renewCard = state?.cards.find((c) => c.id === renewId);
+  const cardOf = (id: string) => state?.cards.find((c) => c.id === id);
 
   const runLint = useCallback(async () => {
     setLinting(true);
@@ -71,7 +100,7 @@ export default function Page() {
   const resolve = (id: string) =>
     guard(id, async () => {
       const r = await api.resolve(id, drafts[id].trim(), me);
-      toast(`질문이 사례 카드 ${r.card.id}가 됐어요`);
+      toast(r.card.status === 'pending' ? '표현을 다듬어야 해서 승인 대기로 저장했어요' : `질문이 사례 카드 ${r.card.id}가 됐어요`);
       setDrafts((d) => ({ ...d, [id]: '' }));
       await refresh();
     });
@@ -87,28 +116,70 @@ export default function Page() {
     guard(id + action, async () => {
       await api.cardAction(id, action);
       toast(action === 'renew' ? '갱신했어요' : '보관했어요');
+      setRenewId(null);
       await refresh();
       await runLint();
     });
 
-  const grouped = useMemo(() => {
-    const m = new Map<LintIssue['kind'], LintIssue[]>();
-    (issues ?? []).forEach((i) => m.set(i.kind, [...(m.get(i.kind) ?? []), i]));
-    return [...m.entries()];
-  }, [issues]);
+  const unify = (keep: string, drop: string) =>
+    guard(drop + 'archive', async () => {
+      await api.cardAction(drop, 'archive');
+      toast(`${keep} 기준으로 통일하고 ${drop}는 보관했어요`);
+      await refresh();
+      await runLint();
+    });
+
+  const goto = (elId: string) => document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  const { perCard, others } = useMemo(() => {
+    const m = new Map<string, LintIssue[]>();
+    const rest: LintIssue[] = [];
+    (issues ?? []).forEach((i) => {
+      const cardIds = i.ids.filter((id) => state?.cards.some((c) => c.id === id));
+      if (i.kind === '공백' || i.kind === '승인 대기' || cardIds.length === 0) rest.push(i);
+      else cardIds.forEach((id) => m.set(id, [...(m.get(id) ?? []), i]));
+    });
+    return { perCard: [...m.entries()].sort(([a], [b]) => a.localeCompare(b)), others: rest };
+  }, [issues, state]);
+
+  const todos = useMemo(() => {
+    const list: { key: string; text: string; cta: string; go: () => void }[] = [];
+    [...questions]
+      .sort((a, b) => a.time.localeCompare(b.time))
+      .forEach((q) => list.push({ key: q.id, text: `질문 · ${q.text}`, cta: '답하러 가기', go: () => goto('q-' + q.id) }));
+    (issues ?? []).filter((i) => i.kind === '상충').forEach((i, n) => list.push({ key: '상충' + n, text: `${i.ids.join('와 ')} 내용이 서로 달라요`, cta: '정리하기', go: () => goto('lint-' + i.ids[0]) }));
+    (issues ?? []).filter((i) => i.kind === '만료').forEach((i, n) => list.push({ key: '만료' + n, text: `${i.ids.join(', ')} 만료됐어요`, cta: '확인하기', go: () => (i.ids[0] ? setRenewId(i.ids[0]) : undefined) }));
+    return list.slice(0, 3);
+  }, [questions, issues]);
 
   return (
     <div>
       <PageHeader eyebrow="점장 화면" title="점장 할 일" desc="승인과 답변, 위키 점검을 한곳에서 처리해요." />
-      {!isManager && state && <div className="mb-4 rounded-xl bg-warning-weak px-4 py-3 text-[14px] text-warning">점장 화면이에요. 위에서 사람을 점장으로 바꿔 보세요</div>}
+      {!isManager && state && <p className="mb-4 text-[13px] text-ink-weak">점장 화면을 둘러보는 중이에요</p>}
 
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Tile label="승인 대기 카드" n={pending.length} />
-        <Tile label="답을 기다리는 질문" n={questions.length} />
-        <Tile label="점검에서 나온 할 일" n={issues?.length ?? 0} />
+      <Panel title="오늘 꼭 할 일" className="mb-3">
+        {todos.length === 0 ? (
+          <Empty>급한 일이 없어요</Empty>
+        ) : (
+          <ul className="space-y-2">
+            {todos.map((t) => (
+              <li key={t.key} className="flex items-center justify-between gap-3 rounded-xl bg-surface-subtle px-4 py-3">
+                <span className="truncate text-[14px] font-medium text-ink-strong">{t.text}</span>
+                <Button size="sm" className="shrink-0" onClick={t.go}>
+                  {t.cta}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      <div className="mb-6 flex flex-wrap gap-2">
+        <Tile label="승인 대기" n={pending.length} />
+        <Tile label="답 기다리는 질문" n={questions.length} />
+        <Tile label="점검 할 일" n={issues?.length ?? 0} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <div className="space-y-6">
           <Panel title="답을 기다리는 질문">
             <p className="mb-3 text-[13px] text-ink-weak">여기 답한 내용은 다음에 같은 질문이 오면 위키가 대신 답해요</p>
@@ -119,7 +190,7 @@ export default function Page() {
                 {questions.map((q) => {
                   const asker = people.find((p) => p.id === q.askerId);
                   return (
-                    <li key={q.id} className="rounded-xl bg-surface-subtle p-4">
+                    <li key={q.id} id={"q-" + q.id} className="rounded-xl bg-surface-subtle p-4">
                       <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[13px] text-ink-weak">
                         <Badge>{q.id}</Badge>
                         <span>
@@ -172,51 +243,91 @@ export default function Page() {
         >
           {issues === null ? (
             <Empty>점검하는 중이에요</Empty>
-          ) : grouped.length === 0 ? (
+          ) : perCard.length === 0 && others.length === 0 ? (
             <Empty>문제가 없어요</Empty>
           ) : (
-            <div className="space-y-5">
-              {grouped.map(([kind, list]) => (
-                <div key={kind}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <Badge tone={KIND_TONE[kind]}>{kind}</Badge>
-                    <span className="text-[13px] text-ink-weak">{list.length}건</span>
-                  </div>
-                  <ul className="space-y-2">
-                    {list.map((i, idx) => (
-                      <li key={idx} className="rounded-xl bg-surface-subtle p-3">
-                        <p className="text-[14px] text-ink-body">{i.detail}</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {i.ids.map((id) => {
-                            const isCard = !!state?.cards.some((c) => c.id === id);
-                            return (
-                              <span key={id} className="inline-flex items-center gap-1">
-                                <button onClick={() => setOpenId(id)} className="rounded bg-brand-weak px-2 py-0.5 text-[12px] font-semibold text-brand-strong hover:bg-[#D6E8FF]">
-                                  {id}
-                                </button>
-                                {isCard && (
-                                  <>
-                                    <Button size="sm" variant="secondary" loading={busy === id + 'renew'} onClick={() => void fix(id, 'renew')}>
-                                      갱신
-                                    </Button>
-                                    <Button size="sm" variant="ghost" loading={busy === id + 'archive'} onClick={() => void fix(id, 'archive')}>
-                                      보관
-                                    </Button>
-                                  </>
-                                )}
-                              </span>
-                            );
-                          })}
+            <div className="space-y-3">
+              {perCard.map(([id, list]) => {
+                const kinds = [...new Set(list.map((i) => i.kind))];
+                const conflicts = list.filter((i) => i.kind === '상충' && i.ids[0] === id && i.ids[1]);
+                return (
+                  <div key={id} id={'lint-' + id} className="rounded-xl bg-surface-subtle p-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button onClick={() => setOpenId(id)} className="rounded bg-brand-weak px-2 py-0.5 text-[12px] font-semibold text-brand-strong hover:bg-[#D6E8FF]">
+                        {id}
+                      </button>
+                      {kinds.map((k) => (
+                        <Badge key={k} tone={KIND_TONE[k]}>
+                          {k}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="mt-1 truncate text-[14px] font-semibold text-ink-strong">{cardOf(id)?.title}</p>
+                    <ul className="mt-1 space-y-0.5">
+                      {list.map((i, n) => (
+                        <li key={n} className="text-[13px] text-ink-body">
+                          {i.detail}
+                        </li>
+                      ))}
+                    </ul>
+                    {conflicts.map((i) => {
+                      const l = cardOf(i.ids[0]);
+                      const r = cardOf(i.ids[1]);
+                      return l && r ? (
+                        <div key={i.ids.join()} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <Mini card={l} side="왼쪽으로 통일" busy={busy === r.id + 'archive'} onPick={() => void unify(l.id, r.id)} />
+                          <Mini card={r} side="오른쪽으로 통일" busy={busy === l.id + 'archive'} onPick={() => void unify(r.id, l.id)} />
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+                      ) : null;
+                    })}
+                    <div className="mt-2 flex gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => setRenewId(id)}>
+                        갱신
+                      </Button>
+                      <Button size="sm" variant="ghost" loading={busy === id + 'archive'} onClick={() => void fix(id, 'archive')}>
+                        보관
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+              {others.length > 0 && (
+                <ul className="space-y-1.5 pt-1">
+                  {others.map((i, n) => (
+                    <li key={n} className="flex items-start gap-2 text-[13px] text-ink-body">
+                      <Badge tone={KIND_TONE[i.kind]}>{i.kind}</Badge>
+                      <span>{i.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </Panel>
       </div>
+
+      <Sheet open={!!renewCard} onClose={() => setRenewId(null)}>
+        {renewCard && (
+          <>
+            <CardDetail card={renewCard} authorName={nameOf(renewCard.authorId)} />
+            <p className="mt-4 text-sub text-ink-strong">지금도 이대로 맞나요?</p>
+            <div className="mt-3 flex gap-2">
+              <Button className="flex-1" loading={busy === renewCard.id + 'renew'} onClick={() => void fix(renewCard.id, 'renew')}>
+                맞아요, 연장하기
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setRenewId(null);
+                  toast('노하우 남기기에서 내용을 고쳐 주세요');
+                }}
+              >
+                고칠게요
+              </Button>
+            </div>
+          </>
+        )}
+      </Sheet>
 
       <Sheet open={!!openId} onClose={() => setOpenId(null)}>
         {openCard ? <CardDetail card={openCard} authorName={nameOf(openCard.authorId)} /> : <Empty>카드가 아니거나 찾을 수 없어요 ({openId})</Empty>}

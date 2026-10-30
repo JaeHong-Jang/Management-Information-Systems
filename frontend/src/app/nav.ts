@@ -26,4 +26,11 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   },
 ];
 
-export const MOBILE_TABS = ['/', '/ask', '/record', '/manager', '/graph'];
+// 업무 모드에서 역할별로 보이는 메뉴(처음 쓰는 사람에게 2~4개만). 시연 모드는 전체.
+export const ROLE_PATHS: Record<string, string[]> = {
+  신입: ['/ask', '/train', '/wiki'],
+  숙련: ['/record', '/ask', '/wiki'],
+  점장: ['/manager', '/wiki', '/metrics', '/record'],
+};
+export const ROLE_HOME: Record<string, string> = { 신입: '/ask', 숙련: '/record', 점장: '/manager' };
+export const DEMO_MOBILE_TABS = ['/', '/ask', '/record', '/manager', '/graph'];
