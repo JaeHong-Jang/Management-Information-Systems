@@ -9,6 +9,7 @@ import { status as aiStatus } from './harness/llm.js';
 import { bus } from './harness/trace.js';
 import * as flows from './flows/index.js';
 import { isPlaying, playDay } from './demo.js';
+import { isSimulating, recentVisits, visitMany } from './sim/customers.js';
 import * as db from './store/db.js';
 import { buildGraph } from './store/graph.js';
 
@@ -25,7 +26,7 @@ const bad = (res: Response, msg: string) => res.status(400).json({ error: msg })
 app.get('/api/state', (_req, res) => {
   const d = db.get();
   const snap: Snapshot = { store: d.store, topics: d.topics, people: d.people, cards: d.cards, questions: d.questions, topicSummaries: d.topicSummaries, log: d.log.slice(-40).reverse() };
-  res.json({ ...snap, ai: aiStatus, demoPlaying: isPlaying() });
+  res.json({ ...snap, ai: aiStatus, demoPlaying: isPlaying(), simulating: isSimulating() });
 });
 app.get('/api/harness', (_req, res) => res.json(config));
 app.get('/api/judge', (_req, res) => {
@@ -150,11 +151,22 @@ app.post('/api/demo/play', (_req, res) => {
   res.json({ ok: true });
 });
 
+// 가상 손님: 페르소나 손님을 들여보내 신입 질문 흐름을 실제로 돌린다
+app.get('/api/sim/visits', (_req, res) => res.json({ visits: recentVisits(), simulating: isSimulating() }));
+app.post('/api/sim/customers', (req, res) => {
+  if (isPlaying() || isSimulating()) return bad(res, '이미 시연이나 가상 손님이 진행 중입니다');
+  const n = Math.min(Math.max(Number(req.body?.n) || 1, 1), 10);
+  visitMany(n).catch((e) => console.error('[sim]', e));
+  res.json({ ok: true, n });
+});
+
 app.post('/api/reset', route(async (_req, res) => {
-  if (isPlaying()) return bad(res, '시연 재생 중에는 초기화할 수 없습니다');
+  if (isPlaying() || isSimulating()) return bad(res, '시연 재생 중에는 초기화할 수 없습니다');
   db.resetFromSeed();
   bus.clear();
-  await seedSummaries();
+  // 로컬 AI면 요약에 몇 분이 걸려 초기화 응답을 막지 않는다
+  if (aiStatus.mode === 'ollama') seedSummaries().catch((e) => console.error('[seed]', e));
+  else await seedSummaries();
   res.json({ ok: true });
 }));
 
@@ -174,7 +186,8 @@ async function seedSummaries() {
 
 if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   db.load();
-  if (!Object.keys(db.get().topicSummaries).length || !db.get().links.length) await seedSummaries();
   const PORT = Number(process.env.PORT) || 8787;
   app.listen(PORT, () => console.log(`이어받기 백엔드 http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
+  // 로컬 AI는 요약 7개에 몇 분이 걸린다. 서버를 먼저 열고 요약은 뒤에서 채운다
+  if (!Object.keys(db.get().topicSummaries).length || !db.get().links.length) seedSummaries().catch((e) => console.error('[seed]', e));
 }

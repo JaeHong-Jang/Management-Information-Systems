@@ -6,7 +6,8 @@
     "model": "claude-opus-5-5",
     "envModel": "CLAUDE_MODEL",
     "fallbacks": "default",
-    "offline": "ANTHROPIC_API_KEY가 없거나 호출이 실패하면 규칙 기반으로 같은 모양의 결과를 낸다. 화면에 '규칙 모드'로 표시한다."
+    "offline": "ANTHROPIC_API_KEY가 없거나 호출이 실패하면 규칙 기반으로 같은 모양의 결과를 낸다. 화면에 '규칙 모드'로 표시한다.",
+    "ollama": { "model": "ax4-light:q4_K_M", "envModel": "OLLAMA_MODEL", "envHost": "OLLAMA_HOST" }
   },
   "teams": [
     { "id": "lead", "name": "지휘", "color": "blue", "agents": ["orchestrator"] },

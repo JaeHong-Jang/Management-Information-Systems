@@ -2,6 +2,8 @@
 import type { Card } from '@shared/contracts';
 
 const STOP = new Set(['어떻게', '해요', '하나요', '되나요', '돼요', '있어요', '없어요', '나와요', '했는데', '하는데', '인데', '근데', '이거', '그거', '매장', '손님', '고객', '지금', '혹시', '어떡해요', '뭐예요', '주세요', '해야', '하죠', '는데요', '들어왔어요']);
+// 어미·부사 조각: 어느 카드에나 들어 있어 근거가 되지 못한다(가상 손님 시뮬레이션에서 '다·는데·해요'만으로 엉뚱한 카드가 뽑혔다)
+const NOISE = new Set(['다', '좀', '또', '는데', '해요', '어요', '아요', '세요', '에요', '예요', '니다', '습니']);
 const JOSA = /(에서|에게|한테|으로|은|는|이|가|을|를|에|도|만|의|와|과|랑|로)$/;
 
 export function tokens(text: string): string[] {
@@ -16,7 +18,7 @@ export function tokens(text: string): string[] {
     if (w.length === 1) out.push(w);
     for (let i = 0; i < w.length - 1; i++) out.push(w.slice(i, i + 2));
   }
-  return out;
+  return out.filter((t) => !NOISE.has(t));
 }
 
 export const cardText = (c: Card) => [c.title, c.title, c.situation, c.reason, c.actions.join(' '), c.avoid, c.tags.join(' '), c.topic].join(' ');

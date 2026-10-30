@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { AgentStep, FlowId, GateResult, StepStatus, Via, WikiChange } from '@shared/contracts';
 import { agentDef, config } from './config.js';
 import { bus } from './trace.js';
+import { status as aiStatus } from './llm.js';
 import * as db from '../store/db.js';
 
 export interface StepOut<T> {
@@ -77,5 +78,5 @@ export class Run {
 export async function llmOr<T>(llm: () => Promise<T | null>, rules: () => T, enabled: boolean): Promise<{ value: T; via: Via }> {
   if (!enabled) return { value: rules(), via: 'rules' };
   const v = await llm();
-  return v === null ? { value: rules(), via: 'rules(LLM 실패 대체)' } : { value: v, via: 'claude' };
+  return v === null ? { value: rules(), via: 'rules(LLM 실패 대체)' } : { value: v, via: aiStatus.mode as Via };
 }

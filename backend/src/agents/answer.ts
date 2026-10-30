@@ -31,7 +31,7 @@ const NO_ANSWER = '매장 위키에 이 상황에 맞는 사례가 아직 없습
 
 export function answerByRules(hits: Hit[]): Answer {
   const top = hits[0];
-  if (!top || top.score < 3 || top.coverage < 0.25) return { answer: NO_ANSWER, why: '', cited: [], confidence: 'none', needsManager: true };
+  if (!top || top.score < 3.5 || top.coverage < 0.25) return { answer: NO_ANSWER, why: '', cited: [], confidence: 'none', needsManager: true };
   // 같은 상황을 다룬 공식규정 카드가 비슷한 점수로 있으면 그쪽을 앞세운다.
   const official = hits.find((h) => h.card.source === '공식규정' && h.card.topic === top.card.topic && h.score >= top.score * 0.8);
   const ordered = official && official !== top ? [official, ...hits.filter((h) => h !== official)] : hits;

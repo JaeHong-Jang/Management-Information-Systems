@@ -1,7 +1,7 @@
 // 백엔드 API. 모든 화면은 여기만 거친다.
-import type { AiStatus, AskResult, Card, Graph, HarnessConfig, InterviewDraft, LintIssue, Metrics, Question, Snapshot, TrainingResult, TrainingTask } from '@shared/contracts';
+import type { AiStatus, AskResult, Card, Graph, HarnessConfig, InterviewDraft, LintIssue, Metrics, Question, Snapshot, TrainingResult, TrainingTask, Visit } from '@shared/contracts';
 
-export type State = Snapshot & { ai: AiStatus; demoPlaying: boolean };
+export type State = Snapshot & { ai: AiStatus; demoPlaying: boolean; simulating: boolean };
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, { headers: { 'content-type': 'application/json' }, ...init });
@@ -30,6 +30,8 @@ export const api = {
   trainingTask: () => call<TrainingTask>('/training'),
   grade: (id: string, answer: string, personId: string) => post<TrainingResult>('/training/grade', { id, answer, personId }),
   playDemo: () => post<{ ok: boolean }>('/demo/play'),
+  visits: () => call<{ visits: Visit[]; simulating: boolean }>('/sim/visits'),
+  simulate: (n: number) => post<{ ok: boolean; n: number }>('/sim/customers', { n }),
   reset: () => post<{ ok: boolean }>('/reset'),
 };
 

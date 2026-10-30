@@ -225,3 +225,22 @@ describe('3차 심사 지적 반영', () => {
     expect(c.archiveReason).toMatch(/본사 규정/);
   });
 });
+
+describe('가상 손님', () => {
+  it('어미 조각만 겹치는 카드로 답하지 않는다 (시뮬레이션에서 찾은 오답)', async () => {
+    const r = await flows.ask('종이 도장 쿠폰 다 모아 오셨는데 어떻게 처리해요?', 'P005');
+    expect(r.question.cited).not.toContain('C003');
+    expect(r.question.status).toBe('escalated');
+  });
+
+  it('페르소나 손님 한 명이 신입 질문 흐름을 실제로 거친다', async () => {
+    const { visitOne } = await import('../src/sim/customers.js');
+    const before = db.get().questions.length;
+    const v = await visitOne();
+    expect(v.customer.age).toBeGreaterThanOrEqual(16);
+    expect(v.staffQuestion.length).toBeGreaterThan(5);
+    expect(db.get().questions.length).toBe(before + 1);
+    const q = db.get().questions.find((x) => x.id === v.questionId)!;
+    expect(q.status === 'escalated' ? 'escalated' : 'answered').toBe(v.outcome);
+  });
+});

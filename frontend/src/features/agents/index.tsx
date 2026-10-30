@@ -18,7 +18,7 @@ export default function Agents() {
     runs.flatMap((r) => r.steps).forEach((s) => {
       m[s.agentId] ??= { n: 0, llm: 0, blocked: 0 };
       m[s.agentId].n++;
-      if (s.via === 'claude') m[s.agentId].llm++;
+      if (s.via === 'claude' || s.via === 'ollama') m[s.agentId].llm++;
       if (s.status === 'blocked') m[s.agentId].blocked++;
     });
     return m;

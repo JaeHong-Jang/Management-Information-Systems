@@ -8,6 +8,7 @@ import Manager from '@/features/manager';
 import Wiki from '@/features/wiki';
 import Ontology from '@/features/ontology';
 import Agents from '@/features/agents';
+import Customers from '@/features/customers';
 import MetricsPage from '@/features/metrics';
 import Judge from '@/features/judge';
 
@@ -23,6 +24,7 @@ export function App() {
         <Route path="wiki" element={<Wiki />} />
         <Route path="graph" element={<Ontology />} />
         <Route path="agents" element={<Agents />} />
+        <Route path="customers" element={<Customers />} />
         <Route path="metrics" element={<MetricsPage />} />
         <Route path="judge" element={<Judge />} />
       </Route>

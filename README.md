@@ -71,6 +71,14 @@ npm start
 
 백엔드는 기본 `http://localhost:8787`에서 실행된다. `ANTHROPIC_API_KEY`가 실행 환경에 있으면 Claude(`claude-opus-5-5`)를 호출한다. 키가 없으면 규칙 모드로 동작하고 호출에 실패해도 규칙으로 대체한다. 어떤 모드인지는 화면과 실행 기록에서 확인할 수 있다. 모델은 `CLAUDE_MODEL` 환경변수로 바꿀 수 있다.
 
+API 키 없이 매장 PC의 로컬 모델로 돌리려면 [Ollama](https://ollama.com)를 켜 두고 다음처럼 시작한다. 기본 모델은 SK텔레콤의 한국어 모델 A.X 4.0 Light(`ax4-light:q4_K_M`)이고 `OLLAMA_MODEL`로 바꿀 수 있다. 직원 기록이 매장 밖으로 나가지 않는다.
+
+```bash
+LLM_PROVIDER=ollama OLLAMA_HOST=http://localhost:11434 npm start
+```
+
+WSL에서 Windows에 설치한 Ollama를 쓰면 `OLLAMA_HOST`에 Windows 쪽 주소(`ip route`의 default 게이트웨이, 예: `http://172.20.32.1:11434`)를 넣는다. RTX 2080 SUPER(8GB)에서 호출 한 번에 40초 안팎 걸렸다. 다른 프로그램이 GPU를 같이 쓰면 더 느려진다.
+
 다른 터미널에서 프론트엔드를 시작한다.
 
 ```bash
@@ -80,6 +88,18 @@ npm run dev
 ```
 
 `http://localhost:5173`에 접속한다. Vite가 `/api` 요청을 `http://localhost:8787`로 프록시한다. 처음 화면에서 사용할 역할을 고른다. 전체 흐름을 보려면 **시연·심사용 전체 보기**에서 **매장의 하루 재생**을 실행한다. 질문 → 점장 답 → 새 카드 → 재질문과 기록·승인·점검이 이어진다. 가상 매장 데이터로 실행하면 위키 상태가 바뀐다.
+
+### 가상 손님
+
+시연 모드의 **가상 손님** 화면에서 손님을 들여보낼 수 있다. 손님은 NVIDIA의 [Nemotron-Personas-Korea](https://huggingface.co/datasets/nvidia/Nemotron-Personas-Korea)(CC BY 4.0)에서 뽑는다. 통계청 인구 분포를 바탕으로 만든 한국인 합성 인물 100만 명이고, 이 중 120명을 `data/personas/`에 받아 두었다. 로컬 AI가 손님의 나이·직업·식습관에 맞춰 계산대 예외 상황과 손님 말을 만들고, 그 손님을 맞은 신입의 질문이 실제 질문 흐름에 들어간다. 위키가 답하지 못해 점장에게 넘어간 질문은 숙련 직원에게 먼저 받아 둘 노하우 목록이 된다.
+
+```bash
+cd backend
+npx tsx scripts/fetch_personas.ts 120          # 페르소나 다시 받기
+LLM_PROVIDER=ollama OLLAMA_HOST=... npx tsx scripts/simulate_customers.ts 20   # → docs/judge/persona_sim.md
+```
+
+합성 인물이 만든 상황이라 실제 매장 질문의 빈도를 대신하지 못한다. 실제 질문 로그를 모으기 전에 위키의 빈틈을 미리 찾는 용도로만 쓴다.
 
 백엔드 테스트와 프론트엔드 빌드는 각 폴더에서 실행한다.
 

@@ -100,7 +100,7 @@ export function Layout() {
           <div className="flex items-center gap-2">
             <span className="text-[17px] font-bold lg:hidden">이어받기</span>
             {!connected && <Badge tone="warning">다시 연결하는 중</Badge>}
-            {demo && state && <Badge tone={state.ai.mode === 'claude' ? 'brand' : 'neutral'}>{state.ai.mode === 'claude' ? `Claude · ${state.ai.model}` : '규칙 모드 (API 키 없음)'}</Badge>}
+            {demo && state && <Badge tone={state.ai.mode !== 'rules' ? 'brand' : 'neutral'}>{state.ai.mode === 'claude' ? `Claude · ${state.ai.model}` : state.ai.mode === 'ollama' ? `로컬 AI · ${state.ai.model}` : '규칙 모드 (AI 꺼짐)'}</Badge>}
           </div>
           {demo ? (
             <label className="flex items-center gap-2 text-[13px] text-ink-weak">

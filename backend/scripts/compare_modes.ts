@@ -1,5 +1,5 @@
 // 규칙 모드와 LLM 모드의 회고 인터뷰·카드 구조화를 같은 기록으로 나란히 비교한다.
-// 실행: ANTHROPIC_API_KEY=... npx tsx scripts/compare_modes.ts  → docs/judge/llm_vs_rules.md
+// 실행: ANTHROPIC_API_KEY=... 또는 LLM_PROVIDER=ollama OLLAMA_HOST=... npx tsx scripts/compare_modes.ts  → docs/judge/llm_vs_rules.md
 // 키가 없으면 규칙 모드 열만 채우고 LLM 열은 '미실행'으로 남긴다.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -27,8 +27,8 @@ for (const raw of SAMPLES) {
   if (llmEnabled()) {
     const q = await interviewer(raw, false);
     const c = await cardWriter(raw, [], topics);
-    lq = q.via === 'claude' ? q.out.join('<br>') || '(되묻지 않음)' : `실패 → 규칙 대체 (${status.lastError})`;
-    lc = c.via === 'claude' ? `${c.out.title} / 이유: ${c.out.reason || '(빈칸)'} / 금지: ${c.out.avoid || '(빈칸)'}` : '실패 → 규칙 대체';
+    lq = !q.via?.startsWith('rules') ? q.out.join('<br>') || '(되묻지 않음)' : `실패 → 규칙 대체 (${status.lastError})`;
+    lc = !c.via?.startsWith('rules') ? `${c.out.title} / 이유: ${c.out.reason || '(빈칸)'} / 금지: ${c.out.avoid || '(빈칸)'}` : '실패 → 규칙 대체';
   }
   rows.push(`| ${raw} | ${rq.join('<br>') || '(되묻지 않음)'} | ${rc.title} / 이유: ${rc.reason || '(빈칸)'} / 금지: ${rc.avoid || '(빈칸)'} | ${lq} | ${lc} |`);
 }

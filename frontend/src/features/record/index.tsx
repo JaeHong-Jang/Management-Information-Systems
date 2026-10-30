@@ -184,7 +184,7 @@ export default function Page() {
   const set = <K extends keyof InterviewDraft>(k: K, v: InterviewDraft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
 
   const via = (draft as { via?: string } | null)?.via;
-  const basicQ = !!via && via !== 'claude';
+  const basicQ = !!via && via !== 'claude' && via !== 'ollama';
 
   const progress = (busy || run) && step <= 3 && (
     <Panel title="AI가 일하는 중이에요" className="mt-4 bg-surface-subtle">

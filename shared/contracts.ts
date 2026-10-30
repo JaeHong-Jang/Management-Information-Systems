@@ -91,7 +91,7 @@ export interface GateDef { id: string; flow: FlowId; agents: string[]; onFail: s
 export interface HarnessConfig {
   name: string;
   version: string;
-  llm: { provider: 'anthropic'; model: string; envModel: string; fallbacks: string; offline: string };
+  llm: { provider: 'anthropic'; model: string; envModel: string; fallbacks: string; offline: string; ollama: { model: string; envModel: string; envHost: string } };
   teams: TeamDef[];
   agents: AgentDef[];
   flows: Record<FlowId, { name: string; steps: string[] }>;
@@ -100,7 +100,7 @@ export interface HarnessConfig {
 
 // ---------- 실행 기록 (실시간 스트림) ----------
 
-export type Via = 'claude' | 'rules' | 'rules(LLM 실패 대체)';
+export type Via = 'claude' | 'ollama' | 'rules' | 'rules(LLM 실패 대체)';
 export type StepStatus = 'ok' | 'blocked' | 'skipped' | 'error';
 
 export interface AgentStep {
@@ -209,4 +209,21 @@ export interface Metrics {
   timeline: { day: string; cards: number; questions: number }[];
 }
 
-export interface AiStatus { mode: 'claude' | 'rules'; model: string | null; lastError: string | null }
+export interface AiStatus { mode: 'claude' | 'ollama' | 'rules'; model: string | null; lastError: string | null }
+
+// ---------- 가상 손님 (Nemotron-Personas-Korea 페르소나 기반) ----------
+
+export interface Customer { id: string; name: string; age: number; sex: string; region: string; occupation: string; persona: string }
+
+export interface Visit {
+  customer: Customer;
+  topic: string;
+  situation: string;
+  customerLine: string;
+  staffQuestion: string;
+  via: Via;
+  questionId: string;
+  outcome: 'answered' | 'escalated';
+  cited: string[];
+  at: string;
+}

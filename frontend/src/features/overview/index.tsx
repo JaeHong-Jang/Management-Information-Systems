@@ -150,7 +150,7 @@ export function RunCard({ run, harness }: { run: RunView; harness: HarnessConfig
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold" style={{ color: s || active ? team.color : '#8B95A1' }}>
                   {agentName(id)}
-                  {s && s.via !== 'rules' && <span className="ml-1.5 text-[11px] font-medium text-ink-weak">{s.via === 'claude' ? 'Claude' : s.via}</span>}
+                  {s && s.via !== 'rules' && <span className="ml-1.5 text-[11px] font-medium text-ink-weak">{s.via === 'claude' ? 'Claude' : s.via === 'ollama' ? '로컬 AI' : s.via}</span>}
                   {s?.status === 'blocked' && <span className="ml-1.5 text-[11px] font-semibold text-warning">걸림</span>}
                 </p>
                 {s && <p className="text-[12px] text-ink-body">{s.summary}</p>}

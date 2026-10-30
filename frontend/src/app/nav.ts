@@ -1,6 +1,6 @@
 // 메뉴. 역할별로 묶었다: 현장(신입·숙련), 관리(점장), 시스템(그래프·에이전트·지표·심사).
 import type { LucideIcon } from 'lucide-react';
-import { Activity, BookOpen, Bot, CircleHelp, ClipboardCheck, Gauge, GraduationCap, Network, PenLine, Scale } from 'lucide-react';
+import { Activity, BookOpen, Bot, CircleHelp, ClipboardCheck, Gauge, GraduationCap, Network, PenLine, Scale, Users } from 'lucide-react';
 
 export interface NavItem { to: string; label: string; icon: LucideIcon; hint?: string }
 
@@ -20,6 +20,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: '/graph', label: '온톨로지 그래프', icon: Network },
       { to: '/agents', label: '에이전트 팀', icon: Bot },
+      { to: '/customers', label: '가상 손님', icon: Users },
       { to: '/metrics', label: '지표', icon: Gauge },
       { to: '/judge', label: '심사 기준', icon: Scale },
     ],
