@@ -5,6 +5,7 @@ import { ask, llmEnabled } from '../harness/llm.js';
 import { llmOr, type StepOut } from '../harness/runner.js';
 import { containment, similarity } from '../tools/search.js';
 import * as db from '../store/db.js';
+import { bigDiff, countGap, drift, itemStatus, lastCount, salesDates, usage } from '../inventory/calc.js';
 
 // ---------- 종합 편집자 ----------
 
@@ -92,11 +93,47 @@ export async function linter(): Promise<StepOut<LintOut>> {
   }
   const pending = d.cards.filter((c) => c.status === 'pending');
   if (pending.length) issues.push({ kind: '승인 대기', ids: pending.map((c) => c.id), detail: `승인 대기 사례 ${pending.length}건` });
+  issues.push(...inventoryIssues());
 
-  const order: LintIssue['kind'][] = ['상충', '만료', '효과 낮음', '공백', '중복', '만료 임박', '이유 없음', '승인 대기'];
+  const order: LintIssue['kind'][] = ['상충', '재고 차이', '보정 제안', '만료', '레시피 대기', '사용량 이탈', '효과 낮음', '공백', '중복', '만료 임박', '이유 없음', '승인 대기'];
   issues.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
   const count = (k: LintIssue['kind']) => issues.filter((i) => i.kind === k).length;
-  return { out: { issues, links }, via, summary: `할 일 ${issues.length}건 (상충 ${count('상충')}, 만료 ${count('만료')}, 중복 ${count('중복')}, 공백 ${count('공백')})` };
+  const stock = count('재고 차이') + count('사용량 이탈') + count('레시피 대기') + count('보정 제안');
+  return { out: { issues, links }, via, summary: `할 일 ${issues.length}건 (상충 ${count('상충')}, 만료 ${count('만료')}, 중복 ${count('중복')}, 공백 ${count('공백')}${stock ? `, 재고 ${stock}` : ''})` };
+}
+
+/** 재고: 실사 차이 · 사용량 이탈 · 소모량 승인 대기 · 보정 제안 (모두 규칙) */
+function inventoryIssues(): LintIssue[] {
+  const inv = db.inventory();
+  if (!inv.items.length) return [];
+  const today = db.today();
+  const use = usage(inv);
+  const open = salesDates(inv);
+  const out: LintIssue[] = [];
+  for (const it of inv.items) {
+    const st = itemStatus(it, inv, use, open, today);
+    const last = lastCount(inv, it.id);
+    // 계산값은 저장해 둔 값이 아니라 지금 다시 계산한다(실사 뒤 그날 POS를 올리면 차이가 풀린다)
+    const gap = last && !last.cardId ? countGap(inv, use, last) : null;
+    if (last && gap && bigDiff(gap.diff, st.dailyAvg)) {
+      const before = inv.stocktakes.filter((s) => s.itemId === it.id && s.cardId).at(-1);
+      out.push({
+        kind: '재고 차이',
+        ids: [it.id],
+        detail: `${it.name} ${last.date} 마감: 계산 ${gap.expected}${it.unit} / 실사 ${last.counted}${it.unit} (${gap.diff > 0 ? '+' : ''}${gap.diff}${it.unit}). 이유를 남기면 카드가 되어 다음 점검의 근거가 돼요.${before ? ` 지난번 이유: [${before.cardId}]` : ''}`,
+      });
+    }
+    const dr = drift(it, inv, use, open, today);
+    if (dr) {
+      const pct = Math.round((dr.actual / dr.expected - 1) * 100);
+      out.push({ kind: '사용량 이탈', ids: [it.id], detail: `${it.name} 최근 7일 ${dr.actual}${it.unit} — 평소대로면 ${dr.expected}${it.unit} (${pct > 0 ? '+' : ''}${pct}%). 이유가 있으면 카드로 남겨 다음 예측에 쓰세요.` });
+    }
+  }
+  const menus = inv.recipes.filter((r) => r.status === 'pending');
+  if (menus.length) out.push({ kind: '레시피 대기', ids: menus.map((r) => r.menu), detail: `메뉴 ${menus.length}개의 재료 소모량이 승인 전이라 사용량에 아직 안 들어가요: ${menus.map((r) => r.menu).join(', ')}` });
+  const adj = inv.adjustments.filter((a) => a.status === 'pending');
+  if (adj.length) out.push({ kind: '보정 제안', ids: adj.map((a) => a.id), detail: `수요 분석가의 보정 제안 ${adj.length}건: ${[...new Set(adj.map((a) => `${a.reason} ×${a.factor} [${a.cardId}]`))].join(', ')}` });
+  return out;
 }
 
 // ---------- 훈련 코치 ----------

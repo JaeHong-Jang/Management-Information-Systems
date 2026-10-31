@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronRight, Play, Users } from 'lucide-react';
-import type { HarnessConfig } from '@shared/contracts';
+import type { HarnessConfig, InventoryView } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useLive, type RunView } from '@/shared/api/live';
 import { Badge, Button, Empty, Panel, Stat, cx, fmtTime, useToast } from '@/shared/ui';
@@ -18,8 +18,10 @@ const OUTCOME = [
 export default function Overview() {
   const { state, graph, fresh, runs, wikiFeed } = useLive();
   const [harness, setHarness] = useState<HarnessConfig | null>(null);
+  const [inv, setInv] = useState<InventoryView | null>(null);
   const toast = useToast();
   useEffect(() => void api.harness().then(setHarness), []);
+  useEffect(() => void api.inventory().then(setInv), [state]);
 
   const d = useMemo(() => {
     if (!state) return null;
@@ -93,6 +95,8 @@ export default function Overview() {
 
         {d.total > 0 && <OutcomeBar count={d.count} className="mt-7" />}
       </section>
+
+      {inv && inv.items.length > 0 && <StockStrip inv={inv} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <Stat label="승인된 사례 카드" value={d.cards} unit="장" note={`판단 이유 채움 ${d.reason}%`} />
@@ -254,5 +258,28 @@ export function RunCard({ run, harness, compact }: { run: RunView; harness: Harn
       ))}
       {run.done && <p className="mt-3 rounded-lg bg-surface-subtle px-3 py-2 text-[13px] font-semibold text-ink-strong">결과: {run.summary}</p>}
     </div>
+  );
+}
+
+/** 재고 한 줄: 오늘 주문할 품목. 누르면 재고·발주 화면 */
+function StockStrip({ inv }: { inv: InventoryView }) {
+  const due = inv.items.filter((s) => s.level === 'today' || s.level === 'out');
+  const out = inv.items.filter((s) => s.level === 'out');
+  return (
+    <Link to="/inventory" className="flex items-center justify-between gap-3 rounded-card bg-surface px-6 py-4 hover:bg-grey-50">
+      <span className="min-w-0 text-[15px] text-ink-body">
+        <span className="font-semibold text-ink-strong">재고</span> ·{' '}
+        {due.length ? (
+          <>
+            오늘 주문할 품목 <b className="text-warning">{due.length}개</b>
+            <span className="hidden sm:inline"> ({due.map((s) => s.item.name).join(', ')})</span>
+            {out.length ? <span className="text-danger"> · 도착 전에 바닥날 수 있는 품목 {out.length}개</span> : null}
+          </>
+        ) : (
+          '오늘 주문할 품목이 없어요'
+        )}
+      </span>
+      <ChevronRight size={18} className="flex-none text-ink-disabled" />
+    </Link>
   );
 }

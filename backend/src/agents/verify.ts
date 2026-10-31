@@ -3,6 +3,7 @@ import type { Card } from '@shared/contracts';
 import type { StepOut } from '../harness/runner.js';
 import { forbidden } from '../tools/policies.js';
 import type { Answer } from './answer.js';
+import { cardBody, multipliers } from './stock.js';
 
 const CITE = /\[(C\d{3,})\]/g;
 const HAS_CITE = /\[C\d{3,}\]/;
@@ -51,4 +52,35 @@ export function dropForbiddenLines(text: string): string {
 export function wordingGuard(text: string): StepOut<string[]> {
   const hits = forbidden(text).map((f) => `"${f.match}" — ${f.why}`);
   return { out: hits, status: hits.length ? 'blocked' : 'ok', problems: hits, summary: hits.length ? `금지 표현 ${hits.length}건` : '금지 표현 없음' };
+}
+
+/** 보정 제안 검증: 쓸 수 있는 승인 카드를 인용했는지, 그 카드가 이 품목을 가리키는지, 배수가 카드 글에 실제로 있는지 본다. 어긋난 제안은 버린다. */
+export function adjustmentChecker<P extends { itemId: string; cardId: string; factor: number; from: string; to: string }>(
+  proposals: P[],
+  usable: Card[],
+  itemIds: Set<string>,
+  events?: { from: string; to: string }[],
+): StepOut<{ kept: P[]; problems: string[] }> {
+  const ISO = /^\d{4}-\d{2}-\d{2}$/;
+  if (!proposals.length) return { out: { kept: [], problems: [] }, summary: '검사할 보정 제안 없음', status: 'skipped' };
+  const problems: string[] = [];
+  const kept = proposals.filter((p) => {
+    const c = usable.find((x) => x.id === p.cardId);
+    const why = !itemIds.has(p.itemId)
+      ? `없는 품목 ${p.itemId}`
+      : !c
+        ? `쓸 수 없는 카드 인용(없음·승인 전·만료·상충): ${p.cardId}`
+        : !c.itemIds?.includes(p.itemId)
+          ? `[${c.id}]는 ${p.itemId} 품목 카드가 아님`
+          : !multipliers(cardBody(c)).some((f) => Math.abs(f - p.factor) < 1e-9)
+            ? `[${c.id}]에 ×${p.factor} 배수가 없음`
+            : !ISO.test(p.from) || !ISO.test(p.to) || !(p.from <= p.to)
+              ? `기간 형식이 틀리거나 거꾸로 됨(${p.from}~${p.to})`
+              : events && !events.some((e) => e.from <= p.from && p.to <= e.to)
+                ? `매장 일정 밖의 기간(${p.from}~${p.to})`
+                : '';
+    if (why) problems.push(why);
+    return !why;
+  });
+  return { out: { kept, problems }, status: problems.length ? 'blocked' : 'ok', problems, summary: problems.length ? `근거 없는 보정 ${problems.length}건을 버림 · 남은 제안 ${kept.length}건` : `보정 ${kept.length}건 모두 카드 근거 확인` };
 }

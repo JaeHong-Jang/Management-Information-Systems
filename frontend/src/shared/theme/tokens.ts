@@ -18,6 +18,7 @@ export const NODE_STYLE: Record<NodeType, { color: string; weak: string; shape: 
   person: { color: PALETTE.purple.mark, weak: PALETTE.purple.weak, shape: 'ellipse', label: '사람' },
   question: { color: PALETTE.orange.mark, weak: PALETTE.orange.weak, shape: 'diamond', label: '질문' },
   source: { color: '#333D4B', weak: PALETTE.grey.weak, shape: 'round-hexagon', label: '출처' },
+  item: { color: '#6B7684', weak: PALETTE.grey.weak, shape: 'barrel', label: '재고 품목' },
 };
 
 export const EDGE_STYLE: Record<EdgeType, { color: string; dashed?: boolean; label: string }> = {
@@ -29,6 +30,7 @@ export const EDGE_STYLE: Record<EdgeType, { color: string; dashed?: boolean; lab
   governs: { color: '#D1D6DB', dashed: true, label: '출처' },
   conflicts: { color: PALETTE.red.mark, dashed: true, label: '상충' },
   duplicates: { color: '#8B95A1', dashed: true, label: '중복' },
+  stocks: { color: '#B0B8C1', label: '재고 판단 근거' },
 };
 
 // 에이전트 팀: 지휘 파랑, 수집 초록(지식이 생김), 답변 보라, 검증 주황(사람이 볼 것), 관리 회색
@@ -38,6 +40,7 @@ export const TEAM_STYLE: Record<string, { color: string; weak: string }> = {
   answer: { color: PALETTE.purple.text, weak: PALETTE.purple.weak },
   verify: { color: PALETTE.orange.text, weak: PALETTE.orange.weak },
   keeper: { color: PALETTE.grey.text, weak: PALETTE.grey.weak },
+  stock: { color: '#191F28', weak: '#E5E8EB' }, // 재고팀: 숫자를 다루는 팀. 진회색
 };
 
 // 차트 범주색. 고정 순서(파랑 → 주황 → 초록 → 보라), 돌려 쓰지 않는다.

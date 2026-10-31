@@ -8,6 +8,7 @@ import { config } from './harness/config.js';
 import { status as aiStatus } from './harness/llm.js';
 import { bus } from './harness/trace.js';
 import * as flows from './flows/index.js';
+import * as stock from './flows/stock.js';
 import { isPlaying, playDay } from './demo.js';
 import { isSimulating, recentVisits, visitMany } from './sim/customers.js';
 import * as db from './store/db.js';
@@ -15,6 +16,7 @@ import { buildGraph } from './store/graph.js';
 
 export const app = express();
 app.use(cors());
+app.use('/api/inventory/pos', express.json({ limit: '5mb' })); // CSV 파일을 base64로 받는다
 app.use(express.json());
 
 type Handler = (req: Request, res: Response) => unknown;
@@ -143,6 +145,40 @@ app.get('/api/training', (_req, res) => {
 });
 app.post('/api/training/grade', route(async (req, res) => res.json(await flows.train(req.body?.id, req.body?.answer ?? '', req.body?.personId || 'P005'))));
 
+// ---------- 재고·발주 ----------
+
+app.get('/api/inventory', (_req, res) => res.json(stock.view()));
+
+app.post('/api/inventory/pos', route(async (req, res) => {
+  const { file, base64, actorId } = req.body ?? {};
+  if (!base64) return bad(res, '파일이 비어 있습니다');
+  res.json(await stock.posImport(String(file || 'pos.csv'), Buffer.from(String(base64), 'base64'), actorId || 'P001'));
+}));
+
+app.post('/api/inventory/pos/sample', route(async (req, res) => res.json(await stock.posImportSample(req.body?.actorId || 'P001'))));
+
+app.post('/api/inventory/stocktake', route(async (req, res) => {
+  const { counts, byId } = req.body ?? {};
+  if (!Array.isArray(counts) || !counts.length) return bad(res, '센 품목이 없습니다');
+  res.json(await stock.stocktake(counts.map((c: { itemId: string; counted: unknown }) => ({ itemId: String(c.itemId), counted: Number(c.counted) })), byId || 'P002'));
+}));
+app.post('/api/inventory/stocktake/explain', route(async (req, res) => {
+  const { itemId, reason, managerId } = req.body ?? {};
+  res.json(await stock.explainStock(String(itemId), String(reason ?? ''), managerId || 'P001'));
+}));
+app.post('/api/inventory/recipes/approve', route(async (req, res) => res.json(await stock.approveRecipe(String(req.body?.menu ?? ''), req.body?.lines))));
+app.post('/api/inventory/adjustments/:id/:action', route(async (req, res) => {
+  const action = String(req.params.action);
+  if (!['approve', 'reject'].includes(action)) return bad(res, '알 수 없는 작업');
+  res.json(await stock.adjustmentAction(String(req.params.id), action as 'approve'));
+}));
+app.post('/api/inventory/orders/:id/:action', route(async (req, res) => {
+  const action = String(req.params.action);
+  if (!['send', 'receive'].includes(action)) return bad(res, '알 수 없는 작업');
+  res.json(await stock.orderAction(String(req.params.id), action as 'send'));
+}));
+app.patch('/api/inventory/items/:id', route((req, res) => res.json(stock.updateItem(String(req.params.id), req.body ?? {}))));
+
 // ---------- 시연 ----------
 
 app.post('/api/demo/play', (_req, res) => {
@@ -186,6 +222,7 @@ async function seedSummaries() {
 
 if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   db.load();
+  stock.refreshDrafts();
   const PORT = Number(process.env.PORT) || 8787;
   app.listen(PORT, () => console.log(`이어받기 백엔드 http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
   // 로컬 AI는 요약 7개에 몇 분이 걸린다. 서버를 먼저 열고 요약은 뒤에서 채운다

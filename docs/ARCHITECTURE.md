@@ -18,7 +18,7 @@
 
 | 폴더 | 내용 |
 |---|---|
-| `harness/` | 하네스 선언. `harness.config.json`(팀 5·에이전트 13·흐름 6·게이트 2·LLM), `agents/`(에이전트 카드 참조 위치. 1차 심사에서 비어 있었으며 이번 문서 작업에서 충족 여부는 재확인하지 않음), `policies/forbidden-phrases.json`(금지 표현·개인정보 패턴·안전 어휘 `alwaysEscalate`) |
+| `harness/` | 하네스 선언. `harness.config.json`(팀 6·에이전트 17·흐름 9·게이트 3·LLM), `agents/`(에이전트 카드 참조 위치. 1차 심사에서 비어 있었으며 이번 문서 작업에서 충족 여부는 재확인하지 않음), `policies/forbidden-phrases.json`(금지 표현·개인정보 패턴·안전 어휘 `alwaysEscalate`) |
 | `shared/contracts.ts` | 백엔드·프론트 공통 타입 (카드, 질문, 실행 이벤트, 그래프) |
 | `backend/src/harness/` | 런타임: `config`(선언 읽기) · `runner`(흐름 실행, 이벤트 발행) · `trace`(실행 버스) · `llm`(Claude 호출 한 곳) |
 | `backend/src/agents/` | 팀별 1파일: `capture` · `answer` · `verify` · `keeper` |
@@ -51,7 +51,7 @@ LLM이 쓴 답은 같은 실행 안에서 규칙(검증팀)이 다시 확인한�
 
 ### 가상 손님 (시뮬레이션, 하네스 밖)
 
-`backend/src/sim/customers.ts`. Nemotron-Personas-Korea 페르소나 한 명을 뽑아 상황·손님 말·신입 질문을 만들고 `flows.ask`에 넣는다. 13개 에이전트에 속하지 않는 시험 도구다. 주제는 코드가 무작위로 고른다(작은 모델은 예시 주제로 쏠렸다). 모델 출력이 칸을 비우거나 지시문을 옮기면 버리고 상황 틀 10개 중 하나로 대체한다. 첫 시뮬레이션에서 '종이 도장 쿠폰' 질문이 어미 조각('다·는데·해요')만 겹친 오트 우유 카드로 답해지는 오답을 찾았고, 검색 토큰에서 어미 조각을 빼고 최소 근거 점수를 3에서 3.5로 올려 고쳤다(회귀 테스트 추가).
+`backend/src/sim/customers.ts`. Nemotron-Personas-Korea 페르소나 한 명을 뽑아 상황·손님 말·신입 질문을 만들고 `flows.ask`에 넣는다. 17개 에이전트에 속하지 않는 시험 도구다. 주제는 코드가 무작위로 고른다(작은 모델은 예시 주제로 쏠렸다). 모델 출력이 칸을 비우거나 지시문을 옮기면 버리고 상황 틀 10개 중 하나로 대체한다. 첫 시뮬레이션에서 '종이 도장 쿠폰' 질문이 어미 조각('다·는데·해요')만 겹친 오트 우유 카드로 답해지는 오답을 찾았고, 검색 토큰에서 어미 조각을 빼고 최소 근거 점수를 3에서 3.5로 올려 고쳤다(회귀 테스트 추가).
 
 ## 지식 모델
 
@@ -59,6 +59,24 @@ LLM이 쓴 답은 같은 실행 안에서 규칙(검증팀)이 다시 확인한�
 - 수명: 기록 → 승인 대기 → 점장 승인 → 사용(재사용·피드백) → 점검(만료·효과 낮음·상충) → 갱신 또는 보관. KCS의 지식 상태 흐름과 Karpathy LLM Wiki의 ingest · query · lint 세 동작을 따른다.
 - 그래프 노드: 토픽 · 사례 카드 · 사람 · 질문 · 출처. 관계: 속함 · 남김 · 물음 · 근거로 씀 · 점장 답 → 카드 · 출처 · 상충 · 중복.
 - 마크다운 위키(`data/wiki/`)는 바뀔 때마다 다시 컴파일된다. 사람도, 다른 LLM도 그대로 읽을 수 있다.
+
+## 재고·발주
+
+술집 데모에서 POS 판매로 재고와 발주 시점을 계산한다. 설계와 계산식은 [술집 재고·발주 설계](superpowers/specs/2026-10-31-bar-inventory-design.md).
+
+```
+POS CSV ─▶ [재고팀] POS 정리원 → 레시피 편집자(처음 보는 메뉴) → 수요 분석가(요일별 평균 + 일정·카드 보정 제안)
+            → [검증팀] 근거 검증(adjust-gate: 승인 카드·품목·배수 확인) → 발주 담당(주문서 초안)
+마감 실사 ─▶ 발주 담당 → 위키 점검관(재고 차이·사용량 이탈·레시피 대기·보정 제안 → 점장 할 일)
+실사 차이 이유 ─▶ 개인정보 가드 → 사례 카드 편집자 → 표현 검증 → 재고·발주 카드(itemIds)
+신입 질문 ─▶ 검색 사서 → 발주 담당([재고 현황] 줄) → 현장 코치 → …
+```
+
+- `backend/src/inventory/calc.ts`: 사용량·요일별 평균·지금 재고·14일 예측·주문일·권장량·사용량 이탈. 순수 함수.
+- `backend/src/inventory/pos.ts`: CSV 읽기. 머리말 줄 건너뛰기, 열 이름 변형, UTF-8/EUC-KR, 취소(음수), 합계 줄.
+- `backend/src/agents/stock.ts`, `backend/src/flows/stock.ts`: 재고팀 에이전트와 흐름.
+- 저장: 스냅숏 JSON의 `inventory`(품목·메뉴별 소모량·판매·입고·실사·일정·보정·주문서·업로드 기록). `/api/state`에는 싣지 않고 `/api/inventory`로 계산 결과를 준다.
+- 그래프: 재고 품목 노드(`item`)와 카드 → 품목(`stocks`) 관계. 카드와 연결된 품목만 그린다.
 
 ## 실시간
 
@@ -75,6 +93,11 @@ LLM이 쓴 답은 같은 실행 안에서 규칙(검증팀)이 다시 확인한�
 | POST | `/api/record/interview` · `/api/cards` | 회고 인터뷰 · 카드 저장 |
 | POST | `/api/cards/:id/(approve|reject|renew|archive)` | 점장 처리 |
 | GET | `/api/lint` · `/api/training` · POST `/api/training/grade` | 점검 · 훈련 |
+| GET | `/api/inventory` | 재고 계산 결과(품목 상태·주문서·소모량·보정·일정) |
+| POST | `/api/inventory/pos` · `/api/inventory/pos/sample` | POS CSV 반영(base64) · 예시 파일 반영 |
+| POST | `/api/inventory/stocktake` · `/api/inventory/stocktake/explain` | 마감 실사 · 실사 차이 이유 → 카드 |
+| POST | `/api/inventory/recipes/approve` · `/api/inventory/adjustments/:id/(approve\|reject)` · `/api/inventory/orders/:id/(send\|receive)` | 소모량·보정 승인, 주문 보냄·입고 확인 |
+| PATCH | `/api/inventory/items/:id` | 발주점·적정량·리드타임 수정 |
 | POST | `/api/demo/play` · `/api/reset` | 시연 |
 
 ## 검증
@@ -88,6 +111,7 @@ LLM이 쓴 답은 같은 실행 안에서 규칙(검증팀)이 다시 확인한�
 ## 한계
 
 - 데모 매장과 사례는 가상이다. 실제 매장 효과는 측정하지 않았다.
+- 재고 판매·실사·일정도 가상이다. 요일별 평균은 날씨·가격 변동을 모르며, 보정은 카드에 적힌 배수만 쓴다. POS API 실시간 연동과 xlsx 직접 읽기는 하지 않는다.
 - 한국어 검색은 형태소 분석 없이 2-gram이라 동의어(예: 포스/POS)는 일부만 잡는다.
 - 규칙 모드의 회고 인터뷰·카드 구조화는 문장 단위 휴리스틱이다. LLM 모드와의 품질 차이는 측정하지 않았다.
 - 사람 계정·권한은 없다. 화면 위 `지금 사용하는 사람`으로 역할을 바꿔 시연한다.

@@ -1,16 +1,21 @@
 // 원본은 JSON 하나(var/store.json). 바뀔 때마다 사람이 읽는 마크다운 위키(data/wiki/)를 다시 컴파일한다.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Card, CardOrigin, CardStatus, EdgeType, LogEntry, Person, Question, Snapshot, Source } from '@shared/contracts';
-import { DATA_DIR, STORE_DIR } from '../paths.js';
+import type { Card, CardOrigin, CardStatus, EdgeType, Inventory, LogEntry, Person, Question, Snapshot, Source } from '@shared/contracts';
+import { BACKEND_DIR, DATA_DIR, STORE_DIR } from '../paths.js';
+import { resolve } from 'node:path';
 
 const STORE_FILE = join(STORE_DIR, 'store.json');
-const SEED_FILE = join(DATA_DIR, 'seed.json');
+// 테스트는 SEED_FILE로 고정 자료(카페 시드)를 쓴다
+export const SEED_FILE = process.env.SEED_FILE ? resolve(BACKEND_DIR, process.env.SEED_FILE) : join(DATA_DIR, 'seed.json');
 const WIKI_DIR = join(DATA_DIR, 'wiki');
 
 export interface Db extends Snapshot {
   links: { source: string; target: string; type: EdgeType }[]; // 점검관이 찾은 상충·중복
+  inventory: Inventory;
 }
+
+const emptyInventory = (): Inventory => ({ items: [], recipes: [], sales: [], deliveries: [], stocktakes: [], events: [], adjustments: [], orders: [], imports: [] });
 
 let db: Db | null = null;
 
@@ -18,14 +23,16 @@ export function load(): Db {
   if (!existsSync(STORE_FILE)) return resetFromSeed();
   db = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
   db.links ??= [];
+  db.inventory = { ...emptyInventory(), ...db.inventory };
   return db;
 }
 
-export function resetFromSeed(): Db {
+export function resetFromSeed(seed = SEED_FILE): Db {
   mkdirSync(STORE_DIR, { recursive: true });
-  copyFileSync(SEED_FILE, STORE_FILE);
+  copyFileSync(seed, STORE_FILE);
   db = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
   db.links = [];
+  db.inventory = { ...emptyInventory(), ...db.inventory };
   return db;
 }
 
@@ -39,7 +46,17 @@ export function save(compile = process.env.STORE_DIR !== 'var/test') {
 }
 
 export const today = () => get().store.today;
+export const inventory = () => get().inventory;
+export const item = (id: string) => inventory().items.find((i) => i.id === id);
 export const now = () => `${today()}T${new Date().toTimeString().slice(0, 8)}`;
+
+let lastStamp = '';
+/** 같은 날 실사·입고의 앞뒤를 가리는 기록 시각. 같은 ms에 두 번 불려도 뒤의 값이 항상 더 크다 */
+export function stamp(): string {
+  let s = `${today()}@${new Date().toISOString()}`;
+  if (s <= lastStamp) s = `${lastStamp}+`;
+  return (lastStamp = s);
+}
 
 export function addDays(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00Z`);
@@ -53,14 +70,14 @@ export function addLog(op: string, detail: string, runId?: string): LogEntry {
   return e;
 }
 
-function nextId(prefix: string, list: { id: string }[]): string {
+export function nextId(prefix: string, list: { id: string }[]): string {
   const max = list.reduce((m, x) => Math.max(m, Number(x.id.slice(1)) || 0), 0);
   return prefix + String(max + 1).padStart(3, '0');
 }
 
 export interface CardFields {
   title: string; topic: string; situation: string; reason: string; actions: string[];
-  avoid: string; escalateWhen: string; source: Source; tags: string[];
+  avoid: string; escalateWhen: string; source: Source; tags: string[]; itemIds?: string[];
 }
 
 export function createCard(f: CardFields, authorId: string, status: CardStatus, origin: CardOrigin, fromQuestionId?: string): Card {
@@ -86,6 +103,7 @@ export function createCard(f: CardFields, authorId: string, status: CardStatus, 
     helpful: 0,
     notHelpful: 0,
     ...(fromQuestionId ? { fromQuestionId } : {}),
+    ...(f.itemIds?.length ? { itemIds: f.itemIds } : {}),
   };
   d.cards.push(card);
   return card;
@@ -150,6 +168,7 @@ function cardMd(c: Card): string {
     c.avoid ? `- 하면 안 되는 것: ${c.avoid}` : '',
     c.escalateWhen ? `- 점장 호출 기준: ${c.escalateWhen}` : '',
     c.fromQuestionId ? `- 출처 질문: ${c.fromQuestionId} (점장 답변에서 생성)` : '',
+    c.itemIds?.length ? `- 재고 품목: ${c.itemIds.map((id) => item(id)?.name ?? id).join(', ')} ([재고 기준표](../inventory.md))` : '',
     '',
   ].filter(Boolean).join('\n');
 }
@@ -176,6 +195,10 @@ export function compileWiki() {
     );
   }
   index.push('', '## 사람', '', '[기여자 목록](people.md)');
+  if (d.inventory.items.length) {
+    index.push('', '## 재고', '', '[재고 기준표와 메뉴별 소모량](inventory.md)');
+    writeFileSync(join(WIKI_DIR, 'inventory.md'), inventoryMd(d.inventory) + '\n');
+  }
   writeFileSync(join(WIKI_DIR, 'index.md'), index.join('\n') + '\n');
   // 기여 크레딧만 남긴다. 질문 수는 개인별로 세지 않고, 크레딧을 끈 카드는 이름 없이 합계만
   const people = d.people.flatMap((p) => {
@@ -185,4 +208,25 @@ export function compileWiki() {
   const anon = approved.filter((c) => c.credit === false).length;
   writeFileSync(join(WIKI_DIR, 'people.md'), ['# 노하우를 남긴 사람', '', ...people, anon ? `- 이름 비공개 기여 ${anon}건` : '', '', '질문한 사람은 개인별로 기록하지 않는다.'].join('\n') + '\n');
   writeFileSync(join(WIKI_DIR, 'log.md'), ['# 변경 기록', '', ...d.log.map((l) => `- ${l.time} · ${l.op} · ${l.detail}`)].join('\n') + '\n');
+}
+
+function inventoryMd(inv: Inventory): string {
+  const name = (id: string) => inv.items.find((i) => i.id === id)?.name ?? id;
+  return [
+    '# 재고 기준표',
+    '',
+    '숫자는 POS 판매 × 메뉴별 소모량으로 계산한다. 보정은 승인된 카드에서만 온다.',
+    '',
+    '| 품목 | 단위 | 발주 단위 | 거래처 | 리드타임 | 발주점 | 적정량 |',
+    '|---|---|---|---|---|---|---|',
+    ...inv.items.map((i) => `| ${i.name} | ${i.unit} | ${i.pack}${i.unit}/${i.packLabel} | ${i.supplier} | ${i.leadDays}일 | ${i.reorderPoint} | ${i.par} |`),
+    '',
+    '## 메뉴별 소모량',
+    '',
+    ...inv.recipes.map((r) => `- ${r.menu}${r.status === 'pending' ? ' (승인 대기)' : ''}: ${r.lines.map((l) => `${name(l.itemId)} ${l.qty}`).join(' + ') || '비어 있음'}`),
+    '',
+    '## 승인된 보정',
+    '',
+    ...(inv.adjustments.filter((a) => a.status === 'approved').map((a) => `- ${name(a.itemId)} ${a.from}~${a.to} ×${a.factor} — ${a.reason} [${a.cardId}]`) || []),
+  ].join('\n');
 }

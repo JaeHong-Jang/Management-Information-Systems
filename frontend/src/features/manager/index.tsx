@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Card, LintIssue } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useLive } from '@/shared/api/live';
@@ -14,6 +15,10 @@ const KIND_TONE: Record<LintIssue['kind'], Tone> = {
   중복: 'neutral',
   '이유 없음': 'neutral',
   '승인 대기': 'neutral',
+  '재고 차이': 'warning',
+  '보정 제안': 'warning',
+  '레시피 대기': 'warning',
+  '사용량 이탈': 'neutral',
 };
 
 function Tile({ label, n }: { label: string; n: number }) {
@@ -63,6 +68,7 @@ export default function Page() {
   const [confirm, setConfirm] = useState<{ keep: string; drop: string } | null>(null);
   const [reason, setReason] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const navigate = useNavigate();
 
   const people = state?.people ?? [];
   const nameOf = (id: string) => people.find((p) => p.id === id)?.name ?? id;
@@ -160,8 +166,11 @@ export default function Page() {
       .forEach((q) => list.push({ key: q.id, text: `질문 · ${q.text}`, cta: '답하러 가기', go: () => goto('q-' + q.id) }));
     (issues ?? []).filter((i) => i.kind === '상충').forEach((i, n) => list.push({ key: '상충' + n, text: `${i.ids.join('와 ')} 내용이 서로 달라요`, cta: '정리하기', go: () => { setShowAll(true); setTimeout(() => goto('lint-' + i.ids[0]), 50); } }));
     (issues ?? []).filter((i) => i.kind === '만료').forEach((i, n) => list.push({ key: '만료' + n, text: `${i.ids.join(', ')} 만료됐어요`, cta: '확인하기', go: () => (i.ids[0] ? setRenewId(i.ids[0]) : undefined) }));
+    // 재고 일은 재고·발주 화면에서 처리한다
+    const stock = (issues ?? []).filter((i) => i.kind === '재고 차이' || i.kind === '보정 제안' || i.kind === '레시피 대기');
+    if (stock.length) list.push({ key: '재고', text: `재고 · ${stock.map((i) => (i.kind === '재고 차이' ? i.detail.split(' 마감')[0].replace(/ \d{4}-\d{2}-\d{2}$/, '') + ' 실사 차이' : i.kind)).join(', ')}`, cta: '재고 화면에서 보기', go: () => navigate('/inventory') });
     return list.slice(0, 3);
-  }, [questions, issues]);
+  }, [questions, issues, navigate]);
 
   return (
     <div>

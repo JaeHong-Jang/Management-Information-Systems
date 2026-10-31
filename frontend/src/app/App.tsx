@@ -5,6 +5,7 @@ import Ask from '@/features/ask';
 import Record from '@/features/record';
 import Train from '@/features/train';
 import Manager from '@/features/manager';
+import Inventory from '@/features/inventory';
 import Wiki from '@/features/wiki';
 import Ontology from '@/features/ontology';
 import Agents from '@/features/agents';
@@ -21,6 +22,7 @@ export function App() {
         <Route path="record" element={<Record />} />
         <Route path="train" element={<Train />} />
         <Route path="manager" element={<Manager />} />
+        <Route path="inventory" element={<Inventory />} />
         <Route path="wiki" element={<Wiki />} />
         <Route path="graph" element={<Ontology />} />
         <Route path="agents" element={<Agents />} />

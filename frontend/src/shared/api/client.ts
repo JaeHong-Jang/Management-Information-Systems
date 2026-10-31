@@ -1,5 +1,5 @@
 // 백엔드 API. 모든 화면은 여기만 거친다.
-import type { AiStatus, AskResult, Card, Graph, HarnessConfig, InterviewDraft, LintIssue, Metrics, Question, Snapshot, TrainingResult, TrainingTask, Visit } from '@shared/contracts';
+import type { Adjustment, AiStatus, AskResult, Card, Graph, HarnessConfig, InterviewDraft, InventoryView, Item, LintIssue, Metrics, Order, PosImportResult, Question, Recipe, RecipeLine, Snapshot, Stocktake, TrainingResult, TrainingTask, Visit } from '@shared/contracts';
 
 export type State = Snapshot & { ai: AiStatus; demoPlaying: boolean; simulating: boolean };
 
@@ -33,6 +33,16 @@ export const api = {
   visits: () => call<{ visits: Visit[]; simulating: boolean }>('/sim/visits'),
   simulate: (n: number) => post<{ ok: boolean; n: number }>('/sim/customers', { n }),
   reset: () => post<{ ok: boolean }>('/reset'),
+  // 재고·발주
+  inventory: () => call<InventoryView>('/inventory'),
+  posUpload: (file: string, base64: string, actorId: string) => post<PosImportResult>('/inventory/pos', { file, base64, actorId }),
+  posSample: (actorId: string) => post<PosImportResult>('/inventory/pos/sample', { actorId }),
+  stocktake: (counts: { itemId: string; counted: number }[], byId: string) => post<{ stocktakes: Stocktake[]; issues: LintIssue[]; orders: Order[] }>('/inventory/stocktake', { counts, byId }),
+  explainStock: (itemId: string, reason: string, managerId: string) => post<Card>('/inventory/stocktake/explain', { itemId, reason, managerId }),
+  approveRecipe: (menu: string, lines: RecipeLine[]) => post<Recipe>('/inventory/recipes/approve', { menu, lines }),
+  adjustment: (id: string, action: 'approve' | 'reject') => post<Adjustment>(`/inventory/adjustments/${id}/${action}`),
+  order: (id: string, action: 'send' | 'receive') => post<Order>(`/inventory/orders/${id}/${action}`),
+  updateItem: (id: string, patch: Partial<Pick<Item, 'reorderPoint' | 'par' | 'leadDays'>>) => call<Item>(`/inventory/items/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 };
 
 export interface JudgeRound {

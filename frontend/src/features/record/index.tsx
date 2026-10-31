@@ -226,7 +226,7 @@ export default function Page() {
             className={cx(inputCls, 'min-h-40')}
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
-            placeholder="예: 오늘 아침에 냉장고 온도가 9도까지 올라가 있었어요. 우유랑 생크림을 확인하고 문 앞쪽 것만 버렸어요. 점장님께 바로 알렸고요."
+            placeholder="예: 금요일 밤에 생맥 케그가 바닥나서 병맥주로 안내했어요. 이미 받은 생맥 주문은 손님께 여쭤보고 바꿨어요. 점장님께 바로 알렸고요."
           />
           {raw.trim() !== '' && <p className="mt-2 text-[12px] text-ink-weak">임시 저장됨</p>}
           <div className="mt-3 flex gap-2">

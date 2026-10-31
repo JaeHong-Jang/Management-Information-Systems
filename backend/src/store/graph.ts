@@ -1,5 +1,6 @@
 // 매장 위키를 온톨로지 그래프로 본다: 토픽·사례 카드·사람·질문·출처(공식규정/현장노하우)와 그 관계.
-import type { Card, Graph, GraphEdge, GraphNode, Person, Question } from '@shared/contracts';
+import type { Card, Graph, GraphEdge, GraphNode, ItemStatus, Person, Question } from '@shared/contracts';
+import { inventoryView } from '../inventory/calc.js';
 import * as db from './db.js';
 
 export const cardNode = (c: Card): GraphNode => ({
@@ -27,10 +28,18 @@ export const anonNode = (): GraphNode => ({ id: ANON, type: 'person', label: '�
 export const authorNodeId = (c: Card) => (c.credit === false ? ANON : c.authorId);
 export const sourceNode = (s: string): GraphNode => ({ id: `S:${s}`, type: 'source', label: s });
 
+const LEVEL_SUB = { out: '도착 전 바닥', today: '오늘 주문', soon: '3일 안 주문', ok: '여유' } as const;
+export const itemNode = (s: ItemStatus): GraphNode => ({ id: s.item.id, type: 'item', label: s.item.name, sub: LEVEL_SUB[s.level] });
+/** 지금 재고 상태를 붙인 품목 노드들 */
+export const itemNodes = (ids: string[]): GraphNode[] => {
+  const view = inventoryView(db.inventory(), [], db.today());
+  return view.items.filter((s) => ids.includes(s.item.id)).map(itemNode);
+};
+
 export const edge = (source: string, target: string, type: GraphEdge['type']): GraphEdge => ({ id: `${type}:${source}>${target}`, source, target, type });
 
 export function cardEdges(c: Card): GraphEdge[] {
-  return [edge(c.id, `T:${c.topic}`, 'belongs'), edge(authorNodeId(c), c.id, 'authored'), edge(`S:${c.source}`, c.id, 'governs')];
+  return [edge(c.id, `T:${c.topic}`, 'belongs'), edge(authorNodeId(c), c.id, 'authored'), edge(`S:${c.source}`, c.id, 'governs'), ...(c.itemIds ?? []).map((id) => edge(c.id, id, 'stocks'))];
 }
 
 export function questionEdges(q: Question): GraphEdge[] {
@@ -59,6 +68,8 @@ export function buildGraph(): Graph {
   [...new Set(d.questions.map(askerNodeId))].forEach((id) => push(roleNode(id.slice(2))));
   cards.forEach((c) => push(cardNode(c)));
   d.questions.forEach((q) => push(questionNode(q)));
+  // 재고 품목은 카드와 연결된 것만 그린다(판단 근거가 있는 품목)
+  itemNodes([...new Set(cards.flatMap((c) => c.itemIds ?? []))]).forEach(push);
   const edges = [...cards.flatMap(cardEdges), ...d.questions.flatMap(questionEdges), ...d.links.map((l) => edge(l.source, l.target, l.type))].filter(
     (e) => ids.has(e.source) && ids.has(e.target),
   );

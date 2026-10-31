@@ -5,7 +5,7 @@ import { api } from '@/shared/api/client';
 import { useLive, type RunView } from '@/shared/api/live';
 import { Badge, Button, CardDetail, CiteText, Empty, PageHeader, Panel, Sheet, cx, sourceTone, inputCls, useToast, fmtTime } from '@/shared/ui';
 
-const EXAMPLES = ['오트 우유가 품절이에요', '기프티콘이 사용완료로 떠요', '결제됐는데 주문이 없어요', '영수증 없이 환불해 달라고 해요', '알리페이로 결제하고 싶대요'];
+const EXAMPLES = ['생맥주가 거품만 나와요', '신분증 사진으로 확인해도 돼요?', '소주 몇 짝 시켜야 해요?', '단체 손님이 나눠서 계산한대요', '많이 취한 손님이 술을 더 달래요'];
 
 const confTone = { high: 'success', low: 'warning' } as const;
 const confText = { high: '근거 카드와 잘 맞아요', low: '비슷한 사례예요. 상황이 같은지 확인하세요' } as const;
@@ -210,7 +210,7 @@ export default function Page() {
       <Panel className="space-y-4">
         <textarea
           className={cx(inputCls, 'min-h-[88px] resize-none text-[16px]')}
-          placeholder="예: 오트 우유가 다 떨어졌는데 손님이 찾아요"
+          placeholder="예: 진로가 다 떨어졌는데 손님이 진로만 찾아요"
           value={text}
           disabled={busy}
           onChange={(e) => setText(e.target.value)}

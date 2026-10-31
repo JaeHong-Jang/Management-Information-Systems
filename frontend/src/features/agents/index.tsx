@@ -32,7 +32,7 @@ export default function Agents() {
       <PageHeader
         eyebrow="시스템"
         title="에이전트 팀"
-        desc="처음 일하는 사람도 혼자 해결할 수 있게 다섯 팀이 나눠 일해요. 글을 이해하고 쓰는 일만 LLM이 하고, 검색·검증·개인정보·점장 연결은 규칙이 해요. LLM이 쓴 답은 규칙으로 다시 확인해요."
+        desc="처음 일하는 사람도 혼자 해결할 수 있게 여섯 팀이 나눠 일해요. 글을 이해하고 쓰는 일만 LLM이 하고, 검색·검증·개인정보·점장 연결·재고 숫자 계산은 규칙이 해요. LLM이 쓴 답은 규칙으로 다시 확인해요."
       />
 
       <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
