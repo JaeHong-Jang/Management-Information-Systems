@@ -224,7 +224,7 @@ export default function Page() {
         />
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((ex) => (
-            <button key={ex} disabled={busy} onClick={() => void submit(ex)} className="rounded-full bg-surface-subtle px-3 py-1.5 text-[13px] font-medium text-ink-body hover:bg-line disabled:opacity-40">
+            <button key={ex} disabled={busy} onClick={() => void submit(ex)} className="rounded-full bg-surface px-3.5 py-2 text-[13px] font-medium text-ink-body hover:bg-brand-weak hover:text-brand-strong disabled:opacity-40">
               {ex}
             </button>
           ))}

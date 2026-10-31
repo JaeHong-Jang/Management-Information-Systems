@@ -5,7 +5,7 @@ import { ArrowRight, UserPlus, Users } from 'lucide-react';
 import type { HarnessConfig, Visit } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useLive } from '@/shared/api/live';
-import { Badge, Button, Empty, PageHeader, Panel, cx, fmtTime, useToast } from '@/shared/ui';
+import { Badge, Button, Empty, PageHeader, Panel, Stat, cx, fmtTime, useToast } from '@/shared/ui';
 import { RunCard } from '../overview';
 
 export default function Customers() {
@@ -58,9 +58,9 @@ export default function Customers() {
       />
 
       <div className="mb-5 grid grid-cols-3 gap-3">
-        <Stat label="들어온 손님" value={visits.length} />
-        <Stat label="위키가 답함" value={answered} tone={answered ? 'success' : undefined} />
-        <Stat label="점장에게 넘어간 빈틈" value={gaps.length} tone={gaps.length ? 'warning' : undefined} />
+        <Stat label="들어온 손님" value={visits.length} unit="명" />
+        <Stat label="위키가 답함" value={answered} unit="명" tone={answered ? 'success' : undefined} />
+        <Stat label="점장에게 넘어간 빈틈" value={gaps.length} unit="건" tone={gaps.length ? 'warning' : undefined} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -138,14 +138,5 @@ function VisitCard({ v }: { v: Visit }) {
         </span>
       </div>
     </Panel>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: number; tone?: 'warning' | 'success' }) {
-  return (
-    <div className="rounded-card bg-surface p-4">
-      <p className="text-[13px] text-ink-weak">{label}</p>
-      <p className={cx('mt-1 text-[28px] font-bold leading-9', tone === 'warning' ? 'text-warning' : tone === 'success' ? 'text-success' : 'text-ink-strong')}>{value}</p>
-    </div>
   );
 }

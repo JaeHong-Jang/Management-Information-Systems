@@ -23,9 +23,9 @@ export function Button({ variant = 'primary', size = 'md', loading, className, c
 
 export function Panel({ title, action, children, className }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cx('rounded-card bg-surface p-5', className)}>
+    <section className={cx('rounded-card bg-surface p-5 sm:p-6', className)}>
       {(title || action) && (
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-4 flex items-center justify-between gap-2">
           {title ? <h2 className="text-[17px] font-bold text-ink-strong">{title}</h2> : <span />}
           {action}
         </div>
@@ -61,6 +61,21 @@ export function PageHeader({ eyebrow, title, desc, action }: { eyebrow?: string;
       </div>
       {action}
     </header>
+  );
+}
+
+/** 숫자 하나를 크게 보여 주는 타일 */
+export function Stat({ label, value, unit, note, tone }: { label: string; value: ReactNode; unit?: string; note?: ReactNode; tone?: 'warning' | 'success' | 'brand' }) {
+  const c = tone === 'warning' ? 'text-warning' : tone === 'success' ? 'text-success' : tone === 'brand' ? 'text-brand-strong' : 'text-ink-strong';
+  return (
+    <div className="rounded-card bg-surface p-5">
+      <p className="text-[14px] font-medium text-ink-weak">{label}</p>
+      <p className={cx('mt-2 text-[30px] font-bold leading-9 tracking-tight', c)}>
+        {value}
+        {unit && <span className="ml-0.5 text-[17px] font-semibold text-ink-weak">{unit}</span>}
+      </p>
+      {note && <p className="mt-1.5 text-[13px] text-ink-weak">{note}</p>}
+    </div>
   );
 }
 

@@ -187,7 +187,7 @@ export default function Page() {
   const basicQ = !!via && via !== 'claude' && via !== 'ollama';
 
   const progress = (busy || run) && step <= 3 && (
-    <Panel title="AI가 일하는 중이에요" className="mt-4 bg-surface-subtle">
+    <Panel title="AI가 일하는 중이에요" className="mt-4">
       {run ? (
         <ul className="space-y-2">
           {run.steps.map((s, i) => (

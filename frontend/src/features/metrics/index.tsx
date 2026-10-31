@@ -26,9 +26,9 @@ export default function MetricsPage() {
         title="지표"
         desc="문서 수보다 다시 쓰였는지를 봐요. 모두 가상 시연 데이터라 실제 매장 효과를 뜻하지 않아요. 현장 파일럿에서 같은 지표로 잴 계획이에요."
         action={
-          <div className="flex rounded-xl bg-surface-subtle p-1 text-[13px] font-semibold">
+          <div className="flex rounded-xl bg-surface p-1 text-[13px] font-semibold">
             {(['live', 'all'] as const).map((s) => (
-              <button key={s} onClick={() => setScope(s)} className={`rounded-lg px-3 py-1.5 ${scope === s ? 'bg-surface text-ink-strong' : 'text-ink-weak'}`}>
+              <button key={s} onClick={() => setScope(s)} className={`rounded-lg px-3 py-1.5 ${scope === s ? 'bg-brand-weak text-brand-strong' : 'text-ink-weak'}`}>
                 {s === 'live' ? '이번 시연만' : '시드 포함 전체'}
               </button>
             ))}
