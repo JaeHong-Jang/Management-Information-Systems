@@ -11,3 +11,4 @@
 .animate-rise { animation: rise .28s ease-out both; }
 @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(49,130,246,.45); } 100% { box-shadow: 0 0 0 8px rgba(49,130,246,0); } }
 .animate-pulse-ring { animation: pulse-ring 1.2s ease-out infinite; }
+.graph-dots { background-image: radial-gradient(#E5E8EB 1px, transparent 1px); background-size: 18px 18px; }

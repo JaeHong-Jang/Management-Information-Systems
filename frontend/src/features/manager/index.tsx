@@ -271,7 +271,7 @@ export default function Page() {
                 return (
                   <div key={id} id={'lint-' + id} className="rounded-xl bg-surface-subtle p-3">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <button onClick={() => setOpenId(id)} className="rounded bg-brand-weak px-2 py-0.5 text-[12px] font-semibold text-brand-strong hover:bg-[#D6E8FF]">
+                      <button onClick={() => setOpenId(id)} className="rounded bg-brand-weak px-2 py-0.5 text-[12px] font-semibold text-brand-strong hover:bg-brand-hover">
                         {id}
                       </button>
                       {kinds.map((k) => (

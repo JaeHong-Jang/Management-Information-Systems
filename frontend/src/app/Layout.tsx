@@ -98,7 +98,7 @@ export function Layout() {
             <span className={cx('ml-1 h-2 w-2 rounded-full', aiOn ? 'bg-success' : connected ? 'bg-ink-disabled' : 'bg-warning')} title={aiLabel} />
           </div>
           <label className="relative ml-auto flex items-center gap-2 rounded-full bg-surface py-1 pl-1 pr-3 text-[14px] hover:bg-surface/70">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#6941C6] text-[12px] font-bold text-white">{person?.name[0] ?? '?'}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-person-mark text-[12px] font-bold text-white">{person?.name[0] ?? '?'}</span>
             <span className="hidden text-[12px] text-ink-weak sm:inline">지금 사용하는 사람</span>
             <span className="font-semibold text-ink-strong">
               {person?.name} <span className="font-normal text-ink-weak">{person && `${person.role} ${person.tenure}`}</span>

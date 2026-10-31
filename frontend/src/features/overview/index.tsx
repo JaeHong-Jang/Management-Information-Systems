@@ -12,7 +12,7 @@ import { GraphCanvas, Legend } from '../ontology/GraphCanvas';
 const OUTCOME = [
   { key: 'answered', label: '위키가 바로 답함', color: CHART.brand },
   { key: 'escalated', label: '점장 답 기다림', color: CHART.orange },
-  { key: 'resolved', label: '점장 답이 카드가 됨', color: CHART.teal },
+  { key: 'resolved', label: '점장 답이 카드가 됨', color: CHART.green },
 ] as const;
 
 export default function Overview() {
@@ -91,27 +91,7 @@ export default function Overview() {
           </div>
         </div>
 
-        {d.total > 0 && (
-          <div className="mt-7">
-            <div className="flex h-3 gap-[2px] overflow-hidden rounded-full bg-surface-subtle">
-              {OUTCOME.map((o) =>
-                d.count[o.key] ? (
-                  <div key={o.key} title={`${o.label} ${d.count[o.key]}건`} className="h-full first:rounded-l-full last:rounded-r-full transition-[width] duration-500" style={{ width: `${(d.count[o.key] / d.total) * 100}%`, background: o.color }} />
-                ) : null,
-              )}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5">
-              {OUTCOME.map((o) => (
-                <div key={o.key} className="flex items-center gap-2 text-[14px]">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: o.color }} />
-                  <span className="text-ink-body">{o.label}</span>
-                  <span className="font-semibold text-ink-strong">{d.count[o.key]}건</span>
-                  <span className="text-ink-weak">{Math.round((d.count[o.key] / d.total) * 100)}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {d.total > 0 && <OutcomeBar count={d.count} className="mt-7" />}
       </section>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
@@ -174,7 +154,7 @@ export default function Overview() {
           <ul className="space-y-3.5">
             {veterans.map(({ p, n, helped }) => (
               <li key={p.id} className={cx('flex items-center gap-3 rounded-xl', fresh.has(p.id) && 'ring-2 ring-brand ring-offset-4')}>
-                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#F4F3FF] text-[14px] font-bold text-[#6941C6]">{p.name[0]}</span>
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-person-weak text-[14px] font-bold text-person">{p.name[0]}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="text-[15px] font-semibold text-ink-strong">
@@ -184,7 +164,7 @@ export default function Overview() {
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-subtle">
-                      <div className="h-full rounded-full bg-[#6941C6]" style={{ width: `${(helped / topHelped) * 100}%` }} />
+                      <div className="h-full rounded-full bg-person-mark" style={{ width: `${(helped / topHelped) * 100}%` }} />
                     </div>
                     <span className="w-12 text-right text-[12px] text-ink-weak">사례 {n}개</span>
                   </div>
@@ -194,6 +174,33 @@ export default function Overview() {
           </ul>
           <p className="mt-4 text-[12px] leading-5 text-ink-weak">남긴 노하우가 도운 횟수로 크레딧을 받아요. 신입의 질문 수는 평가에 쓰지 않아요.</p>
         </Panel>
+      </div>
+    </div>
+  );
+}
+
+/** 질문이 어떻게 끝났는지 한 줄 막대 + 범례(대시보드·지표 공통) */
+export function OutcomeBar({ count, className }: { count: Record<(typeof OUTCOME)[number]['key'], number>; className?: string }) {
+  const total = count.answered + count.escalated + count.resolved;
+  if (!total) return null;
+  return (
+    <div className={className}>
+      <div className="flex h-3 gap-[2px] overflow-hidden rounded-full bg-surface-subtle">
+        {OUTCOME.map((o) =>
+          count[o.key] ? (
+            <div key={o.key} title={`${o.label} ${count[o.key]}건`} className="h-full transition-[width] duration-500 first:rounded-l-full last:rounded-r-full" style={{ width: `${(count[o.key] / total) * 100}%`, background: o.color }} />
+          ) : null,
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5">
+        {OUTCOME.map((o) => (
+          <div key={o.key} className="flex items-center gap-2 text-[14px]">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: o.color }} />
+            <span className="text-ink-body">{o.label}</span>
+            <span className="font-semibold text-ink-strong">{count[o.key]}건</span>
+            <span className="text-ink-weak">{Math.round((count[o.key] / total) * 100)}%</span>
+          </div>
+        ))}
       </div>
     </div>
   );

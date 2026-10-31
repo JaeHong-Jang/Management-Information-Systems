@@ -18,7 +18,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: '시스템',
     items: [
-      { to: '/graph', label: '온톨로지 그래프', icon: Network },
+      { to: '/graph', label: '지식 그래프', icon: Network },
       { to: '/agents', label: '에이전트 팀', icon: Bot },
       { to: '/customers', label: '가상 손님', icon: Users },
       { to: '/metrics', label: '지표', icon: Gauge },

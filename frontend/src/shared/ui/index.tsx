@@ -8,9 +8,9 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export function Button({ variant = 'primary', size = 'md', loading, className, children, disabled, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: 'sm' | 'md' | 'lg'; loading?: boolean }) {
   const v = {
     primary: 'bg-brand text-white hover:bg-brand-strong',
-    secondary: 'bg-brand-weak text-brand-strong hover:bg-[#D6E8FF]',
+    secondary: 'bg-brand-weak text-brand-strong hover:bg-brand-hover',
     ghost: 'bg-surface-subtle text-ink-body hover:bg-line',
-    danger: 'bg-danger-weak text-danger hover:bg-[#FDE2DF]',
+    danger: 'bg-danger-weak text-danger hover:bg-danger-hover',
   }[variant];
   const s = { sm: 'h-8 px-3 text-[13px] rounded-lg', md: 'h-11 px-4 text-[15px] rounded-xl', lg: 'h-14 px-5 text-[17px] rounded-2xl w-full' }[size];
   return (
@@ -35,7 +35,7 @@ export function Panel({ title, action, children, className }: { title?: ReactNod
   );
 }
 
-type Tone = 'brand' | 'neutral' | 'success' | 'warning' | 'danger' | 'violet' | 'teal';
+type Tone = 'brand' | 'neutral' | 'success' | 'warning' | 'danger' | 'person';
 export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   const t = {
     brand: 'bg-brand-weak text-brand-strong',
@@ -43,13 +43,12 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; 
     success: 'bg-success-weak text-success',
     warning: 'bg-warning-weak text-warning',
     danger: 'bg-danger-weak text-danger',
-    violet: 'bg-[#F4F3FF] text-[#6941C6]',
-    teal: 'bg-[#ECFDFF] text-[#0E7490]',
+    person: 'bg-person-weak text-person',
   }[tone];
   return <span className={cx('inline-flex items-center rounded-md px-2 py-0.5 text-[12px] font-semibold', t, className)}>{children}</span>;
 }
 
-export const sourceTone = (s: string): Tone => (s === '공식규정' ? 'brand' : 'teal');
+export const sourceTone = (s: string): Tone => (s === '공식규정' ? 'brand' : 'success');
 
 export function PageHeader({ eyebrow, title, desc, action }: { eyebrow?: string; title: string; desc?: ReactNode; action?: ReactNode }) {
   return (
@@ -104,7 +103,7 @@ export function CiteText({ text, onCite }: { text: string; onCite?: (id: string)
           {line.split(/(\[C\d{3,}\])/).map((part, j) => {
             const m = part.match(/^\[(C\d{3,})\]$/);
             return m ? (
-              <button key={j} onClick={() => onCite?.(m[1])} className="mx-0.5 rounded bg-brand-weak px-1.5 py-px align-baseline text-[12px] font-semibold text-brand-strong hover:bg-[#D6E8FF]">
+              <button key={j} onClick={() => onCite?.(m[1])} className="mx-0.5 rounded bg-brand-weak px-1.5 py-px align-baseline text-[12px] font-semibold text-brand-strong hover:bg-brand-hover">
                 {m[1]}
               </button>
             ) : (

@@ -6,6 +6,7 @@ import { api } from '@/shared/api/client';
 import { useLive } from '@/shared/api/live';
 import { Empty, PageHeader, Panel } from '@/shared/ui';
 import { CHART } from '@/shared/theme/tokens';
+import { OutcomeBar } from '../overview';
 
 const axis = { stroke: CHART.axis, fontSize: 12, tickLine: false, axisLine: false } as const;
 const tip = { contentStyle: { borderRadius: 12, border: '1px solid #E5E8EB', fontSize: 13 }, cursor: { fill: '#F2F4F6' } };
@@ -16,8 +17,6 @@ export default function MetricsPage() {
   const [scope, setScope] = useState<'all' | 'live'>('live');
   useEffect(() => void api.metrics(scope).then(setM), [state, scope]);
   if (!m) return null;
-
-  const outcome = [{ name: '질문', 위키가답함: m.answeredByWiki, 점장대기: m.escalated, 점장답카드: m.resolvedToCards }];
 
   return (
     <>
@@ -54,18 +53,8 @@ export default function MetricsPage() {
           </ResponsiveContainer>
         </Panel>
         <Panel title="질문은 어떻게 끝났나">
-          <ResponsiveContainer width="100%" height={140}>
-            <BarChart data={outcome} layout="vertical" margin={{ left: -20 }}>
-              <XAxis type="number" allowDecimals={false} {...axis} />
-              <YAxis type="category" dataKey="name" {...axis} />
-              <Tooltip {...tip} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="위키가답함" name="위키가 답함" stackId="a" fill={CHART.brand} stroke="#fff" strokeWidth={2} />
-              <Bar dataKey="점장대기" name="점장 대기" stackId="a" fill={CHART.orange} stroke="#fff" strokeWidth={2} />
-              <Bar dataKey="점장답카드" name="점장 답 → 카드" stackId="a" fill={CHART.teal} stroke="#fff" strokeWidth={2} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <p className="mt-2 text-[13px] text-ink-body">
+          {m.questions ? <OutcomeBar count={{ answered: m.answeredByWiki, escalated: m.escalated, resolved: m.resolvedToCards }} className="mt-2" /> : <Empty>아직 질문이 없어요</Empty>}
+          <p className="mt-4 text-[13px] text-ink-body">
             점장 답이 카드가 되면 다음 같은 질문은 위키가 답해요. 이 비율이 오를수록 점장이 같은 설명을 덜 반복해요.
           </p>
         </Panel>
@@ -78,7 +67,7 @@ export default function MetricsPage() {
                 <YAxis allowDecimals={false} {...axis} />
                 <Tooltip {...tip} cursor={{ stroke: CHART.axis }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="cards" name="카드" stroke={CHART.teal} strokeWidth={2} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="cards" name="카드" stroke={CHART.green} strokeWidth={2} dot={{ r: 4 }} />
                 <Line type="monotone" dataKey="questions" name="질문" stroke={CHART.orange} strokeWidth={2} dot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>

@@ -29,7 +29,7 @@ export default function Page() {
 
   return (
     <div className="mx-auto w-full max-w-5xl pb-16">
-      <PageHeader title="매장 위키" desc="승인된 판단 카드를 주제별로 모았어요. 판단 이유까지 같이 볼 수 있어요." />
+      <PageHeader eyebrow="관리" title="매장 위키" desc="승인된 판단 카드를 주제별로 모았어요. 판단 이유까지 같이 볼 수 있어요." />
       <div className="relative mb-4 max-w-md">
         <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-disabled" />
         <input className={cx(inputCls, 'pl-10')} placeholder="제목, 상황, 이유, 태그로 찾기" value={query} onChange={(e) => setQuery(e.target.value)} />

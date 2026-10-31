@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import type { NodeType } from '@shared/contracts';
 import { useLive } from '@/shared/api/live';
 import { Badge, CardDetail, CiteText, Empty, PageHeader, Panel, cx, fmtTime } from '@/shared/ui';
-import { NODE_STYLE } from '@/shared/theme/tokens';
-import { GraphCanvas, Legend } from './GraphCanvas';
+import { EDGE_STYLE, NODE_STYLE } from '@/shared/theme/tokens';
+import { GraphCanvas, Legend, NodeMark } from './GraphCanvas';
 
 export default function Ontology() {
   const { graph, fresh, state, wikiFeed } = useLive();
@@ -15,47 +15,86 @@ export default function Ontology() {
     return c;
   }, [graph]);
   const toggle = (t: NodeType) => setHidden((h) => (h.includes(t) ? h.filter((x) => x !== t) : [...h, t]));
+  const node = sel ? graph.nodes.find((n) => n.id === sel) : null;
+  // 선택한 노드와 이어진 것들(관계 이름과 함께)
+  const links = useMemo(() => {
+    if (!sel) return [];
+    return graph.edges
+      .filter((e) => e.source === sel || e.target === sel)
+      .map((e) => ({ edge: e, other: graph.nodes.find((n) => n.id === (e.source === sel ? e.target : e.source)) }))
+      .filter((x): x is { edge: (typeof graph.edges)[number]; other: (typeof graph.nodes)[number] } => !!x.other);
+  }, [sel, graph]);
 
   return (
     <>
       <PageHeader
-        eyebrow="시스템"
-        title="온톨로지 그래프"
-        desc="매장 지식이 무엇으로 이루어져 있고 누가 쌓았는지 보여 줘요. 토픽 아래 사례 카드가 모이고, 사람은 카드를 남기거나 질문을 하고, 질문은 카드를 근거로 쓰거나 점장 답을 거쳐 새 카드가 돼요."
+        eyebrow="온톨로지"
+        title="지식 그래프"
+        desc="매장 지식이 무엇으로 이루어져 있고 누가 쌓았는지 보여 줘요. 토픽 아래 사례 카드가 모이고, 질문은 카드를 근거로 쓰거나 점장 답을 거쳐 새 카드가 돼요."
       />
-      <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
-        <Panel>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-1.5">
-              {(Object.keys(NODE_STYLE) as NodeType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => toggle(t)}
-                  className={cx('rounded-full border px-3 py-1 text-[13px] font-semibold transition-colors', hidden.includes(t) ? 'border-line text-ink-disabled' : 'border-transparent bg-surface-subtle text-ink-strong')}
-                >
-                  <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: NODE_STYLE[t].color, opacity: hidden.includes(t) ? 0.3 : 1 }} />
-                  {NODE_STYLE[t].label} {count[t] ?? 0}
-                </button>
-              ))}
-            </div>
-            <span className="text-[13px] text-ink-weak">
-              노드 {graph.nodes.length} · 관계 {graph.edges.length}
-            </span>
-          </div>
-          <GraphCanvas graph={graph} fresh={fresh} height={620} hidden={hidden} onSelect={setSel} focusId={sel} />
-          <div className="mt-3">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {(Object.keys(NODE_STYLE) as NodeType[]).map((t) => {
+          const off = hidden.includes(t);
+          return (
+            <button
+              key={t}
+              onClick={() => toggle(t)}
+              aria-pressed={!off}
+              className={cx('inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-[14px] font-semibold transition-colors', off ? 'bg-transparent text-ink-disabled ring-1 ring-inset ring-line' : 'bg-surface text-ink-strong hover:bg-surface/70')}
+            >
+              <NodeMark type={t} muted={off} />
+              {NODE_STYLE[t].label}
+              <span className={off ? 'text-ink-disabled' : 'text-ink-weak'}>{count[t] ?? 0}</span>
+            </button>
+          );
+        })}
+        <span className="ml-auto text-[13px] text-ink-body">
+          노드 {graph.nodes.length} · 관계 {graph.edges.length}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <Panel className="!p-3 sm:!p-3">
+          <GraphCanvas graph={graph} fresh={fresh} height={640} hidden={hidden} onSelect={setSel} focusId={sel} />
+          <div className="px-2 pb-1 pt-3">
             <Legend />
           </div>
         </Panel>
         <div className="space-y-5">
-          <Panel title={sel ? '선택한 노드' : '노드를 눌러 보세요'}>{sel ? <NodeInfo id={sel} /> : <p className="text-[14px] text-ink-weak">카드, 사람, 질문을 누르면 연결된 것만 또렷하게 보이고 내용이 여기에 나와요.</p>}</Panel>
+          <Panel
+            title={node ? <span className="inline-flex items-center gap-2"><NodeMark type={node.type} />{NODE_STYLE[node.type].label}</span> : '노드를 눌러 보세요'}
+            action={node && <button onClick={() => setSel(null)} className="text-[13px] font-semibold text-ink-weak hover:text-ink-body">선택 해제</button>}
+          >
+            {sel ? (
+              <>
+                <NodeInfo id={sel} />
+                {links.length > 0 && (
+                  <div className="mt-5">
+                    <p className="mb-1.5 text-[13px] font-semibold text-ink-weak">이어진 것 {links.length}</p>
+                    <ul className="-mx-2 max-h-[260px] overflow-y-auto">
+                      {links.map(({ edge, other }) => (
+                        <li key={edge.id}>
+                          <button onClick={() => setSel(other.id)} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-surface-subtle">
+                            <NodeMark type={other.type} />
+                            <span className="min-w-0 flex-1 truncate text-[14px] text-ink-strong">{other.label}</span>
+                            <span className="flex-none text-[12px] text-ink-weak">{EDGE_STYLE[edge.type].label}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-[14px] text-ink-body">토픽, 카드, 사람, 질문을 누르면 이어진 것만 또렷하게 보이고 내용이 여기에 나와요. 마우스를 올려도 이웃이 드러나요.</p>
+            )}
+          </Panel>
           <Panel title="방금 쌓인 것">
             {wikiFeed.length ? (
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 {wikiFeed.slice(0, 8).map((w, i) => (
-                  <li key={`${w.runId}-${i}`} className="animate-rise rounded-lg bg-surface-subtle px-3 py-2">
-                    <p className="text-[13px] font-semibold text-ink-strong">{w.op}</p>
-                    <p className="text-[12px] text-ink-weak">{w.detail}</p>
+                  <li key={`${w.runId}-${i}`} className={cx('animate-rise rounded-xl px-3 py-2', i === 0 && 'bg-brand-weak')}>
+                    <p className="text-[14px] font-semibold text-ink-strong">{w.op}</p>
+                    <p className="truncate text-[13px] text-ink-weak">{w.detail}</p>
                   </li>
                 ))}
               </ul>

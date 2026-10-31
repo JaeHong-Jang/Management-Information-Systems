@@ -219,7 +219,8 @@ export default function Page() {
 
       {step === 1 && (
         <>
-          <h2 className="mb-3 text-sub text-ink-strong">방금 있었던 일을 남겨 주세요</h2>
+        <Panel>
+          <h2 className="mb-1 text-sub text-ink-strong">방금 있었던 일을 남겨 주세요</h2>
           <p className="mb-3 text-[14px] text-ink-body">짧게 남겨 두면 돼요. 정리와 확인은 나중에 해도 돼요.</p>
           <textarea
             className={cx(inputCls, 'min-h-40')}
@@ -239,6 +240,7 @@ export default function Page() {
               AI에게 정리 맡기기
             </Button>
           </div>
+        </Panel>
           {progress}
         </>
       )}

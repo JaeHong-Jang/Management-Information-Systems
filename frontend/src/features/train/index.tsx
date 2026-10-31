@@ -43,7 +43,7 @@ export default function Page() {
 
   return (
     <div className="mx-auto w-full max-w-2xl pb-16">
-      <PageHeader title="먼저 내 판단으로 풀어봐요" desc="AI 없이 먼저 판단해 보면 AI에 기대다 실력이 줄어드는 걸 막을 수 있어요." />
+      <PageHeader eyebrow="훈련" title="먼저 내 판단으로 풀어봐요" desc="AI 없이 먼저 판단해 보면 AI에 기대다 실력이 줄어드는 걸 막을 수 있어요." />
 
       {!task ? (
         <Empty>{busy ? '상황을 불러오고 있어요' : '상황을 불러오지 못했어요'}</Empty>
@@ -52,10 +52,8 @@ export default function Page() {
           <Panel>
             <Badge tone="brand">{task.topic}</Badge>
             <p className="mt-3 text-[17px] font-semibold leading-7 text-ink-strong">{task.situation}</p>
-          </Panel>
-
-          {!result ? (
-            <div className="space-y-3">
+          {!result && (
+            <div className="mt-5 space-y-3">
               <div className="rounded-xl bg-surface-subtle p-4 text-[13px] text-ink-body">
                 <p className="font-semibold text-ink-strong">무엇을 할지 · 왜 그렇게 하는지 · 하면 안 되는 것</p>
                 <p className="mt-1">세 가지를 나눠 적으면 더 정확히 채점돼요.</p>
@@ -63,7 +61,10 @@ export default function Page() {
               <textarea className={cx(inputCls, 'min-h-[120px] resize-none')} placeholder="예: 우유를 먼저 폐기하고 점장님께 알려요. 상한 걸 팔면 손님이 위험해서예요. 문 앞쪽 것만 골라 쓰면 안 돼요." value={answer} onChange={(e) => setAnswer(e.target.value)} />
               <Button size="lg" loading={busy} disabled={!answer.trim()} onClick={() => void grade()}>채점받기</Button>
             </div>
-          ) : (
+          )}
+          </Panel>
+
+          {result && (
             <>
               <Panel>
                 <p className="text-caption text-ink-weak">내 점수</p>
@@ -87,7 +88,7 @@ export default function Page() {
             </>
           )}
 
-          <Button variant={result ? 'primary' : 'ghost'} size="lg" disabled={busy} onClick={() => void load()}>다른 상황 받기</Button>
+          <Button variant={result ? 'primary' : 'secondary'} size="lg" disabled={busy} onClick={() => void load()}>다른 상황 받기</Button>
         </div>
       )}
     </div>

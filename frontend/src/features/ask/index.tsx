@@ -3,7 +3,7 @@ import { Check, ChevronDown, Loader2, Minus, X } from 'lucide-react';
 import type { AskResult, Card, HarnessConfig, Person, Question } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useLive, type RunView } from '@/shared/api/live';
-import { Badge, Button, CardDetail, CiteText, Empty, Panel, Sheet, cx, sourceTone, inputCls, useToast, fmtTime } from '@/shared/ui';
+import { Badge, Button, CardDetail, CiteText, Empty, PageHeader, Panel, Sheet, cx, sourceTone, inputCls, useToast, fmtTime } from '@/shared/ui';
 
 const EXAMPLES = ['오트 우유가 품절이에요', '기프티콘이 사용완료로 떠요', '결제됐는데 주문이 없어요', '영수증 없이 환불해 달라고 해요', '알리페이로 결제하고 싶대요'];
 
@@ -87,7 +87,7 @@ function AnswerCard({ q, cards, people, today, onCite, onFeedback }: { q: Questi
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="text-[12px] text-ink-weak">근거</span>
             {citedIds.map((id) => (
-              <button key={id} onClick={() => onCite(id)} className="rounded bg-brand-weak px-1.5 py-px text-[12px] font-semibold text-brand-strong hover:bg-[#D6E8FF]">
+              <button key={id} onClick={() => onCite(id)} className="rounded bg-brand-weak px-1.5 py-px text-[12px] font-semibold text-brand-strong hover:bg-brand-hover">
                 {id}
               </button>
             ))}
@@ -205,10 +205,9 @@ export default function Page() {
 
   return (
     <div className="mx-auto w-full max-w-2xl pb-16">
-      <h1 className="mb-1 text-title text-ink-strong">지금 어떤 상황이에요?</h1>
-      <p className="mb-5 text-body text-ink-body">매장 위키에서 찾아서 이유와 함께 알려드려요.</p>
+      <PageHeader eyebrow="질문하기" title="지금 어떤 상황이에요?" desc="매장 위키에서 찾아서 선배의 판단 이유와 함께 알려드려요." />
 
-      <div className="space-y-3">
+      <Panel className="space-y-4">
         <textarea
           className={cx(inputCls, 'min-h-[88px] resize-none text-[16px]')}
           placeholder="예: 오트 우유가 다 떨어졌는데 손님이 찾아요"
@@ -222,17 +221,20 @@ export default function Page() {
             }
           }}
         />
-        <div className="flex flex-wrap gap-2">
-          {EXAMPLES.map((ex) => (
-            <button key={ex} disabled={busy} onClick={() => void submit(ex)} className="rounded-full bg-surface px-3.5 py-2 text-[13px] font-medium text-ink-body hover:bg-brand-weak hover:text-brand-strong disabled:opacity-40">
-              {ex}
-            </button>
-          ))}
+        <div>
+          <p className="mb-2 text-[13px] font-semibold text-ink-weak">자주 묻는 상황</p>
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLES.map((ex) => (
+              <button key={ex} disabled={busy} onClick={() => void submit(ex)} className="rounded-full bg-surface-subtle px-3.5 py-2 text-[13px] font-medium text-ink-body hover:bg-brand-weak hover:text-brand-strong disabled:opacity-40">
+                {ex}
+              </button>
+            ))}
+          </div>
         </div>
         <Button size="lg" loading={busy} disabled={!text.trim()} onClick={() => void submit()}>
           물어보기
         </Button>
-      </div>
+      </Panel>
 
       <div className="mt-6 space-y-4">
         {busy && <Progress run={run} names={names} />}
