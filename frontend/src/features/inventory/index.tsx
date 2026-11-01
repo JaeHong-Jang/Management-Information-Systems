@@ -40,9 +40,9 @@ export default function InventoryPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    const [v, l] = await Promise.all([api.inventory(), api.lint(true)]);
+    const [v, l] = await Promise.all([api.inventory(), api.inventoryIssues()]);
     setView(v);
-    setIssues(l.issues);
+    setIssues(l);
   }, []);
   // 다른 화면이나 하루 재생에서 바뀌어도 따라온다(실행이 끝나면 state가 새로 온다)
   useEffect(() => void load(), [load, state]);

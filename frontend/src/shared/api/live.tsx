@@ -67,13 +67,38 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void refresh();
-    const es = new EventSource('/api/stream');
-    es.onopen = () => {
-      openedAt.current = Date.now();
-      setConnected(true);
+    let es: EventSource;
+    let lastSeen = 0;
+    let retry = 0;
+    const connect = () => {
+      es = new EventSource('/api/stream');
+      lastSeen = Date.now();
+      es.onopen = () => {
+        openedAt.current = lastSeen = Date.now();
+        setConnected(true);
+      };
+      es.onerror = () => {
+        setConnected(false);
+        // 서버(프록시)가 오류로 답해 닫힌 연결은 브라우저가 다시 열지 않으므로 직접 다시 연다
+        if (es.readyState === EventSource.CLOSED) reconnect();
+      };
+      es.addEventListener('ping', () => (lastSeen = Date.now()));
+      es.onmessage = onMessage;
     };
-    es.onerror = () => setConnected(false);
-    es.onmessage = (msg) => {
+    const reconnect = () => {
+      es.close();
+      setConnected(false);
+      window.clearTimeout(retry);
+      retry = window.setTimeout(() => {
+        // 다시 붙으면 서버가 지난 실행 기록을 처음부터 다시 보내므로 화면의 기록을 비우고 받는다(같은 실행이 두 번 쌓이지 않게)
+        setRuns([]);
+        setWikiFeed([]);
+        connect();
+        void refresh();
+      }, 2000);
+    };
+    const onMessage = (msg: MessageEvent<string>) => {
+      lastSeen = Date.now();
       setConnected(true);
       const e = JSON.parse(msg.data) as RunEvent;
       setRuns((prev) => applyEvent(prev, e));
@@ -90,7 +115,17 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       }
       if (e.type === 'run-end') scheduleRefresh();
     };
-    return () => es.close();
+    connect();
+    // Vite 개발 프록시는 백엔드가 재시작돼도 화면 쪽 연결을 끊지 않는다(열린 채 아무것도 안 옴).
+    // 서버 ping(5초)이 15초 넘게 없으면 죽은 연결로 보고 다시 연다
+    const watch = window.setInterval(() => {
+      if (Date.now() - lastSeen > 15000) reconnect();
+    }, 3000);
+    return () => {
+      window.clearInterval(watch);
+      window.clearTimeout(retry);
+      es.close();
+    };
   }, [refresh, scheduleRefresh]);
 
   useEffect(() => localStorage.setItem('me', me), [me]);

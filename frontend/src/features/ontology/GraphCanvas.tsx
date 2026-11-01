@@ -3,7 +3,7 @@
 // 새 노드는 이웃 옆에서 나타나 자리를 잡고, 방금 바뀐 것은 달빛 둘레로 한 번 숨 쉬듯 강조한다.
 import cytoscape, { type Core, type ElementDefinition } from 'cytoscape';
 import fcose from 'cytoscape-fcose';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Maximize2, Minus, Plus } from 'lucide-react';
 import type { Graph, GraphNode, NodeType } from '@shared/contracts';
 import { EDGE_STYLE, NIGHT, NIGHT_EDGE, NIGHT_NODE, NODE_STYLE } from '@/shared/theme/tokens';
@@ -174,6 +174,10 @@ function untangle(cy: Core, nodes: cytoscape.NodeCollection): boolean {
   return true;
 }
 
+// 화면을 옮겼다 돌아와도 그래프가 같으면 지난 배치를 그대로 쓴다(배치 계산이 0.5초쯤 걸린다). 대시보드·그래프 화면과 칸 크기마다 따로 둔다
+const saved = new Map<string, { sig: string; pos: Record<string, cytoscape.Position>; zoom: number; pan: cytoscape.Position }>();
+const sigOf = (ids: string[]) => [...ids].sort().join('|');
+
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect, focusId, spotlight }: { graph: Graph; fresh: Set<string>; height?: number; hidden?: NodeType[]; onSelect?: (id: string | null) => void; focusId?: string | null; spotlight?: boolean }) {
@@ -189,6 +193,9 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
   // 좁은 화면에서는 칸을 낮춰 그래프가 작아지지 않게 한다
   const narrow = typeof window !== 'undefined' && window.innerWidth < 640;
   const pad = spotlight || narrow ? 16 : PAD;
+  const slot = (cy: Core) => `${spotlight ? 'spot' : 'full'}${narrow ? '-narrow' : ''}:${cy.width()}x${cy.height()}`;
+  // 처음 배치를 한 프레임 미룬 경우, 그 뒤에 강조·선택 효과를 다시 입히려고 올린다
+  const [ready, setReady] = useState(0);
 
   useEffect(() => {
     // 대시보드(spotlight)에서는 휠로 확대하지 않는다(페이지 스크롤을 뺏지 않게)
@@ -229,91 +236,110 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
     const cy = cyRef.current;
     if (!cy) return;
     const want = new Set([...graph.nodes.map((n) => n.id), ...graph.edges.map((e) => e.id)]);
-    const removed = cy.elements().filter((el) => !want.has(el.id()));
     const first = cy.nodes().length === 0;
-    let added = 0;
-    let addedNodes = 0;
-    const before = cy.nodes();
-    const heavyMin = heavyMinOf(graph);
-    cy.batch(() => {
-      removed.remove();
-      for (const n of graph.nodes) {
-        const el = cy.getElementById(n.id);
-        if (el.nonempty()) {
-          el.data(toEl(n, heavyMin).data);
-          continue;
+    const hit = first ? saved.get(slot(cy)) : undefined;
+    const reuse = !!hit && hit.sig === sigOf([...want]);
+    const apply = () => {
+      const removed = cy.elements().filter((el) => !want.has(el.id()));
+      let added = 0;
+      let addedNodes = 0;
+      const before = cy.nodes();
+      const heavyMin = heavyMinOf(graph);
+      cy.batch(() => {
+        removed.remove();
+        for (const n of graph.nodes) {
+          const el = cy.getElementById(n.id);
+          if (el.nonempty()) {
+            el.data(toEl(n, heavyMin).data);
+            continue;
+          }
+          const nb = graph.edges.find((e) => e.source === n.id || e.target === n.id);
+          const anchor = nb ? cy.getElementById(nb.source === n.id ? nb.target : nb.source) : null;
+          const p = anchor?.nonempty() ? anchor.position() : { x: cy.width() / 2, y: cy.height() / 2 };
+          cy.add({ ...toEl(n, heavyMin), position: reuse ? hit.pos[n.id] : { x: p.x + (Math.random() - 0.5) * 80, y: p.y + (Math.random() - 0.5) * 80 } });
+          added++;
+          addedNodes++;
         }
-        const nb = graph.edges.find((e) => e.source === n.id || e.target === n.id);
-        const anchor = nb ? cy.getElementById(nb.source === n.id ? nb.target : nb.source) : null;
-        const p = anchor?.nonempty() ? anchor.position() : { x: cy.width() / 2, y: cy.height() / 2 };
-        cy.add({ ...toEl(n, heavyMin), position: { x: p.x + (Math.random() - 0.5) * 80, y: p.y + (Math.random() - 0.5) * 80 } });
-        added++;
-        addedNodes++;
-      }
-      for (const e of graph.edges) {
-        if (cy.getElementById(e.id).nonempty()) continue;
-        const st = NIGHT_EDGE[e.type];
-        cy.add({ group: 'edges', data: { id: e.id, source: e.source, target: e.target, type: e.type, color: st.color, opacity: st.opacity, width: st.width, vw: st.width, dashed: st.dashed ? 1 : 0, arrow: st.arrow ? 1 : 0 } });
-        added++;
-      }
-    });
-    // 숨길 노드는 배치 전에 숨겨 보이는 것만 자리를 잡고 화면을 채우게 한다
-    cy.nodes().forEach((n) => void n.style('display', hideRef.current(n.data('type')) ? 'none' : 'element'));
-    rescale(cy);
-    if (added || removed.nonempty()) {
-      // 처음 불러올 때 일부만 먼저 오고 나머지가 한꺼번에 붙으면(있던 것보다 많이) 처음처럼 전체를 다시 배치한다
-      const full = first || addedNodes > before.length;
-      // 이미 있던 노드는 제자리에 두고 새 노드만 자리를 잡게 한다(새 지식이 어디 붙었는지 눈으로 따라갈 수 있게)
-      const keep = full ? cy.collection() : before.filter((n) => n.inside());
-      keep.lock();
-      const shown = (n: cytoscape.NodeSingular) => !hideRef.current(n.data('type'));
-      const vis = cy.elements().filter((el) => (el.isNode() ? shown(el) : shown(el.source()) && shown(el.target())));
-      const opts = (o: { animate: boolean; randomize: boolean; quality: string }) =>
-        ({
-          name: 'fcose',
-          ...o,
-          animationDuration: 700,
-          fit: true,
-          padding: pad,
-          // 이름표 크기까지 넣어 배치해 별 이름끼리, 이름과 별이 겹치지 않게 한다
-          nodeDimensionsIncludeLabels: true,
-          nodeRepulsion: (node: cytoscape.NodeSingular) => (node.data('type') === 'topic' ? 13500 : 5800),
-          nodeSeparation: 54,
-          idealEdgeLength: (edge: cytoscape.EdgeSingular) => (edge.data('type') === 'belongs' ? 52 : 80),
-        }) as cytoscape.LayoutOptions;
-      // 갱신 때는 randomize 없이 이어서 배치하므로 느리게 식혀(proof) 겹침을 줄인다
-      const layout = vis.layout(opts({ animate: !full, randomize: full, quality: full ? 'default' : 'proof' }));
-      // 이름표는 화면 크기로 고정이라 확대율이 정해져야 모델 크기가 정해진다. 전체 배치 뒤에는 확대율이 거의 안 바뀔 때까지 두세 번 다듬는다
-      let pass = 0;
-      // 마지막에 겹침을 풀고 다시 맞춘다. 확대율이 바뀌면 이름표 크기도 바뀌므로 한 번 더 확인한다
-      const settle = () => {
-        const vn = vis.nodes();
-        for (let i = 0; i < 6; i++) {
+        for (const e of graph.edges) {
+          if (cy.getElementById(e.id).nonempty()) continue;
+          const st = NIGHT_EDGE[e.type];
+          cy.add({ group: 'edges', data: { id: e.id, source: e.source, target: e.target, type: e.type, color: st.color, opacity: st.opacity, width: st.width, vw: st.width, dashed: st.dashed ? 1 : 0, arrow: st.arrow ? 1 : 0 } });
+          added++;
+        }
+      });
+      // 숨길 노드는 배치 전에 숨겨 보이는 것만 자리를 잡고 화면을 채우게 한다
+      cy.nodes().forEach((n) => void n.style('display', hideRef.current(n.data('type')) ? 'none' : 'element'));
+      if (reuse) cy.viewport({ zoom: hit.zoom, pan: hit.pan });
+      rescale(cy);
+      if (!reuse && (added || removed.nonempty())) {
+        // 처음 불러올 때 일부만 먼저 오고 나머지가 한꺼번에 붙으면(있던 것보다 많이) 처음처럼 전체를 다시 배치한다
+        const full = first || addedNodes > before.length;
+        // 이미 있던 노드는 제자리에 두고 새 노드만 자리를 잡게 한다(새 지식이 어디 붙었는지 눈으로 따라갈 수 있게)
+        const keep = full ? cy.collection() : before.filter((n) => n.inside());
+        keep.lock();
+        const shown = (n: cytoscape.NodeSingular) => !hideRef.current(n.data('type'));
+        const vis = cy.elements().filter((el) => (el.isNode() ? shown(el) : shown(el.source()) && shown(el.target())));
+        const opts = (o: { animate: boolean; randomize: boolean; quality: string }) =>
+          ({
+            name: 'fcose',
+            ...o,
+            animationDuration: 700,
+            fit: true,
+            padding: pad,
+            // 이름표 크기까지 넣어 배치해 별 이름끼리, 이름과 별이 겹치지 않게 한다
+            nodeDimensionsIncludeLabels: true,
+            nodeRepulsion: (node: cytoscape.NodeSingular) => (node.data('type') === 'topic' ? 13500 : 5800),
+            nodeSeparation: 54,
+            idealEdgeLength: (edge: cytoscape.EdgeSingular) => (edge.data('type') === 'belongs' ? 52 : 80),
+          }) as cytoscape.LayoutOptions;
+        // 갱신 때는 randomize 없이 이어서 배치하므로 느리게 식혀(proof) 겹침을 줄인다
+        const layout = vis.layout(opts({ animate: !full, randomize: full, quality: full ? 'default' : 'proof' }));
+        // 이름표는 화면 크기로 고정이라 확대율이 정해져야 모델 크기가 정해진다. 전체 배치 뒤에는 확대율이 거의 안 바뀔 때까지 두세 번 다듬는다
+        let pass = 0;
+        // 마지막에 겹침을 풀고 다시 맞춘다. 확대율이 바뀌면 이름표 크기도 바뀌므로 한 번 더 확인한다
+        const settle = () => {
+          const vn = vis.nodes();
+          for (let i = 0; i < 6; i++) {
+            rescale(cy);
+            const moved = untangle(cy, vn);
+            const z = cy.zoom();
+            cy.fit(vis, pad);
+            if (!moved && Math.abs(cy.zoom() - z) / z < 0.02) break;
+          }
           rescale(cy);
-          const moved = untangle(cy, vn);
+          saved.set(slot(cy), { sig: sigOf(cy.elements().map((el) => el.id())), pos: Object.fromEntries(cy.nodes().map((n) => [n.id(), { ...n.position() }])), zoom: cy.zoom(), pan: { ...cy.pan() } });
+        };
+        const refine = () => {
           const z = cy.zoom();
-          cy.fit(vis, pad);
-          if (!moved && Math.abs(cy.zoom() - z) / z < 0.02) break;
-        }
-        rescale(cy);
-      };
-      const refine = () => {
-        const z = cy.zoom();
-        rescale(cy);
-        const next = vis.layout(opts({ animate: false, randomize: false, quality: 'proof' }));
-        next.one('layoutstop', () => {
-          if (++pass < 3 && Math.abs(cy.zoom() - z) / z > 0.06) refine();
+          rescale(cy);
+          const next = vis.layout(opts({ animate: false, randomize: false, quality: 'proof' }));
+          next.one('layoutstop', () => {
+            if (++pass < 3 && Math.abs(cy.zoom() - z) / z > 0.06) refine();
+            else settle();
+          });
+          next.run();
+        };
+        layout.one('layoutstop', () => {
+          keep.unlock();
+          if (full) refine();
           else settle();
         });
-        next.run();
-      };
-      layout.one('layoutstop', () => {
-        keep.unlock();
-        if (full) refine();
-        else settle();
+        layout.run();
+      }
+    };
+    if (!first || reuse) return void apply();
+    // 처음 배치는 페이지가 화면에 먼저 나온 다음에 한다(메뉴를 누르고 배치가 끝날 때까지 화면이 멈춰 보이지 않게)
+    let t = 0;
+    const raf = requestAnimationFrame(() => {
+      t = window.setTimeout(() => {
+        apply();
+        setReady((r) => r + 1);
       });
-      layout.run();
-    }
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
   }, [graph]);
 
   useEffect(() => {
@@ -341,13 +367,13 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
         cy.elements().not(path).addClass('dim');
       }
     }
-  }, [fresh, graph, spotlight, focusId]);
+  }, [fresh, graph, spotlight, focusId, ready]);
 
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
     cy.nodes().forEach((n) => void n.style('display', hideRef.current(n.data('type')) ? 'none' : 'element'));
-  }, [hidden, graph, spotlight]);
+  }, [hidden, graph, spotlight, ready]);
 
   // 선택한 노드와 이웃만 또렷하게
   useEffect(() => {
@@ -360,7 +386,7 @@ export function GraphCanvas({ graph, fresh, height = 520, hidden = [], onSelect,
     const keep = n.closedNeighborhood();
     keep.addClass('near');
     cy.elements().not(keep).addClass('dim');
-  }, [focusId, graph]);
+  }, [focusId, graph, ready]);
 
   const zoom = (k: number) => {
     const cy = cyRef.current;

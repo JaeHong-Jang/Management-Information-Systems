@@ -1,6 +1,6 @@
 // 위키 관리팀: 종합 편집자 · 위키 점검관
 import { z } from 'zod';
-import type { Card, EdgeType, LintIssue } from '@shared/contracts';
+import type { Card, EdgeType, LintIssue, Via } from '@shared/contracts';
 import { ask, llmEnabled } from '../harness/llm.js';
 import { llmOr, type StepOut } from '../harness/runner.js';
 import { similarity } from '../tools/search.js';
@@ -48,6 +48,8 @@ function conflictsByRules(cards: Card[]) {
   return out;
 }
 
+let conflictMemo: { key: string; result: { value: { ids: string[]; issue: string }[]; via: Via } } | null = null;
+
 export async function linter(): Promise<StepOut<LintOut>> {
   const d = db.get();
   const today = db.today();
@@ -71,7 +73,9 @@ export async function linter(): Promise<StepOut<LintOut>> {
       }
     }
 
-  const { value: conflicts, via } = await llmOr(
+  // 승인 카드 내용이 지난번과 같으면 AI 모순 검사 결과를 다시 쓴다(로컬 AI 호출이 2초쯤 걸려 화면을 열 때마다 기다리게 된다)
+  const key = JSON.stringify([llmEnabled(), approved.map((c) => [c.id, c.topic, c.source, c.title, c.actions, c.avoid])]);
+  const { value: conflicts, via } = conflictMemo?.key === key ? conflictMemo.result : await llmOr(
     async () =>
       (await ask('linter', {
         user: `같은 토픽의 카드들이다. 서로 모순되는 지시(한쪽은 하라, 한쪽은 하지 말라)만 찾아라. 단순 중복은 제외.\n\n${approved.map((c) => `[${c.id}] (${c.topic}, ${c.source}) ${c.title} / 대응: ${c.actions.join(' / ')} / 금지: ${c.avoid}`).join('\n')}`,
@@ -79,7 +83,11 @@ export async function linter(): Promise<StepOut<LintOut>> {
       }))?.conflicts ?? null,
     () => conflictsByRules(approved),
     llmEnabled(),
-  );
+  ).then((result) => {
+    // AI가 실패해 규칙으로 대신한 결과는 남기지 않는다(다음에 AI로 다시 시도)
+    if (result.via !== 'rules(LLM 실패 대체)') conflictMemo = { key, result };
+    return result;
+  });
   for (const c of conflicts) {
     issues.push({ kind: '상충', ids: c.ids, detail: c.issue });
     if (c.ids.length >= 2) links.push({ source: c.ids[0], target: c.ids[1], type: 'conflicts' });
@@ -103,7 +111,7 @@ export async function linter(): Promise<StepOut<LintOut>> {
 }
 
 /** 재고: 실사 차이 · 사용량 이탈 · 소모량 승인 대기 · 보정 제안 (모두 규칙) */
-function inventoryIssues(): LintIssue[] {
+export function inventoryIssues(): LintIssue[] {
   const inv = db.inventory();
   if (!inv.items.length) return [];
   const today = db.today();

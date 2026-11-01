@@ -9,6 +9,7 @@ import { status as aiStatus } from './harness/llm.js';
 import { bus } from './harness/trace.js';
 import * as flows from './flows/index.js';
 import * as stock from './flows/stock.js';
+import { inventoryIssues } from './agents/keeper.js';
 import { isPlaying, playDay } from './demo.js';
 import { isSimulating, recentVisits, visitMany } from './sim/customers.js';
 import * as db from './store/db.js';
@@ -91,12 +92,13 @@ app.get('/api/metrics', (req, res) => {
 app.get('/api/stream', (req, res) => {
   res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   res.flushHeaders();
-  // 보낼 기록이 없어도 바로 한 줄 보낸다. 안 보내면 Vite 프록시가 첫 ping(20초)까지 연결을 붙잡아 화면이 '다시 연결하는 중'으로 남는다
+  // 보낼 기록이 없어도 바로 한 줄 보낸다. 안 보내면 Vite 프록시가 첫 ping(5초)까지 연결을 붙잡아 화면이 '다시 연결하는 중'으로 남는다
   res.write(': connected\n\n');
   const send = (e: unknown) => res.write(`data: ${JSON.stringify(e)}\n\n`);
   bus.replay().forEach(send);
   const off = bus.subscribe(send);
-  const ping = setInterval(() => res.write(': ping\n\n'), 20000);
+  // 화면이 받을 수 있는 이벤트로 보낸다. 화면은 이것이 끊기면 연결이 죽은 것으로 보고 다시 연다
+  const ping = setInterval(() => res.write('event: ping\ndata: \n\n'), 5000);
   req.on('close', () => {
     off();
     clearInterval(ping);
@@ -143,6 +145,8 @@ app.get('/api/lint', route(async (req, res) => res.json(await flows.lint(req.que
 // ---------- 재고·발주 ----------
 
 app.get('/api/inventory', (_req, res) => res.json(stock.view()));
+// 재고 화면용 점검: 규칙만 쓰므로 AI 모순 검사(/api/lint)를 기다리지 않는다
+app.get('/api/inventory/issues', (_req, res) => res.json(inventoryIssues()));
 
 app.post('/api/inventory/pos', route(async (req, res) => {
   const { file, base64, actorId } = req.body ?? {};

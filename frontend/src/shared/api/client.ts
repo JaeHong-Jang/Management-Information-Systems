@@ -33,6 +33,7 @@ export const api = {
   reset: () => post<{ ok: boolean }>('/reset'),
   // 재고·발주
   inventory: () => call<InventoryView>('/inventory'),
+  inventoryIssues: () => call<LintIssue[]>('/inventory/issues'),
   posUpload: (file: string, base64: string, actorId: string) => post<PosImportResult>('/inventory/pos', { file, base64, actorId }),
   posSample: (actorId: string) => post<PosImportResult>('/inventory/pos/sample', { actorId }),
   stocktake: (counts: { itemId: string; counted: number }[], byId: string) => post<{ stocktakes: Stocktake[]; issues: LintIssue[]; orders: Order[] }>('/inventory/stocktake', { counts, byId }),
