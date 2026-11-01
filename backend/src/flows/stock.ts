@@ -45,8 +45,9 @@ const dueNodes = () => itemNodes(view().items.filter((s) => s.level !== 'ok').ma
 // ---------- POS 판매 반영 ----------
 
 export const SAMPLE_POS = '포차달빛_메뉴별매출_2026-10-24_10-30.csv';
-/** 시연용: 저장소에 든 가상 POS 파일(이번 주 판매)을 그대로 올린다 */
-export const posImportSample = (actorId: string) => posImport(SAMPLE_POS, readFileSync(join(DATA_DIR, 'pos', SAMPLE_POS)), actorId);
+/** 시연용: 저장소에 든 가상 POS 파일(이번 주 판매)을 올린다. 날짜는 시드처럼 실제 오늘에 맞춰 옮긴다 */
+export const posImportSample = (actorId: string) =>
+  posImport(db.demoShift(SAMPLE_POS), new TextEncoder().encode(db.demoShift(readFileSync(join(DATA_DIR, 'pos', SAMPLE_POS), 'utf8'))), actorId);
 
 export async function posImport(file: string, bytes: Uint8Array, actorId: string): Promise<PosImportResult> {
   const inv = db.inventory();

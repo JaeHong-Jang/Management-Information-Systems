@@ -101,7 +101,7 @@ export default function InventoryPage() {
 
       {/* 한 문장: 오늘 무엇을 주문하나 */}
       <section className="mb-5 rounded-card bg-surface p-6 sm:p-8">
-        <p className="text-[14px] font-semibold text-brand">{fmtTime(view.today)} · {state.store.name}</p>
+        <p className="text-[14px] font-semibold text-brand">{fmtTime(view.today)}</p>
         <h1 className="mt-2 text-[26px] font-bold leading-[36px] tracking-tight text-ink-strong sm:text-[30px] sm:leading-[40px]">
           {due.length ? (
             <>
@@ -130,7 +130,7 @@ export default function InventoryPage() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px] [&>*]:min-w-0">
         <div className="space-y-5">
           <Panel title="품목별 남은 양">
-            <div className="hidden grid-cols-[minmax(0,1.4fr)_90px_minmax(0,1fr)_110px_90px] gap-3 px-3 pb-2 text-[12px] font-semibold text-ink-disabled md:grid">
+            <div className="hidden grid-cols-[minmax(0,1.4fr)_90px_minmax(0,1fr)_110px_90px] gap-3 px-3 pb-2 text-[12px] font-semibold text-ink-weak md:grid">
               <span>품목</span>
               <span className="text-right">남은 양</span>
               <span>남은 일수</span>
@@ -153,8 +153,8 @@ export default function InventoryPage() {
                       <span className="ml-0.5 text-[12px] font-medium text-ink-weak">{s.item.unit}</span>
                     </span>
                     <span className="col-span-2 flex items-center gap-2 md:col-span-1">
-                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-subtle">
-                        <span className={cx('block h-full rounded-full', LEVEL[s.level].bar)} style={{ width: `${(Math.min(s.daysLeft ?? 14, 7) / 7) * 100}%` }} />
+                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-line">
+                        <span className={cx('block h-full min-w-[8px] rounded-full', LEVEL[s.level].bar)} style={{ width: `${(Math.min(s.daysLeft ?? 14, 7) / 7) * 100}%` }} />
                       </span>
                       <span className="w-14 text-right text-[13px] text-ink-body">{s.daysLeft === null ? '14일+' : `${num(s.daysLeft)}일`}</span>
                     </span>
@@ -356,16 +356,16 @@ function RecipeEditor({ recipe, items, busy, onApprove }: { recipe: Recipe; item
         {lines.map((l, i) => {
           const it = items.find((s) => s.item.id === l.itemId)?.item;
           return (
-            <div key={i} className="flex items-center gap-2">
-              <select className={cx(inputCls, 'flex-1 py-2')} value={l.itemId} onChange={(e) => set(i, { itemId: e.target.value })}>
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_88px_24px] items-center gap-2">
+              <select className={cx(inputCls, 'h-11 min-w-0 py-0 text-[14px]')} value={l.itemId} onChange={(e) => set(i, { itemId: e.target.value })}>
                 {items.map((s) => (
                   <option key={s.item.id} value={s.item.id}>
                     {s.item.name}
                   </option>
                 ))}
               </select>
-              <input className={cx(inputCls, 'w-24 py-2 text-right')} type="number" step="0.005" min="0" value={l.qty} onChange={(e) => set(i, { qty: Number(e.target.value) })} />
-              <span className="w-6 text-[13px] text-ink-weak">{it?.unit}</span>
+              <input className={cx(inputCls, 'h-11 py-0 text-right')} type="number" step="0.005" min="0" value={l.qty} onChange={(e) => set(i, { qty: Number(e.target.value) })} />
+              <span className="text-[13px] text-ink-weak">{it?.unit}</span>
             </div>
           );
         })}
@@ -451,7 +451,7 @@ function ItemDetail({ s, today, onCite, onSaved }: { s: ItemStatus; today: strin
           <BarChart data={week} margin={{ left: -24, right: 4, top: 4 }}>
             <XAxis dataKey="d" stroke={CHART.axis} fontSize={12} tickLine={false} axisLine={false} />
             <YAxis stroke={CHART.axis} fontSize={12} tickLine={false} axisLine={false} />
-            <Tooltip formatter={(v: number) => [`${num(v)}${u}`, '평균']} contentStyle={{ borderRadius: 12, border: '1px solid #E5E8EB', fontSize: 13 }} cursor={{ fill: '#F2F4F6' }} />
+            <Tooltip formatter={(v: number) => [`${num(v)}${u}`, '평균']} contentStyle={{ borderRadius: 12, border: `1px solid ${CHART.line}`, fontSize: 13 }} cursor={{ fill: CHART.hover }} />
             <Bar dataKey="qty" fill={CHART.brand} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>

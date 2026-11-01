@@ -1,5 +1,5 @@
 {
-  "name": "이어받기 매장 위키 에이전트 하네스",
+  "name": "윤슬 매장 위키 에이전트 하네스",
   "version": "0.3.0",
   "llm": {
     "provider": "anthropic",

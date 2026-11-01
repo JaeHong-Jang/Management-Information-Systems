@@ -52,6 +52,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [me, setMe] = useState(() => localStorage.getItem('me') || 'P005');
   const timer = useRef<number>();
+  const openedAt = useRef(0);
 
   const refresh = useCallback(async () => {
     const [s, g] = await Promise.all([api.state(), api.graph()]);
@@ -67,7 +68,10 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
     const es = new EventSource('/api/stream');
-    es.onopen = () => setConnected(true);
+    es.onopen = () => {
+      openedAt.current = Date.now();
+      setConnected(true);
+    };
     es.onerror = () => setConnected(false);
     es.onmessage = (msg) => {
       setConnected(true);
@@ -75,9 +79,12 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       setRuns((prev) => applyEvent(prev, e));
       if (e.type === 'wiki') {
         setGraph((g) => mergeGraph(g, e.change.nodes, e.change.edges));
-        const ids = [...e.change.nodes.map((n) => n.id), ...e.change.edges.map((x) => x.id)];
-        setFresh((f) => new Set([...f, ...ids]));
-        window.setTimeout(() => setFresh((f) => new Set([...f].filter((id) => !ids.includes(id)))), 4000);
+        // 연결 직후 350ms 안에 오는 것은 지난 이벤트 재생(replay)이라 '방금 바뀐 것'으로 강조하지 않는다
+        if (Date.now() - openedAt.current > 350) {
+          const ids = [...e.change.nodes.map((n) => n.id), ...e.change.edges.map((x) => x.id)];
+          setFresh((f) => new Set([...f, ...ids]));
+          window.setTimeout(() => setFresh((f) => new Set([...f].filter((id) => !ids.includes(id)))), 4000);
+        }
         setWikiFeed((f) => [{ at: e.at, op: e.change.op, detail: e.change.detail, runId: e.runId }, ...f].slice(0, 60));
         scheduleRefresh();
       }

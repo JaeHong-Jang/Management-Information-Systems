@@ -6,7 +6,7 @@ import type { HarnessConfig, InventoryView } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useLive, type RunView } from '@/shared/api/live';
 import { Badge, Button, Empty, Panel, Stat, cx, fmtTime, useToast } from '@/shared/ui';
-import { CHART, TEAM_STYLE } from '@/shared/theme/tokens';
+import { CHART, NIGHT_OUTCOME, TEAM_STYLE } from '@/shared/theme/tokens';
 import { GraphCanvas, Legend } from '../ontology/GraphCanvas';
 
 const OUTCOME = [
@@ -64,36 +64,39 @@ export default function Overview() {
 
   return (
     <div className="space-y-5">
-      {/* 첫 줄: 오늘 한 문장 + 질문이 어떻게 끝났나 */}
-      <section className="rounded-card bg-surface p-6 sm:p-8">
+      {/* 첫 줄: 오늘 한 문장 + 질문이 어떻게 끝났나. 발표 첫 장면이라 이 카드만 밤하늘 */}
+      <section className="hero-night relative isolate overflow-hidden rounded-card p-6 pt-20 sm:p-8">
+        {/* 보름달과 물에 비친 달빛. 글자·버튼 뒤로 가지 않는 자리(버튼과 막대 사이)에 둔다 */}
+        <div aria-hidden className="moon-disc absolute right-7 top-6 -z-10 h-11 w-11 rounded-full sm:left-[76%] sm:right-auto sm:top-[45%] sm:h-16 sm:w-16 sm:-translate-x-1/2 sm:-translate-y-1/2" />
+        <div aria-hidden className="moon-reflection absolute -z-10 hidden h-[72px] w-16 -translate-x-1/2 sm:left-[76%] sm:top-[calc(45%+40px)] sm:block" />
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
-            <p className="text-[14px] font-semibold text-brand">{fmtTime(state.store.today)} · {state.store.name}</p>
-            <h1 className="mt-2 text-[26px] font-bold leading-[36px] tracking-tight text-ink-strong sm:text-[30px] sm:leading-[40px]">
+            <p className="text-[14px] font-semibold text-night-iris-soft">{fmtTime(state.store.today)}</p>
+            <h1 className="mt-2 text-[26px] font-bold leading-[36px] tracking-tight text-night-ink sm:text-[30px] sm:leading-[40px]">
               {d.total ? (
                 <>
-                  신입 질문 {d.total}건 중 <span className="text-brand">{d.count.answered}건</span>을
+                  신입 질문 {d.total}건 중 <span className="text-night-rose">{d.count.answered}건</span>을
                   <br className="hidden sm:block" /> 위키가 바로 답했어요
                 </>
               ) : (
                 '아직 들어온 질문이 없어요'
               )}
             </h1>
-            <p className="mt-2 text-[15px] text-ink-body">
+            <p className="mt-2 text-[15px] text-night-body">
               {d.count.escalated ? `점장 답을 기다리는 질문이 ${d.count.escalated}건 있어요. 점장이 답하면 그 답이 다시 위키가 돼요.` : '위키가 모르는 질문은 점장에게 넘어가고, 점장 답은 다시 위키가 돼요.'}
             </p>
           </div>
           <div className="flex gap-2">
-            <Link to="/customers" className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-surface-subtle px-4 text-[15px] font-semibold text-ink-body hover:bg-line">
+            <Link to="/customers" className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-4 text-[15px] font-semibold text-night-ink hover:bg-white/15">
               <Users size={16} /> 가상 손님
             </Link>
-            <Button onClick={play} disabled={state.demoPlaying}>
+            <Button variant="moon" onClick={play} disabled={state.demoPlaying}>
               <Play size={16} /> {state.demoPlaying ? '하루 재생 중' : '매장의 하루 재생'}
             </Button>
           </div>
         </div>
 
-        {d.total > 0 && <OutcomeBar count={d.count} className="mt-7" />}
+        {d.total > 0 && <OutcomeBar count={d.count} tone="night" className="mt-7" />}
       </section>
 
       {inv && inv.items.length > 0 && <StockStrip inv={inv} />}
@@ -126,7 +129,7 @@ export default function Overview() {
               {d.waiting.slice(0, 4).map((q) => (
                 <li key={q.id}>
                   <Link to="/manager" className="flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-surface-subtle">
-                    <span className="h-2 w-2 flex-none rounded-full bg-warning" />
+                    <span className="h-2 w-2 flex-none rounded-full bg-warning-mark" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[15px] font-medium text-ink-strong">{q.text}</p>
                       <p className="text-[12px] text-ink-weak">
@@ -155,9 +158,9 @@ export default function Overview() {
         </Panel>
 
         <Panel title="노하우를 남긴 사람">
-          <ul className="space-y-3.5">
+          <ul className="space-y-1.5">
             {veterans.map(({ p, n, helped }) => (
-              <li key={p.id} className={cx('flex items-center gap-3 rounded-xl', fresh.has(p.id) && 'ring-2 ring-brand ring-offset-4')}>
+              <li key={p.id} className={cx('-mx-2.5 flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors', fresh.has(p.id) && 'bg-person-weak ring-1 ring-inset ring-person-mark/25')}>
                 <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-person-weak text-[14px] font-bold text-person">{p.name[0]}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
@@ -183,26 +186,29 @@ export default function Overview() {
   );
 }
 
-/** 질문이 어떻게 끝났는지 한 줄 막대 + 범례(대시보드·지표 공통) */
-export function OutcomeBar({ count, className }: { count: Record<(typeof OUTCOME)[number]['key'], number>; className?: string }) {
+/** 질문이 어떻게 끝났는지 한 줄 막대 + 범례(대시보드·지표 공통). night = 대시보드 첫 카드(밤) 위 */
+export function OutcomeBar({ count, className, tone = 'light' }: { count: Record<(typeof OUTCOME)[number]['key'], number>; className?: string; tone?: 'light' | 'night' }) {
   const total = count.answered + count.escalated + count.resolved;
   if (!total) return null;
+  const night = tone === 'night';
+  const color = (o: (typeof OUTCOME)[number]) => (night ? NIGHT_OUTCOME[o.key] : o.color);
   return (
     <div className={className}>
-      <div className="flex h-3 gap-[2px] overflow-hidden rounded-full bg-surface-subtle">
+      <div className={cx('flex h-3 gap-[2px] overflow-hidden rounded-full', night ? 'bg-white/[.12]' : 'bg-surface-subtle')}>
         {OUTCOME.map((o) =>
           count[o.key] ? (
-            <div key={o.key} title={`${o.label} ${count[o.key]}건`} className="h-full transition-[width] duration-500 first:rounded-l-full last:rounded-r-full" style={{ width: `${(count[o.key] / total) * 100}%`, background: o.color }} />
+            <div key={o.key} title={`${o.label} ${count[o.key]}건`} className="h-full transition-[width] duration-500 first:rounded-l-full last:rounded-r-full" style={{ width: `${(count[o.key] / total) * 100}%`, background: color(o) }} />
           ) : null,
         )}
       </div>
       <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5">
         {OUTCOME.map((o) => (
           <div key={o.key} className="flex items-center gap-2 text-[14px]">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: o.color }} />
-            <span className="text-ink-body">{o.label}</span>
-            <span className="font-semibold text-ink-strong">{count[o.key]}건</span>
-            <span className="text-ink-weak">{Math.round((count[o.key] / total) * 100)}%</span>
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: color(o) }} />
+            {/* 밤 카드 아래쪽은 노을빛이라 #F5F1FC만 대비가 나온다 */}
+            <span className={night ? 'text-night-ink' : 'text-ink-body'}>{o.label}</span>
+            <span className={cx('font-semibold', night ? 'text-night-ink' : 'text-ink-strong')}>{count[o.key]}건</span>
+            <span className={night ? 'font-medium text-night-ink' : 'text-ink-weak'}>{Math.round((count[o.key] / total) * 100)}%</span>
           </div>
         ))}
       </div>
@@ -238,9 +244,9 @@ export function RunCard({ run, harness, compact }: { run: RunView; harness: Harn
           const team = TEAM_STYLE[teamOf(id)];
           return (
             <li key={id} className={cx('flex items-start gap-2.5 rounded-lg px-2.5 py-1.5', active && 'bg-brand-weak')}>
-              <span className={cx('mt-[7px] h-2.5 w-2.5 flex-none rounded-full', active && 'animate-pulse-ring')} style={{ background: s || active ? team.color : '#D0D5DD' }} />
+              <span className={cx('mt-[7px] h-2.5 w-2.5 flex-none rounded-full', active && 'animate-pulse-ring', !(s || active) && 'bg-grey-300')} style={s || active ? { background: team.color } : undefined} />
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold" style={{ color: s || active ? team.color : '#8B95A1' }}>
+                <p className={cx('text-[13px] font-semibold', !(s || active) && 'text-ink-disabled')} style={s || active ? { color: team.color } : undefined}>
                   {agentName(id)}
                   {s && s.via !== 'rules' && <span className="ml-1.5 text-[11px] font-medium text-ink-weak">{s.via === 'claude' ? 'Claude' : s.via === 'ollama' ? '로컬 AI' : s.via}</span>}
                   {s?.status === 'blocked' && <span className="ml-1.5 text-[11px] font-semibold text-warning">걸림</span>}

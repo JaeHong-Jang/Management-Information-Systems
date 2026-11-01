@@ -4,13 +4,17 @@ import type { Card as CardT } from '@shared/contracts';
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'moon' | 'glass';
 export function Button({ variant = 'primary', size = 'md', loading, className, children, disabled, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: 'sm' | 'md' | 'lg'; loading?: boolean }) {
   const v = {
     primary: 'bg-brand text-white hover:bg-brand-strong',
     secondary: 'bg-brand-weak text-brand-strong hover:bg-brand-hover',
     ghost: 'bg-surface-subtle text-ink-body hover:bg-line',
     danger: 'bg-danger-weak text-danger hover:bg-danger-hover',
+    // 밤 영역(사이드바·대시보드 첫 카드) 위의 달빛 버튼
+    moon: 'bg-night-moon text-night-side hover:bg-white',
+    // 밤 영역 위의 보조 버튼(반투명 유리)
+    glass: 'bg-white/[0.08] text-night-ink ring-1 ring-inset ring-white/15 hover:bg-white/[0.14]',
   }[variant];
   const s = { sm: 'h-8 px-3 text-[13px] rounded-lg', md: 'h-11 px-4 text-[15px] rounded-xl', lg: 'h-14 px-5 text-[17px] rounded-2xl w-full' }[size];
   return (

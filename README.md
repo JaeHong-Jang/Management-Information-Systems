@@ -1,6 +1,6 @@
-# 이어받기
+# 윤슬
 
-이어받기는 선배의 예외 대응 이유와 점장의 답을 매장 위키에 쌓아, 신입도 근거를 보고 일하도록 돕는 AI 서비스다.
+윤슬은 선배의 예외 대응 이유와 점장의 답을 매장 위키에 쌓아, 신입도 근거를 보고 일하도록 돕는 AI 서비스다.
 
 2026 한국지식경영학회 추계학술대회 「대학생 AI 시대 스마트서비스 아이디어 공모전」 출품작.
 
@@ -22,7 +22,7 @@
 
 ## 무엇을 해결하나
 
-케그 교체, 신분증 확인, 만취 손님, 품절처럼 매뉴얼만으로 판단하기 어려운 순간이 있다. 축제 날 생맥주를 얼마나 더 받아 둘지 같은 발주 감각도 숙련자 머릿속에만 있다. 신입은 무엇부터 확인할지 모르고, 점장은 같은 맥락을 다시 설명한다. 이어받기는 숙련 직원이 무엇을 했고 왜 그렇게 판단했는지 남긴다. 다음 직원은 사례의 조건과 근거를 보고 대응한다.
+케그 교체, 신분증 확인, 만취 손님, 품절처럼 매뉴얼만으로 판단하기 어려운 순간이 있다. 축제 날 생맥주를 얼마나 더 받아 둘지 같은 발주 감각도 숙련자 머릿속에만 있다. 신입은 무엇부터 확인할지 모르고, 점장은 같은 맥락을 다시 설명한다. 윤슬은 숙련 직원이 무엇을 했고 왜 그렇게 판단했는지 남긴다. 다음 직원은 사례의 조건과 근거를 보고 대응한다.
 
 모르는 질문은 점장에게 넘긴다. 점장이 남긴 결정과 이유는 새 사례가 되어 다음 질문의 근거로 쓰인다. 반복 설명을 줄이려는 설계지만 기록과 검수도 사람의 일이다. 실제로 노동시간이 줄었는지, 독립 매장에서 운영할 만한지는 아직 확인하지 않았다. 문제의 빈도와 효과를 확인할 계획은 [차별화 전략](docs/strategy/차별화_전략.md)에 적었다.
 
@@ -70,9 +70,9 @@
 
 ## 기존 서비스와 다른 점
 
-직원용 챗봇과 AI 문서 작성은 이미 있다. 이어받기는 사건을 회고하며 판단 이유를 모으고 점장이 해결한 질문까지 다음 직원의 근거로 남긴다. 이 흐름이 기존 서비스와 어떤 차이를 만드는지 검증하려 한다.
+직원용 챗봇과 AI 문서 작성은 이미 있다. 윤슬은 사건을 회고하며 판단 이유를 모으고 점장이 해결한 질문까지 다음 직원의 근거로 남긴다. 이 흐름이 기존 서비스와 어떤 차이를 만드는지 검증하려 한다.
 
-| 비교 항목 | 본사 FAQ 챗봇 | SOP 매뉴얼 도구 | 사내위키 | 이어받기 |
+| 비교 항목 | 본사 FAQ 챗봇 | SOP 매뉴얼 도구 | 사내위키 | 윤슬 |
 |---|---|---|---|---|
 | 지식의 출발점 | 본사 FAQ·공지·업무 자료, 일부 점포 문의 | 관리자 작성 절차와 AI 초안 | 구성원이 작성·공유한 문서 | 숙련자의 사건 회고·매장 규정·점장 답 |
 | 판단 이유 수집 | 회고 인터뷰 여부 미확인 | 사건별 후속 질문 미확인 | 작성자와 운영 방식에 달림 | 이유·금지 조건·호출 기준을 되묻고 확인 |
@@ -215,4 +215,4 @@ npx tsx scripts/compare_modes.ts
 | [KCS v6](https://library.serviceinnovation.org/KCS/KCS_v6/KCS_v6_Practices_Guide), [LLM Wiki 구현 참고](https://github.com/Astro-Han/karpathy-llm-wiki) | 업무 중 지식 수집·재사용·개선, ingest·query·lint 흐름. Karpathy 원문 링크는 참고 문서에서도 미검증 |
 | [Recharts](https://github.com/recharts/recharts), [Pretendard](https://github.com/orioncactus/pretendard) | 지표 차트와 한글 서체 |
 
-[수상작 조사](docs/references/winners.md)에서는 구체적인 사용자와 문제, 데이터 출처 공개, 작동하는 시연, 역할별 에이전트와 사람 이관, 이야기와 시각화라는 패턴을 참고했다. [Microsoft AI Agents Hackathon](https://microsoft.github.io/AI_Agents_Hackathon/winners/)의 Konveyor는 지식 이전, Bit2Brain은 지식 지도, [Cornell Hospitality Hackathon](https://business.cornell.edu/hub/2024/10/02/hospitality-hackathon-embraces-ai-improve-guest-experience)은 처리 한도를 넘으면 직원에게 넘기는 사례다. [ODSC 수상자 인터뷰](https://opendatascience.com/insights-from-the-winners-of-the-2025-odsc-google-cloud-hackathon/)의 문제 중심 설명과 짧은 시연도 참고했다. 수상 사실이 이어받기의 효과를 입증하지는 않는다. 조사 문서에서 미검증으로 남은 성과 수치는 효과 근거로 쓰지 않았다.
+[수상작 조사](docs/references/winners.md)에서는 구체적인 사용자와 문제, 데이터 출처 공개, 작동하는 시연, 역할별 에이전트와 사람 이관, 이야기와 시각화라는 패턴을 참고했다. [Microsoft AI Agents Hackathon](https://microsoft.github.io/AI_Agents_Hackathon/winners/)의 Konveyor는 지식 이전, Bit2Brain은 지식 지도, [Cornell Hospitality Hackathon](https://business.cornell.edu/hub/2024/10/02/hospitality-hackathon-embraces-ai-improve-guest-experience)은 처리 한도를 넘으면 직원에게 넘기는 사례다. [ODSC 수상자 인터뷰](https://opendatascience.com/insights-from-the-winners-of-the-2025-odsc-google-cloud-hackathon/)의 문제 중심 설명과 짧은 시연도 참고했다. 수상 사실이 윤슬의 효과를 입증하지는 않는다. 조사 문서에서 미검증으로 남은 성과 수치는 효과 근거로 쓰지 않았다.

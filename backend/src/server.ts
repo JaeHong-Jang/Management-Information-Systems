@@ -91,6 +91,8 @@ app.get('/api/metrics', (req, res) => {
 app.get('/api/stream', (req, res) => {
   res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   res.flushHeaders();
+  // 보낼 기록이 없어도 바로 한 줄 보낸다. 안 보내면 Vite 프록시가 첫 ping(20초)까지 연결을 붙잡아 화면이 '다시 연결하는 중'으로 남는다
+  res.write(': connected\n\n');
   const send = (e: unknown) => res.write(`data: ${JSON.stringify(e)}\n\n`);
   bus.replay().forEach(send);
   const off = bus.subscribe(send);
@@ -217,7 +219,7 @@ if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   db.load();
   stock.refreshDrafts();
   const PORT = Number(process.env.PORT) || 8787;
-  app.listen(PORT, () => console.log(`이어받기 백엔드 http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
+  app.listen(PORT, () => console.log(`윤슬 백엔드 http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
   // 로컬 AI는 요약 7개에 몇 분이 걸린다. 서버를 먼저 열고 요약은 뒤에서 채운다
   if (!Object.keys(db.get().topicSummaries).length || !db.get().links.length) seedSummaries().catch((e) => console.error('[seed]', e));
 }

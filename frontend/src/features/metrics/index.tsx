@@ -9,7 +9,7 @@ import { CHART } from '@/shared/theme/tokens';
 import { OutcomeBar } from '../overview';
 
 const axis = { stroke: CHART.axis, fontSize: 12, tickLine: false, axisLine: false } as const;
-const tip = { contentStyle: { borderRadius: 12, border: '1px solid #E5E8EB', fontSize: 13 }, cursor: { fill: '#F2F4F6' } };
+const tip = { contentStyle: { borderRadius: 12, border: `1px solid ${CHART.line}`, fontSize: 13 }, cursor: { fill: CHART.hover } };
 
 export default function MetricsPage() {
   const { state } = useLive();

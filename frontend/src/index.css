@@ -9,6 +9,48 @@
 }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .animate-rise { animation: rise .28s ease-out both; }
-@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(49,130,246,.45); } 100% { box-shadow: 0 0 0 8px rgba(49,130,246,0); } }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(79,91,213,.45); } 100% { box-shadow: 0 0 0 8px rgba(79,91,213,0); } }
 .animate-pulse-ring { animation: pulse-ring 1.2s ease-out infinite; }
-.graph-dots { background-image: radial-gradient(#E5E8EB 1px, transparent 1px); background-size: 18px 18px; }
+/* 밤 영역은 보름달 사진처럼 위는 깊은 남색, 아래로 갈수록 보랏빛·분홍빛 노을로 번지는 세로 그라데이션 */
+/* 사이드바: 아래 가운데 물에 비친 분홍 달빛 */
+.sidebar-night {
+  background:
+    radial-gradient(120% 30% at 50% 100%, rgba(200,155,186,.35), transparent 70%),
+    linear-gradient(180deg, #0A1433 0%, #1A2350 40%, #33365F 70%, #55456C 90%, #6E5679 100%);
+}
+/* 지식 그래프 캔버스: 오른쪽 위 달빛 번짐, 아래 수평선 노을, 아주 성긴 별 두 겹 */
+.graph-night {
+  background:
+    radial-gradient(40% 40% at 84% 12%, rgba(244,229,246,.12), transparent 70%),
+    radial-gradient(90% 38% at 50% 100%, rgba(176,138,165,.30), transparent 72%),
+    radial-gradient(rgba(245,242,252,.20) 1px, transparent 1.5px) 37px 61px / 170px 170px,
+    radial-gradient(rgba(245,242,252,.20) 1px, transparent 1.5px) 121px 19px / 250px 250px,
+    linear-gradient(180deg, #050C26 0%, #16204A 50%, #2E2F5A 80%, #55456C 100%);
+}
+/* 대시보드 첫 카드: 사진 구도 그대로. 위 깊은 남색(성긴 별) → 아래 보랏빛 노을 */
+.hero-night {
+  background:
+    radial-gradient(70% 45% at 50% 100%, rgba(176,138,165,.28), transparent 72%),
+    radial-gradient(rgba(245,242,252,.22) 1px, transparent 1.5px) 23px 17px / 150px 110px,
+    radial-gradient(rgba(245,242,252,.14) 1px, transparent 1.5px) 91px 53px / 230px 140px,
+    linear-gradient(180deg, #0B1638 0%, #242E54 38%, #3E406B 62%, #6C5A7C 100%);
+}
+/* 보름달 원판: 가운데 거의 흰 라벤더, 가장자리 연보라, 옅은 바다 무늬, 바깥 달무리 */
+.moon-disc {
+  background:
+    radial-gradient(22% 18% at 36% 58%, rgba(191,167,205,.40), transparent 100%),
+    radial-gradient(16% 14% at 62% 34%, rgba(191,167,205,.32), transparent 100%),
+    radial-gradient(12% 12% at 64% 70%, rgba(191,167,205,.30), transparent 100%),
+    radial-gradient(circle at 44% 40%, #FBF3FB 0%, #F4E5F6 55%, #E5D3EC 100%);
+  box-shadow: 0 0 18px 4px rgba(244,229,246,.45), 0 0 70px 26px rgba(244,229,246,.18), 0 0 160px 70px rgba(201,170,214,.10);
+}
+/* 달 아래 물에 비친 달빛: 가는 가로 잔물결(윤슬)이 세로로 쌓이고 아래로 갈수록 흐려진다 */
+.moon-reflection {
+  background: repeating-linear-gradient(180deg, rgba(232,190,216,.55) 0 2px, transparent 2px 7px);
+  -webkit-mask-image: radial-gradient(50% 50% at 50% 30%, #000 0%, rgba(0,0,0,.5) 55%, transparent 100%);
+  mask-image: radial-gradient(50% 50% at 50% 30%, #000 0%, rgba(0,0,0,.5) 55%, transparent 100%);
+}
+/* 데스크톱 사이드바 칸: 페이지가 길어도 사이드바 아래가 흰색으로 끊기지 않게 같은 노을색으로 채운다 */
+@media (min-width: 1024px) { .sidebar-rail { background: linear-gradient(90deg, #6E5679 256px, transparent 256px); } }
+/* 로고: 밤 남색 사각형 안에 보름달과 수면 잔물결 */
+.logo-night { background: linear-gradient(135deg, #252259, #4E4369); box-shadow: inset 0 0 0 1px rgba(177,164,202,.35); }

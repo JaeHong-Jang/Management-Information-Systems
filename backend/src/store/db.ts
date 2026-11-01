@@ -29,7 +29,8 @@ export function load(): Db {
 
 export function resetFromSeed(seed = SEED_FILE): Db {
   mkdirSync(STORE_DIR, { recursive: true });
-  copyFileSync(seed, STORE_FILE);
+  if (LIVE_DATE) writeFileSync(STORE_FILE, shiftDates(readFileSync(seed, 'utf8'), seedOffset(seed)));
+  else copyFileSync(seed, STORE_FILE);
   db = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
   db.links = [];
   db.inventory = { ...emptyInventory(), ...db.inventory };
@@ -37,8 +38,30 @@ export function resetFromSeed(seed = SEED_FILE): Db {
 }
 
 export function get(): Db {
-  return db ?? load();
+  const d = db ?? load();
+  if (LIVE_DATE) d.store.today = realToday();
+  return d;
 }
+
+// 시연 날짜. 기본은 실제 오늘(한국 시간)이라 날이 지나면 그대로 하루씩 넘어간다(POS를 안 올린 날은 재고 계산이 요일별 평균으로 채운다).
+// 초기화하면 시드의 날짜를 모두 같은 간격만큼 옮겨 시드의 '오늘'이 실제 오늘이 되게 한다. 테스트는 DEMO_DATE=seed로 시드 날짜를 그대로 쓴다.
+const LIVE_DATE = process.env.DEMO_DATE !== 'seed';
+export const realToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+
+const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+const seedOffset = (seed = SEED_FILE) => dayDiff((JSON.parse(readFileSync(seed, 'utf8')) as Db).store.today, realToday());
+
+/** 글 속의 YYYY-MM-DD를 모두 days만큼 옮긴다. 파일 이름의 '2026-10-24_10-30' 같은 기간 끝(MM-DD)도 같이 옮긴다 */
+export function shiftDates(text: string, days: number): string {
+  if (!days) return text;
+  return text.replace(/(\d{4}-\d{2}-\d{2})(_(\d{2}-\d{2})(?!\d))?/g, (_m, date: string, _range, end?: string) => {
+    const moved = addDays(date, days);
+    return end ? `${moved}_${addDays(`${date.slice(0, 4)}-${end}`, days).slice(5)}` : moved;
+  });
+}
+
+/** 시드와 같이 들어 있는 예시 자료(POS 파일 등)를 시드와 같은 간격으로 옮긴다 */
+export const demoShift = (text: string) => (LIVE_DATE ? shiftDates(text, seedOffset()) : text);
 
 export function save(compile = process.env.STORE_DIR !== 'var/test') {
   writeFileSync(STORE_FILE, JSON.stringify(db, null, 1));
