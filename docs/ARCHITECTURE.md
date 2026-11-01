@@ -10,7 +10,7 @@
 신입 질문 ─▶ [답변팀] 검색 사서 → 현장 코치 ─▶ [검증팀] 근거 → 규정 우선 → 표현 ─▶ 점장 연결 ─┤
                                                      (answer-gate)                │ 근거 없음      ▼
                                                                                   └─▶ 점장 답 ─▶ 새 카드 (질문 → 카드: became)
-[위키 관리팀] 종합 편집자(토픽 원칙 재작성) · 위키 점검관(상충·만료·중복·공백) · 훈련 코치(AI 없이 먼저 판단)
+[위키 관리팀] 종합 편집자(토픽 원칙 재작성) · 위키 점검관(상충·만료·중복·공백)
 모든 실행 ─▶ 실행 버스(SSE /api/stream) ─▶ 화면: 에이전트 진행, 위키 변경 피드, 온톨로지 그래프 증분
 ```
 
@@ -18,14 +18,14 @@
 
 | 폴더 | 내용 |
 |---|---|
-| `harness/` | 하네스 선언. `harness.config.json`(팀 6·에이전트 17·흐름 9·게이트 3·LLM), `agents/`(에이전트 카드 참조 위치. 1차 심사에서 비어 있었으며 이번 문서 작업에서 충족 여부는 재확인하지 않음), `policies/forbidden-phrases.json`(금지 표현·개인정보 패턴·안전 어휘 `alwaysEscalate`) |
+| `harness/` | 하네스 선언. `harness.config.json`(팀 6·에이전트 16·흐름 8·게이트 3·LLM), `agents/`(에이전트 카드 참조 위치. 1차 심사에서 비어 있었으며 이번 문서 작업에서 충족 여부는 재확인하지 않음), `policies/forbidden-phrases.json`(금지 표현·개인정보 패턴·안전 어휘 `alwaysEscalate`) |
 | `shared/contracts.ts` | 백엔드·프론트 공통 타입 (카드, 질문, 실행 이벤트, 그래프) |
 | `backend/src/harness/` | 런타임: `config`(선언 읽기) · `runner`(흐름 실행, 이벤트 발행) · `trace`(실행 버스) · `llm`(Claude 호출 한 곳) |
 | `backend/src/agents/` | 팀별 1파일: `capture` · `answer` · `verify` · `keeper` |
-| `backend/src/flows/` | 흐름 6개: 질문 · 피드백 · 기록(인터뷰/저장) · 점장 승인 · 점장 답 재축적 · 점검 · 훈련 |
+| `backend/src/flows/` | 흐름: 질문 · 피드백 · 기록(인터뷰/저장) · 점장 승인 · 점장 답 재축적 · 점검, 재고(`stock.ts`) |
 | `backend/src/store/` | `db`(JSON 원본 + 마크다운 위키 컴파일) · `graph`(온톨로지 그래프) |
 | `backend/src/tools/` | `search`(한국어 2-gram BM25) · `policies`(금지 표현·개인정보) |
-| `frontend/src/features/` | 화면 1개 = 폴더 1개: overview · ask · record · train · manager · wiki · ontology · agents · metrics · judge |
+| `frontend/src/features/` | 화면 1개 = 폴더 1개: overview · ask · record · manager · inventory · wiki · ontology · agents · customers · metrics · judge |
 | `frontend/src/shared/` | `api/client`(API) · `api/live`(SSE 실시간 상태) · `ui`(공통 컴포넌트) · `theme/tokens`(그래프·팀·차트 색) |
 | `data/` | `seed.json`(가상 데모 매장) · `wiki/`(자동 컴파일된 마크다운 위키: index · log · people · topics/) |
 | `docs/` | 설계, 전략, 레퍼런스, 심사(`judge/`) |
@@ -40,7 +40,7 @@
 | 현장 코치: 찾은 카드만 근거로 답 | 근거 검증: 없는 카드·검색되지 않은 카드 인용 차단, 근거 없는 줄 삭제 |
 | 종합 편집자: 토픽 판단 원칙 3~5개 | 규정 우선 검증: 공식규정·현장노하우가 섞이면 규정 우선 안내 |
 | 위키 점검관: 의미상 상충 찾기 | 표현 검증: 금지 표현 6종 |
-| 훈련 코치: 신입 답 채점 | 점장 연결: 근거 없음·문제 줄 삭제 후 답 없음·호출 기준 해당 |
+| 레시피 편집자: 처음 보는 메뉴의 소모량 초안 | 점장 연결: 근거 없음·문제 줄 삭제 후 답 없음·호출 기준 해당 |
 |  | 점검관의 만료·효과 낮음·중복·빈 토픽·승인 대기 |
 
 LLM이 쓴 답은 같은 실행 안에서 규칙(검증팀)이 다시 확인한다. API 키가 없거나 호출이 실패하면 각 LLM 에이전트는 같은 모양의 결과를 규칙으로 만든다. 화면 상단과 실행 기록에 `규칙 모드` 또는 `rules(LLM 실패 대체)`로 표시한다. 그래서 키 없이도 전체 흐름이 돈다.
@@ -51,7 +51,7 @@ LLM이 쓴 답은 같은 실행 안에서 규칙(검증팀)이 다시 확인한�
 
 ### 가상 손님 (시뮬레이션, 하네스 밖)
 
-`backend/src/sim/customers.ts`. Nemotron-Personas-Korea 페르소나 한 명을 뽑아 상황·손님 말·신입 질문을 만들고 `flows.ask`에 넣는다. 17개 에이전트에 속하지 않는 시험 도구다. 주제는 코드가 무작위로 고른다(작은 모델은 예시 주제로 쏠렸다). 모델 출력이 칸을 비우거나 지시문을 옮기면 버리고 상황 틀 10개 중 하나로 대체한다. 첫 시뮬레이션에서 '종이 도장 쿠폰' 질문이 어미 조각('다·는데·해요')만 겹친 오트 우유 카드로 답해지는 오답을 찾았고, 검색 토큰에서 어미 조각을 빼고 최소 근거 점수를 3에서 3.5로 올려 고쳤다(회귀 테스트 추가).
+`backend/src/sim/customers.ts`. Nemotron-Personas-Korea 페르소나 한 명을 뽑아 상황·손님 말·신입 질문을 만들고 `flows.ask`에 넣는다. 16개 에이전트에 속하지 않는 시험 도구다. 주제는 코드가 무작위로 고른다(작은 모델은 예시 주제로 쏠렸다). 모델 출력이 칸을 비우거나 지시문을 옮기면 버리고 상황 틀 10개 중 하나로 대체한다. 첫 시뮬레이션에서 '종이 도장 쿠폰' 질문이 어미 조각('다·는데·해요')만 겹친 오트 우유 카드로 답해지는 오답을 찾았고, 검색 토큰에서 어미 조각을 빼고 최소 근거 점수를 3에서 3.5로 올려 고쳤다(회귀 테스트 추가).
 
 ## 지식 모델
 
@@ -92,7 +92,7 @@ POS CSV ─▶ [재고팀] POS 정리원 → 레시피 편집자(처음 보는 �
 | POST | `/api/questions/:id/feedback` · `/api/questions/:id/resolve` | 해결 여부 · 점장 답 재축적 |
 | POST | `/api/record/interview` · `/api/cards` | 회고 인터뷰 · 카드 저장 |
 | POST | `/api/cards/:id/(approve|reject|renew|archive)` | 점장 처리 |
-| GET | `/api/lint` · `/api/training` · POST `/api/training/grade` | 점검 · 훈련 |
+| GET | `/api/lint` | 점검 |
 | GET | `/api/inventory` | 재고 계산 결과(품목 상태·주문서·소모량·보정·일정) |
 | POST | `/api/inventory/pos` · `/api/inventory/pos/sample` | POS CSV 반영(base64) · 예시 파일 반영 |
 | POST | `/api/inventory/stocktake` · `/api/inventory/stocktake/explain` | 마감 실사 · 실사 차이 이유 → 카드 |
@@ -139,7 +139,7 @@ POS CSV ─▶ [재고팀] POS 정리원 → 레시피 편집자(처음 보는 �
 | 질문자 표시 | 그래프에서는 신입들 같은 역할 묶음으로 표시한다. 개요와 위키 사람 페이지에서 개인별 질문 수를 세지 않는다 |
 | 규칙 모드 카드 편집 | 금지 판정을 ‘하지 않/하지 말/금지/절대/면 안 된’으로 좁혔다. ‘안 된다’는 사실 서술만으로 금지 칸에 넣지 않는다 |
 | 실행 기록·화면 | 화면 진입 점검은 실행 기록을 남기지 않는다. 오케스트레이터 요약에는 한국어 에이전트 이름을 쓴다. 질문의 이유는 답 아래에 펼치고 카드 번호는 답 끝에 한 번 표시한다. 안전 상황은 경고 상자로 보인다 |
-| 기록·점장·훈련 안내 | 규칙 모드의 되묻기는 ‘기본 질문’으로 표시한다. 점검 결과는 기본으로 접는다. 훈련은 실제 사례의 상황 그대로 출제하며 ‘무엇을 할지·왜·하면 안 되는 것’을 쓰도록 안내한다 |
+| 기록·점장 안내 | 규칙 모드의 되묻기는 ‘기본 질문’으로 표시한다. 점검 결과는 기본으로 접는다 |
 
 ### 막지 못하는 것
 

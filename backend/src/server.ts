@@ -137,13 +137,6 @@ app.post('/api/cards/:id/:action', route(async (req, res) => {
 
 app.get('/api/lint', route(async (req, res) => res.json(await flows.lint(req.query.quiet === '1'))));
 
-app.get('/api/training', (_req, res) => {
-  const pool = db.usableCards().usable.filter((c) => c.actions.length >= 2);
-  if (!pool.length) return bad(res, '훈련할 사례가 없습니다');
-  const c = pool[Math.floor(Math.random() * pool.length)];
-  res.json({ id: c.id, topic: c.topic, situation: c.situation });
-});
-app.post('/api/training/grade', route(async (req, res) => res.json(await flows.train(req.body?.id, req.body?.answer ?? '', req.body?.personId || 'P005'))));
 
 // ---------- 재고·발주 ----------
 

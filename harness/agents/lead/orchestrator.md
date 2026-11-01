@@ -2,7 +2,7 @@
 
 - 팀: 지휘 (lead)
 - LLM 사용: 아니요. 규칙으로 실행한다.
-- 앞뒤 에이전트: ask: 요청 진입 → 본인 → librarian / record: 요청 진입 → 본인 → privacy-guard / approve: 요청 진입 → 본인 → synthesizer / resolve: 요청 진입 → 본인 → privacy-guard / lint: 요청 진입 → 본인 → linter / train: 요청 진입 → 본인 → trainer
+- 앞뒤 에이전트: ask: 요청 진입 → 본인 → librarian / record: 요청 진입 → 본인 → privacy-guard / approve: 요청 진입 → 본인 → synthesizer / resolve: 요청 진입 → 본인 → privacy-guard / lint: 요청 진입 → 본인 → linter / pos·stocktake·stockapprove: 요청 진입 → 본인 → 재고팀
 
 ## 하는 일
 
@@ -18,7 +18,7 @@
 
 ## 판단 규칙
 
-1. 흐름은 ask·record·approve·resolve·lint·train 중에서 고른다.
+1. 흐름은 ask·record·approve·resolve·lint·pos·stocktake·stockapprove 중에서 고른다.
 2. 실행 순서는 해당 흐름의 steps 배열을 따른다.
 3. ask는 인용·규정·표현 검증 뒤에 점장 연결을 실행한다.
 4. record는 개인정보를 가린 뒤에 인터뷰와 카드 편집을 실행한다.

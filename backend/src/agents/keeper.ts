@@ -1,9 +1,9 @@
-// 위키 관리팀: 종합 편집자 · 위키 점검관 · 훈련 코치
+// 위키 관리팀: 종합 편집자 · 위키 점검관
 import { z } from 'zod';
 import type { Card, EdgeType, LintIssue } from '@shared/contracts';
 import { ask, llmEnabled } from '../harness/llm.js';
 import { llmOr, type StepOut } from '../harness/runner.js';
-import { containment, similarity } from '../tools/search.js';
+import { similarity } from '../tools/search.js';
 import * as db from '../store/db.js';
 import { bigDiff, countGap, drift, itemStatus, lastCount, salesDates, usage } from '../inventory/calc.js';
 
@@ -134,26 +134,4 @@ function inventoryIssues(): LintIssue[] {
   const adj = inv.adjustments.filter((a) => a.status === 'pending');
   if (adj.length) out.push({ kind: '보정 제안', ids: adj.map((a) => a.id), detail: `수요 분석가의 보정 제안 ${adj.length}건: ${[...new Set(adj.map((a) => `${a.reason} ×${a.factor} [${a.cardId}]`))].join(', ')}` });
   return out;
-}
-
-// ---------- 훈련 코치 ----------
-
-export interface Grade { score: number; good: string[]; missing: string[]; feedback: string }
-
-export async function trainer(c: Card, userAnswer: string): Promise<StepOut<Grade>> {
-  const { value, via } = await llmOr(
-    () =>
-      ask('trainer', {
-        user: `[정답 카드]\n${c.title}\n대응: ${c.actions.join(' / ')}\n이유: ${c.reason}\n금지: ${c.avoid}\n\n[신입 답]\n${userAnswer}\n\n핵심 행동, 판단 이유 이해, 금지 행동 회피를 보고 0~100점으로 채점하라. 격려하는 말투로 짧게.`,
-        schema: z.object({ score: z.number().int(), good: z.array(z.string()), missing: z.array(z.string()), feedback: z.string() }),
-      }),
-    () => {
-      const good = c.actions.filter((a) => containment(a, userAnswer) >= 0.3);
-      const missing = c.actions.filter((a) => !good.includes(a));
-      const score = Math.round((good.length / Math.max(c.actions.length, 1)) * 100);
-      return { score, good, missing, feedback: score >= 60 ? '핵심 대응을 잘 짚었어요. 판단 이유도 함께 기억해 두세요.' : '놓친 대응이 있어요. 카드의 판단 이유를 먼저 읽어 보세요.' };
-    },
-    llmEnabled(),
-  );
-  return { out: value, via, summary: `${value.score}점 · 맞춘 행동 ${value.good.length}/${c.actions.length}` };
 }

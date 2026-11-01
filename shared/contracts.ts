@@ -160,7 +160,7 @@ export interface PosImportResult { import: PosImport; newRecipes: Recipe[]; prop
 
 // ---------- 하네스 선언 ----------
 
-export type FlowId = 'ask' | 'record' | 'approve' | 'resolve' | 'lint' | 'train' | 'pos' | 'stocktake' | 'stockapprove';
+export type FlowId = 'ask' | 'record' | 'approve' | 'resolve' | 'lint' | 'pos' | 'stocktake' | 'stockapprove';
 
 export interface TeamDef { id: string; name: string; color: string; agents: string[] }
 export interface AgentDef { id: string; team: string; name: string; role: string; card: string; llm: boolean }
@@ -265,8 +265,6 @@ export interface InterviewDraft {
 
 export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기' | '재고 차이' | '사용량 이탈' | '레시피 대기' | '보정 제안'; ids: string[]; detail: string }
 
-export interface TrainingTask { id: string; topic: string; situation: string }
-export interface TrainingResult { score: number; good: string[]; missing: string[]; feedback: string; card: Card }
 
 export interface Metrics {
   cards: number;

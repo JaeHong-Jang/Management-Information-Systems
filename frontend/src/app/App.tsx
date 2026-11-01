@@ -3,7 +3,6 @@ import { Layout } from './Layout';
 import Overview from '@/features/overview';
 import Ask from '@/features/ask';
 import Record from '@/features/record';
-import Train from '@/features/train';
 import Manager from '@/features/manager';
 import Inventory from '@/features/inventory';
 import Wiki from '@/features/wiki';
@@ -20,7 +19,6 @@ export function App() {
         <Route index element={<Overview />} />
         <Route path="ask" element={<Ask />} />
         <Route path="record" element={<Record />} />
-        <Route path="train" element={<Train />} />
         <Route path="manager" element={<Manager />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="wiki" element={<Wiki />} />

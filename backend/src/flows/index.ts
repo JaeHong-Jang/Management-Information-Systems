@@ -1,5 +1,5 @@
 // 흐름(오케스트레이터가 정한 에이전트 순서). 각 흐름은 harness.config.json의 flows와 같은 순서로 에이전트를 부른다.
-import type { AskResult, Card, InterviewDraft, LintIssue, TrainingResult } from '@shared/contracts';
+import type { AskResult, Card, InterviewDraft, LintIssue } from '@shared/contracts';
 import { agentDef, config } from '../harness/config.js';
 import { Run } from '../harness/runner.js';
 import { cardWriter, interviewer, privacyGuard, type FollowupAnswer } from '../agents/capture.js';
@@ -9,7 +9,7 @@ import { forbidden, maskPii } from '../tools/policies.js';
 
 const forbiddenIn = (text: string) => forbidden(text).map((f) => `"${f.match}" — ${f.why}`);
 import { search } from '../tools/search.js';
-import { linter, synthesizer, trainer } from '../agents/keeper.js';
+import { linter, synthesizer } from '../agents/keeper.js';
 import * as db from '../store/db.js';
 import { anonNode, cardEdges, cardNode, edge, itemNodes, personNode, questionEdges, questionNode, roleNode, sourceNode, topicNode } from '../store/graph.js';
 import { stockFacts } from '../agents/stock.js';
@@ -223,7 +223,7 @@ export async function resolve(questionId: string, managerAnswer: string, manager
   return { question: q, card: c, alsoResolved: also.map((x) => x.id) };
 }
 
-// ---------- 점검·훈련 ----------
+// ---------- 점검 ----------
 
 let lastLintKey = '';
 
@@ -243,14 +243,4 @@ export async function lint(quiet = false): Promise<{ issues: LintIssue[]; runId:
   lastLintKey = key;
   run.end(true, `할 일 ${issues.length}건`);
   return { issues, runId: run.runId };
-}
-
-export async function train(cardId: string, userAnswer: string, personId: string): Promise<TrainingResult> {
-  const c = db.card(cardId);
-  if (!c) throw new Error('카드를 찾을 수 없습니다');
-  const run = new Run('train', db.personLabel(personId), `[${cardId}] 훈련`);
-  await orchestrate(run);
-  const g = await run.step('trainer', () => trainer(c, userAnswer));
-  run.end(true, `${g.score}점`);
-  return { ...g, card: c };
 }
