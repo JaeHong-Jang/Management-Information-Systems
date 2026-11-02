@@ -1,7 +1,7 @@
 // 원본은 JSON 하나(var/store.json). 바뀔 때마다 사람이 읽는 마크다운 위키(data/wiki/)를 다시 컴파일한다.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Card, CardOrigin, CardStatus, EdgeType, Inventory, LogEntry, Person, Question, Snapshot, Source } from '@shared/contracts';
+import type { Card, CardOrigin, CardStatus, EdgeType, Inventory, LogEntry, Person, Question, Shift, Snapshot, Source } from '@shared/contracts';
 import { BACKEND_DIR, DATA_DIR, STORE_DIR } from '../paths.js';
 import { resolve } from 'node:path';
 
@@ -13,6 +13,7 @@ const WIKI_DIR = join(DATA_DIR, 'wiki');
 export interface Db extends Snapshot {
   links: { source: string; target: string; type: EdgeType }[]; // 점검관이 찾은 상충·중복
   inventory: Inventory;
+  shifts: Shift[]; // 근무 지도 기록
 }
 
 const emptyInventory = (): Inventory => ({ items: [], recipes: [], sales: [], deliveries: [], stocktakes: [], events: [], adjustments: [], orders: [], imports: [] });
@@ -24,6 +25,7 @@ export function load(): Db {
   db = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
   db.links ??= [];
   db.inventory = { ...emptyInventory(), ...db.inventory };
+  db.shifts ??= [];
   return db;
 }
 
@@ -34,6 +36,7 @@ export function resetFromSeed(seed = SEED_FILE): Db {
   db = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
   db.links = [];
   db.inventory = { ...emptyInventory(), ...db.inventory };
+  db.shifts ??= [];
   return db;
 }
 

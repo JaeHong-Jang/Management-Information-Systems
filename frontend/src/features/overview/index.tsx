@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronRight, Play, Users } from 'lucide-react';
-import type { HarnessConfig, InventoryView } from '@shared/contracts';
+import type { HarnessConfig, InventoryView, ShiftsView } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useLive, type RunView } from '@/shared/api/live';
 import { Badge, Button, Empty, Panel, Stat, cx, fmtTime, useToast } from '@/shared/ui';
@@ -19,9 +19,11 @@ export default function Overview() {
   const { state, graph, fresh, runs, wikiFeed } = useLive();
   const [harness, setHarness] = useState<HarnessConfig | null>(null);
   const [inv, setInv] = useState<InventoryView | null>(null);
+  const [shifts, setShifts] = useState<ShiftsView | null>(null);
   const toast = useToast();
   useEffect(() => void api.harness().then(setHarness), []);
   useEffect(() => void api.inventory().then(setInv), [state]);
+  useEffect(() => void api.shifts().then(setShifts), [state]);
 
   const d = useMemo(() => {
     if (!state) return null;
@@ -99,6 +101,7 @@ export default function Overview() {
         {d.total > 0 && <OutcomeBar count={d.count} tone="night" className="mt-7" />}
       </section>
 
+      {shifts && <ShiftStrip view={shifts} />}
       {inv && inv.items.length > 0 && <StockStrip inv={inv} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
@@ -283,6 +286,30 @@ function StockStrip({ inv }: { inv: InventoryView }) {
           </>
         ) : (
           '오늘 주문할 품목이 없어요'
+        )}
+      </span>
+      <ChevronRight size={18} className="flex-none text-ink-disabled" />
+    </Link>
+  );
+}
+
+/** 근무 한 줄: 지금 근무 지도와 지금 단계. 누르면 근무 지도 */
+function ShiftStrip({ view }: { view: ShiftsView }) {
+  const open = view.shifts.find((s) => s.status === 'open');
+  const cur = open?.steps.find((x) => x.state !== 'passed');
+  const passed = open ? open.steps.filter((x) => x.state === 'passed').length : 0;
+  return (
+    <Link to="/shift" className="flex items-center justify-between gap-3 rounded-card bg-surface px-6 py-4 hover:bg-grey-50">
+      <span className="min-w-0 text-[15px] text-ink-body">
+        <span className="font-semibold text-ink-strong">근무 지도</span> ·{' '}
+        {open && cur ? (
+          <>
+            {open.title} · 지금 단계 <b className="text-ink-strong">{cur.title}</b> ({cur.actor === 'AI' ? 'AI' : cur.actor} 차례) · {passed}/{open.steps.length} 합격
+          </>
+        ) : open ? (
+          `${open.title} · 모든 단계 합격`
+        ) : (
+          '오늘 할 일을 한 줄로 말하면 근무 지도가 생겨요'
         )}
       </span>
       <ChevronRight size={18} className="flex-none text-ink-disabled" />

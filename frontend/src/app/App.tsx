@@ -4,6 +4,7 @@ import Overview from '@/features/overview';
 import Ask from '@/features/ask';
 import Record from '@/features/record';
 import Manager from '@/features/manager';
+import ShiftMap from '@/features/shift';
 import Inventory from '@/features/inventory';
 import Wiki from '@/features/wiki';
 import Ontology from '@/features/ontology';
@@ -20,6 +21,7 @@ export function App() {
         <Route path="ask" element={<Ask />} />
         <Route path="record" element={<Record />} />
         <Route path="manager" element={<Manager />} />
+        <Route path="shift" element={<ShiftMap />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="wiki" element={<Wiki />} />
         <Route path="graph" element={<Ontology />} />

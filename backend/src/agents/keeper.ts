@@ -101,13 +101,28 @@ export async function linter(): Promise<StepOut<LintOut>> {
   }
   const pending = d.cards.filter((c) => c.status === 'pending');
   if (pending.length) issues.push({ kind: '승인 대기', ids: pending.map((c) => c.id), detail: `승인 대기 사례 ${pending.length}건` });
-  issues.push(...inventoryIssues());
+  issues.push(...inventoryIssues(), ...repeatIssues());
 
-  const order: LintIssue['kind'][] = ['상충', '재고 차이', '보정 제안', '만료', '레시피 대기', '사용량 이탈', '효과 낮음', '공백', '중복', '만료 임박', '이유 없음', '승인 대기'];
+  const order: LintIssue['kind'][] = ['상충', '반복 실수', '재고 차이', '보정 제안', '만료', '레시피 대기', '사용량 이탈', '효과 낮음', '공백', '중복', '만료 임박', '이유 없음', '승인 대기'];
   issues.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
   const count = (k: LintIssue['kind']) => issues.filter((i) => i.kind === k).length;
   const stock = count('재고 차이') + count('사용량 이탈') + count('레시피 대기') + count('보정 제안');
   return { out: { issues, links }, via, summary: `할 일 ${issues.length}건 (상충 ${count('상충')}, 만료 ${count('만료')}, 중복 ${count('중복')}, 공백 ${count('공백')}${stock ? `, 재고 ${stock}` : ''})` };
+}
+
+/** 같은 판정 줄이 근무 두 번 이상에서 불합격했으면 규칙(카드)으로 남기라고 알린다(「지속 가능한 구조」 3단계: 같은 지적 두 번이면 규칙) */
+export function repeatIssues(): LintIssue[] {
+  const seen = new Map<string, { text: string; shifts: string[] }>();
+  for (const sh of db.get().shifts ?? [])
+    for (const st of sh.steps)
+      for (const id of st.failedChecks) {
+        const row = seen.get(id) ?? { text: `${st.title}: ${st.checks.find((c) => c.id === id)?.text ?? id}`, shifts: [] };
+        if (!row.shifts.includes(sh.id)) row.shifts.push(sh.id);
+        seen.set(id, row);
+      }
+  return [...seen.entries()]
+    .filter(([, r]) => r.shifts.length >= 2)
+    .map(([id, r]) => ({ kind: '반복 실수' as const, ids: [id], detail: `'${r.text}'가 근무 ${r.shifts.length}번(${r.shifts.join(', ')})에서 불합격했어요. 왜 반복되는지 카드로 남겨 다음 근무의 기준으로 쓰세요.` }));
 }
 
 /** 재고: 실사 차이 · 사용량 이탈 · 소모량 승인 대기 · 보정 제안 (모두 규칙) */

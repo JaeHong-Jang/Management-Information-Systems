@@ -1,5 +1,5 @@
 // 백엔드 API. 모든 화면은 여기만 거친다.
-import type { Adjustment, AiStatus, AskResult, Card, Graph, HarnessConfig, InterviewDraft, InventoryView, Item, LintIssue, Metrics, Order, PosImportResult, Question, Recipe, RecipeLine, Snapshot, Stocktake, Visit } from '@shared/contracts';
+import type { Adjustment, AiStatus, AskResult, Card, Graph, HarnessConfig, InterviewDraft, InventoryView, Item, LintIssue, Metrics, Order, PosImportResult, Question, Recipe, RecipeLine, Shift, ShiftsView, Snapshot, Stocktake, Visit } from '@shared/contracts';
 
 export type State = Snapshot & { ai: AiStatus; demoPlaying: boolean; simulating: boolean };
 
@@ -32,6 +32,12 @@ export const api = {
   simulate: (n: number) => post<{ ok: boolean; n: number }>('/sim/customers', { n }),
   reset: () => post<{ ok: boolean }>('/reset'),
   // 재고·발주
+  // 근무 지도
+  shifts: () => call<ShiftsView>('/shifts'),
+  planShift: (text: string, by: string) => post<Shift>('/shifts', { text, by }),
+  tickCheck: (id: string, step: string, checkId: string, on: boolean, by: string) => post<Shift>(`/shifts/${id}/steps/${step}/tick`, { checkId, on, by }),
+  judgeStep: (id: string, step: string, by: string) => post<Shift>(`/shifts/${id}/steps/${step}/judge`, { by }),
+  handover: (id: string, from: string, to: string) => post<Shift>(`/shifts/${id}/handover`, { from, to }),
   inventory: () => call<InventoryView>('/inventory'),
   inventoryIssues: () => call<LintIssue[]>('/inventory/issues'),
   posUpload: (file: string, base64: string, actorId: string) => post<PosImportResult>('/inventory/pos', { file, base64, actorId }),

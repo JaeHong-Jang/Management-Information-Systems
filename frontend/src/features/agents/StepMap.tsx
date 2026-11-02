@@ -28,6 +28,8 @@ const TOOLS: Record<string, string[]> = {
   'recipe-writer': ['메뉴 → 재료'],
   'demand-analyst': ['요일별 평균', '카드 배수'],
   'order-clerk': ['주문서', '재고 현황'],
+  'shift-planner': ['루틴 고르기', '인계 메모'],
+  judge: ['합격·불합격·모름', '3번 → 점장'],
 };
 
 type Hand = 'answer' | 'approveCard' | 'stockApprove' | 'diffReason';
@@ -40,6 +42,7 @@ const HANDS: Record<Hand, { title: string; desc: string; to?: FlowId; link: stri
 };
 
 const LANES: { title: string; rows: { flow: FlowId; hand?: Hand }[] }[] = [
+  { title: '0 근무 지도 (말 한 줄 → 단계 → 판정)', rows: [{ flow: 'shift' }, { flow: 'judge' }] },
   { title: '1 현장에서 묻고 남기기', rows: [{ flow: 'ask', hand: 'answer' }, { flow: 'record', hand: 'approveCard' }] },
   { title: '2 점장이 정한 것을 위키로', rows: [{ flow: 'resolve' }, { flow: 'approve' }] },
   { title: '3 위키 돌보기', rows: [{ flow: 'lint' }] },
@@ -173,6 +176,7 @@ function groupSteps(h: HarnessConfig, steps: string[]): string[][] {
 
 function FlowRow({ h, flow, run, hand, handCount, ai }: { h: HarnessConfig; flow: FlowId; run?: RunView; hand?: Hand; handCount: number; ai?: string }) {
   const f = h.flows[flow];
+  if (!f) return null; // 하네스 선언에 없는 흐름(예전 서버)은 건너뛴다
   const gate = h.gates.find((g) => g.flow === flow);
   const groups = groupSteps(h, f.steps.filter((s) => s !== 'orchestrator'));
   const done = new Map((run?.steps ?? []).map((s) => [s.agentId, s]));
