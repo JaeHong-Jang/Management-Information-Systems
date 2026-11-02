@@ -205,6 +205,17 @@ app.post('/api/reset', route(async (_req, res) => {
   res.json({ ok: true });
 }));
 
+// ---------- 화면 ----------
+// 프론트를 빌드해 두면(frontend/dist) 이 서버 하나가 API와 화면을 함께 낸다. 화면 코드를 고치며 바로 보려면 frontend에서 npm run dev(5173)
+const WEB_DIR = join(ROOT_DIR, 'frontend', 'dist');
+const hasWeb = existsSync(join(WEB_DIR, 'index.html'));
+if (hasWeb) {
+  app.use(express.static(WEB_DIR));
+  // 화면 주소(/inventory 등)를 새로고침해도 앱이 열리게 index.html을 돌려준다
+  // 확장자가 있는 주소(없는 .js 등)는 404로 둔다
+  app.use((req, res, next) => (req.method === 'GET' && !req.path.startsWith('/api') && !/\.\w+$/.test(req.path) ? res.sendFile(join(WEB_DIR, 'index.html')) : next()));
+}
+
 app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
   if (!err.status) console.error(err);
   res.status(err.status ?? 500).json({ error: err.message });
@@ -223,7 +234,9 @@ if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   db.load();
   stock.refreshDrafts();
   const PORT = Number(process.env.PORT) || 8787;
-  app.listen(PORT, () => console.log(`윤슬 백엔드 http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
+  app.listen(PORT, () =>
+    console.log(`윤슬 ${hasWeb ? '화면+API' : 'API'} http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})${hasWeb ? '' : ' · 화면은 frontend에서 npm run build 후 다시 시작'}`),
+  );
   // 로컬 AI는 요약 7개에 몇 분이 걸린다. 서버를 먼저 열고 요약은 뒤에서 채운다
   if (!Object.keys(db.get().topicSummaries).length || !db.get().links.length) seedSummaries().catch((e) => console.error('[seed]', e));
 }
