@@ -1,7 +1,7 @@
 // 근무 지도 흐름: 말 한 줄 → 단계 지도 · 체크 · 판정 · 점장 확인 · 근무 넘기기(이어받기)
 import type { Shift, ShiftStep, ShiftsView } from '@shared/contracts';
 import { Run } from '../harness/runner.js';
-import { handoverNote, judge, routines, shiftPlanner } from '../agents/shift.js';
+import { handoverNote, judge, MAX_FAILS, routines, shiftPlanner } from '../agents/shift.js';
 import * as db from '../store/db.js';
 import { orchestrate } from './index.js';
 
@@ -67,7 +67,17 @@ export function tick(shiftId: string, stepId: string, checkId: string, on: boole
   const list = c.kind === 'look' ? step.approved : step.ticks;
   const has = list.includes(checkId);
   if (on && !has) list.push(checkId);
-  if (!on && has) list.splice(list.indexOf(checkId), 1);
+  if (!on && has) {
+    list.splice(list.indexOf(checkId), 1);
+    // 합격한 단계의 체크를 지우면 다시 판정받아야 한다
+    if (step.state === 'passed') {
+      step.state = 'todo';
+      step.results = step.results.map((r) => (r.id === checkId ? { ...r, verdict: '모름', why: '체크를 지웠어요' } : r));
+      delete step.doneAt;
+      shift.status = 'open';
+      log(shift, `${step.title}: 체크를 지워 다시 판정 대기`);
+    }
+  }
   db.save();
   return shift;
 }
@@ -75,6 +85,10 @@ export function tick(shiftId: string, stepId: string, checkId: string, on: boole
 /** 판정관이 줄마다 채점한다. 합격하면 다음 단계로, 3번 불합격이면 점장에게 넘어간다 */
 export async function judgeStep(shiftId: string, stepId: string, by: string): Promise<Shift> {
   const { shift, step } = find(shiftId, stepId);
+  if (shift.status !== 'open') throw bad('끝난 근무예요');
+  // 단계는 차례대로 판정한다(앞 단계가 합격해야 뒤 단계를 볼 수 있다)
+  if (step.id !== currentStep(shift)?.id) throw bad(`지금 단계(${currentStep(shift)?.title})부터 차례로 판정해요`);
+  if (step.fails >= MAX_FAILS && db.person(by)?.role !== '점장') throw bad(`${MAX_FAILS}번 불합격한 단계는 점장이 다시 판정해요`);
   const run = new Run('judge', db.personLabel(by), `${shift.title} · ${step.title}`);
   await orchestrate(run, step.title);
   const r = await run.step('judge', () => judge(step, shift));

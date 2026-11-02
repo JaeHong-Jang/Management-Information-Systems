@@ -206,21 +206,21 @@ const pastShift: Shift = {
   steps: R2.phases.flatMap((ph) =>
     ph.steps.map((st) => {
       const base = { ...st, phase: `${R2.title} · ${ph.title}`, routineId: 'R2', ticks: [] as string[], approved: [] as string[], fails: 0, failedChecks: [] as string[] };
-      if (st.id === 'R2.S1') return { ...base, state: 'passed' as const, results: [{ id: 'R2.S1.c1', verdict: '합격' as const, why: `마지막 판매 ${addDays(YESTERDAY, -1)}까지 반영` }], judgedAt: `${YESTERDAY}T23:05:00`, doneAt: `${YESTERDAY}T23:05:00` };
+      if (st.id === 'R2.S1') return { ...base, state: 'passed' as const, results: [{ id: 'R2.S1.c1', verdict: '합격' as const, why: '매장 PC에서 POS 반영 확인(그날 기준)' }], judgedAt: `${YESTERDAY}T23:05:00`, doneAt: `${YESTERDAY}T23:05:00` };
       if (st.id === 'R2.S2')
         return { ...base, state: 'failed' as const, fails: 1, failedChecks: ['R2.S2.c1'], ticks: ['R2.S2.c2'], judgedAt: `${YESTERDAY}T23:30:00`,
-          results: [{ id: 'R2.S2.c1', verdict: '불합격' as const, why: '오늘 마감 실사 기록이 없어요' }, { id: 'R2.S2.c2', verdict: '합격' as const, why: '직접 체크함' }] };
+          results: [{ id: 'R2.S2.c1', verdict: '불합격' as const, why: `${YESTERDAY} 마감 실사 기록이 없어요` }, { id: 'R2.S2.c2', verdict: '합격' as const, why: '직접 체크함' }] };
       return { ...base, state: 'todo' as const, results: [] };
     }),
   ),
-  handovers: [{ at: `${YESTERDAY}T23:40:00`, from: '수빈(숙련 8개월)', to: '도윤(신입 3일차)', note: `수빈(숙련 8개월) → 도윤(신입 3일차): 마감·발주\n끝난 단계 1/6 (POS 매출 반영)\n지금 단계: 마감 재고 실사 (숙련 차례)\n남은 기준: 오늘 마감 실사를 입력했다\n막힌 것: 마감 재고 실사(오늘 마감 실사 기록이 없어요)\n볼 카드: C013, C014, C011, C012` }],
+  handovers: [{ at: `${YESTERDAY}T23:40:00`, from: '수빈(숙련 8개월)', to: '도윤(신입 3일차)', note: `수빈(숙련 8개월) → 도윤(신입 3일차): 마감·발주\n끝난 단계 1/6 (POS 매출 반영)\n지금 단계: 마감 재고 실사 (숙련 차례)\n남은 기준: 오늘 마감 실사를 입력했다\n막힌 것: 마감 재고 실사(${YESTERDAY} 마감 실사 기록이 없어요)\n볼 카드: C013, C014, C011, C012` }],
   log: [
     { at: `${YESTERDAY}T22:50:00`, text: '수빈(숙련 8개월): "마감하고 발주까지 해 줘" → 마감·발주 (6단계)' },
     { at: `${YESTERDAY}T23:05:00`, text: 'POS 매출 반영: 합격' },
     { at: `${YESTERDAY}T23:30:00`, text: '마감 재고 실사: 불합격 1회' },
     { at: `${YESTERDAY}T23:40:00`, text: '근무 넘김: 수빈(숙련 8개월) → 도윤(신입 3일차)' },
   ],
-  status: 'done',
+  status: 'open', // 어제 넘겨받은 근무: 도윤이 마감 재고 실사부터 이어받는다
 };
 
 const seedFile = {

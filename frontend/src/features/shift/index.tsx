@@ -79,6 +79,10 @@ export default function ShiftMap() {
     });
   const tick = (st: ShiftStep, c: CheckDef, on: boolean) => run(`tick-${c.id}`, () => api.tickCheck(shift!.id, st.id, c.id, on, me));
 
+  // 판정은 지금 단계만, 3번 불합격한 단계는 점장만 다시 할 수 있다(서버도 같은 규칙으로 막는다)
+  const judgeBlock = (st: ShiftStep | null): string | null =>
+    !shift || !st || shift.status !== 'open' || st.state === 'passed' ? '판정할 단계가 아니에요' : st.id !== cur?.id ? `지금 단계(${cur?.title})부터 차례로 판정해요` : st.fails >= 3 && !isManager ? '3번 불합격이라 점장이 다시 판정해요' : null;
+
   if (!view || !state) return null;
   const passed = shift ? shift.steps.filter((s) => s.state === 'passed').length : 0;
   const past = view.shifts.filter((s) => s.id !== shift?.id).slice(0, 5);
@@ -246,10 +250,11 @@ export default function ShiftMap() {
                       {step.link === '/inventory' ? '재고 화면에서 하기' : '점장 할 일에서 하기'}
                     </Link>
                   )}
-                  <Button className="flex-1" loading={busy === `judge-${step.id}`} disabled={shift.status !== 'open' || step.state === 'passed'} onClick={() => void judge(step)}>
+                  <Button className="flex-1" loading={busy === `judge-${step.id}`} disabled={!!judgeBlock(step)} onClick={() => void judge(step)}>
                     판정 받기
                   </Button>
                 </div>
+                {judgeBlock(step) && step.state !== 'passed' && shift.status === 'open' && <p className="mt-2 text-[12px] text-ink-weak">{judgeBlock(step)}</p>}
 
                 {step.cards.length > 0 && (
                   <>
@@ -293,13 +298,13 @@ export default function ShiftMap() {
                 {cur && <Badge tone={cur.actor === 'AI' ? 'brand' : 'warning'}>{cur.actor === 'AI' ? 'AI 차례' : `${cur.actor} 차례`}</Badge>}
               </p>
               <span className="text-[13px] font-semibold text-ink-weak">
-                {passed + 1}/{shift.steps.length}
+                {cur ? shift.steps.indexOf(cur) + 1 : shift.steps.length}/{shift.steps.length}
               </span>
               <Button size="sm" variant="ghost" className="h-10" onClick={() => setHanding(true)}>
                 <Repeat2 size={15} /> 근무 넘기기
               </Button>
               {cur && (
-                <Button size="sm" className="h-10" loading={busy === `judge-${cur.id}`} onClick={() => void judge(cur)}>
+                <Button size="sm" className="h-10" loading={busy === `judge-${cur.id}`} disabled={!!judgeBlock(cur)} title={judgeBlock(cur) ?? undefined} onClick={() => void judge(cur)}>
                   판정 받고 다음으로
                 </Button>
               )}
@@ -317,6 +322,7 @@ export default function ShiftMap() {
                       <span className="min-w-0 flex-1 truncate text-[14px] text-ink-strong">
                         {fmtTime(s.date)} · {s.title}
                       </span>
+                      {s.status === 'open' && <Badge tone="brand">진행 중</Badge>}
                       <span className="text-[12px] text-ink-weak">
                         {s.steps.filter((x) => x.state === 'passed').length}/{s.steps.length} 합격{s.handovers.length ? ` · 넘김 ${s.handovers.at(-1)!.from.split('(')[0]}→${s.handovers.at(-1)!.to.split('(')[0]}` : ''}
                       </span>

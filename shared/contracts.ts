@@ -303,7 +303,7 @@ export interface InterviewDraft {
   via?: string; // 카드 편집자가 Claude였는지 규칙이었는지
 }
 
-export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기' | '재고 차이' | '사용량 이탈' | '레시피 대기' | '보정 제안' | '반복 실수'; ids: string[]; detail: string }
+export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기' | '재고 차이' | '사용량 이탈' | '레시피 대기' | '보정 제안' | '반복 실수' | '근무 대기'; ids: string[]; detail: string }
 
 
 export interface Metrics {

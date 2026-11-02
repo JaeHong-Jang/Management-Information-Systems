@@ -20,6 +20,7 @@ const KIND_TONE: Record<LintIssue['kind'], Tone> = {
   '레시피 대기': 'warning',
   '사용량 이탈': 'neutral',
   '반복 실수': 'danger',
+  '근무 대기': 'warning',
 };
 
 function Tile({ label, n }: { label: string; n: number }) {
@@ -168,6 +169,7 @@ export default function Page() {
     (issues ?? []).filter((i) => i.kind === '상충').forEach((i, n) => list.push({ key: '상충' + n, text: `${i.ids.join('와 ')} 내용이 서로 달라요`, cta: '정리하기', go: () => { setShowAll(true); setTimeout(() => goto('lint-' + i.ids[0]), 50); } }));
     (issues ?? []).filter((i) => i.kind === '만료').forEach((i, n) => list.push({ key: '만료' + n, text: `${i.ids.join(', ')} 만료됐어요`, cta: '확인하기', go: () => (i.ids[0] ? setRenewId(i.ids[0]) : undefined) }));
     // 같은 판정 줄이 근무 두 번 넘게 불합격: 근무 지도에서 확인하고 카드로 남긴다
+    (issues ?? []).filter((i) => i.kind === '근무 대기').forEach((i, n) => list.push({ key: '근무' + n, text: `근무 · ${i.detail.split(' · ').slice(1).join(' · ')}`, cta: '근무 지도에서 판정', go: () => navigate('/shift') }));
     (issues ?? []).filter((i) => i.kind === '반복 실수').forEach((i, n) => list.push({ key: '반복' + n, text: `반복 실수 · ${i.detail.split("'")[1] ?? i.detail}`, cta: '근무 지도 보기', go: () => navigate('/shift') }));
     // 재고 일은 재고·발주 화면에서 처리한다
     const stock = (issues ?? []).filter((i) => i.kind === '재고 차이' || i.kind === '보정 제안' || i.kind === '레시피 대기');

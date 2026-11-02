@@ -38,7 +38,7 @@ export async function shiftPlanner(text: string): Promise<StepOut<string[]>> {
         user: `[루틴]\n${list.map((x) => `${x.id} ${x.title}: ${x.desc}`).join('\n')}\n\n[점장·직원의 말]\n${text}\n\n이 말에 맞는 루틴 id를 하는 순서대로 골라라. 맞는 루틴이 없으면 빈 배열.`,
         schema: z.object({ routines: z.array(z.string()) }),
       });
-      return r ? r.routines.filter((id) => ids.has(id)) : null;
+      return r ? [...new Set(r.routines.filter((id) => ids.has(id)))] : null; // 같은 루틴을 두 번 펼치지 않는다
     },
     () => pickByRules(text, list),
     llmEnabled(),
@@ -49,19 +49,22 @@ export async function shiftPlanner(text: string): Promise<StepOut<string[]>> {
 
 // ---------- 판정관 (규칙) ----------
 
-/** 자료로 확인하는 줄. 숫자와 함께 이유를 돌려준다 */
+/** 자료로 확인하는 줄. 숫자와 함께 이유를 돌려준다.
+ * 날짜는 판정하는 날이 아니라 근무의 영업일(shift.date) 기준이다. 자정 넘어 마감 실사를 넣거나 판정해도 그날 근무로 본다 */
 function autoCheck(rule: AutoRule, shift: Shift): { ok: boolean; why: string } {
   const d = db.get();
   const inv = d.inventory;
   const today = db.today();
+  const day = shift.date;
   switch (rule) {
     case 'posUpToDate': {
       const last = [...new Set(inv.sales.map((s) => s.date))].sort().at(-1);
-      return last && last >= addDays(today, -1) ? { ok: true, why: `마지막 판매 ${last}까지 반영` } : { ok: false, why: `마지막 판매 ${last ?? '없음'} — 어제까지 POS 파일을 올려야 해요` };
+      return last && last >= addDays(day, -1) ? { ok: true, why: `마지막 판매 ${last}까지 반영` } : { ok: false, why: `마지막 판매 ${last ?? '없음'} — ${addDays(day, -1)}까지 POS 파일을 올려야 해요` };
     }
     case 'stocktakeToday': {
-      const n = inv.stocktakes.filter((s) => s.date === today).length;
-      return n ? { ok: true, why: `오늘 마감 실사 ${n}개 품목` } : { ok: false, why: '오늘 마감 실사 기록이 없어요' };
+      // 근무 영업일이나 그 뒤(자정 넘어 입력)에 들어온 실사면 이 근무의 마감 실사로 본다
+      const n = inv.stocktakes.filter((s) => s.date >= day).length;
+      return n ? { ok: true, why: `${day} 마감 실사 ${n}개 품목` } : { ok: false, why: `${day} 마감 실사 기록이 없어요` };
     }
     case 'noStockDiff': {
       const diffs = inventoryIssues().filter((i) => i.kind === '재고 차이');
@@ -82,7 +85,8 @@ function autoCheck(rule: AutoRule, shift: Shift): { ok: boolean; why: string } {
     case 'eventsCovered': {
       const end = addDays(today, HORIZON - 1);
       const events = inv.events.filter((e) => e.to >= today && e.from <= end);
-      const missing = events.filter((e) => !inv.adjustments.some((a) => a.status === 'approved' && a.reason === e.label));
+      // 보정의 이유 글은 AI가 자유롭게 쓸 수 있어 이름이 아니라 기간이 겹치는지로 맞춘다
+      const missing = events.filter((e) => !inv.adjustments.some((a) => a.status === 'approved' && a.from <= e.to && a.to >= e.from));
       return !events.length ? { ok: true, why: '14일 안 행사 없음' } : missing.length ? { ok: false, why: `보정 없는 행사: ${missing.map((e) => e.label).join(', ')}` } : { ok: true, why: `행사 ${events.length}개 모두 보정 승인됨` };
     }
     case 'noWaitingQuestions': {
