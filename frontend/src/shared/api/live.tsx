@@ -1,10 +1,11 @@
 // 실시간 상태: SSE(/api/stream)로 들어오는 실행 이벤트를 모으고, 위키가 바뀌면 그래프와 스냅숏을 갱신한다.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { AgentStep, Graph, GraphEdge, GraphNode, RunEvent } from '@shared/contracts';
+import type { AgentStep, FlowId, Graph, GraphEdge, GraphNode, RunEvent } from '@shared/contracts';
 import { api, type State } from './client';
 
 export interface RunView {
   runId: string;
+  flow: FlowId;
   flowName: string;
   actor: string;
   input: string;
@@ -136,7 +137,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 
 function applyEvent(prev: RunView[], e: RunEvent): RunView[] {
   if (e.type === 'run-start')
-    return [{ runId: e.runId, flowName: e.flowName, actor: e.actor, input: e.input, at: e.at, running: null, steps: [], gates: [], done: false, summary: '' }, ...prev].slice(0, 40);
+    return [{ runId: e.runId, flow: e.flow, flowName: e.flowName, actor: e.actor, input: e.input, at: e.at, running: null, steps: [], gates: [], done: false, summary: '' }, ...prev].slice(0, 40);
   return prev.map((r) => {
     if (r.runId !== e.runId) return r;
     switch (e.type) {

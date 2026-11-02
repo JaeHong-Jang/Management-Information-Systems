@@ -1,4 +1,4 @@
-// 에이전트 팀: harness.config.json을 그대로 그린다. 팀·에이전트·흐름·게이트, 그리고 실제 실행 기록.
+// 에이전트 팀: harness.config.json을 그대로 그린다. '지도'는 흐름을 단계 카드로 펼쳐 지금 누구 차례인지 보이고, '팀'은 팀·에이전트·흐름·게이트와 실행 기록.
 import { useEffect, useMemo, useState } from 'react';
 import type { HarnessConfig } from '@shared/contracts';
 import { api } from '@/shared/api/client';
@@ -6,11 +6,13 @@ import { useLive } from '@/shared/api/live';
 import { Badge, Empty, PageHeader, Panel, cx } from '@/shared/ui';
 import { TEAM_STYLE } from '@/shared/theme/tokens';
 import { RunCard } from '../overview';
+import { StepMap } from './StepMap';
 
 export default function Agents() {
   const { runs } = useLive();
   const [h, setH] = useState<HarnessConfig | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [view, setView] = useState<'map' | 'team'>('map');
   useEffect(() => void api.harness().then(setH), []);
 
   const calls = useMemo(() => {
@@ -33,7 +35,21 @@ export default function Agents() {
         eyebrow="시스템"
         title="에이전트 팀"
         desc="처음 일하는 사람도 혼자 해결할 수 있게 여섯 팀이 나눠 일해요. 글을 이해하고 쓰는 일만 LLM이 하고, 검색·검증·개인정보·점장 연결·재고 숫자 계산은 규칙이 해요. LLM이 쓴 답은 규칙으로 다시 확인해요."
+        action={
+          <div className="flex rounded-xl bg-surface p-1 text-[13px] font-semibold">
+            {(['map', 'team'] as const).map((v) => (
+              <button key={v} onClick={() => setView(v)} aria-pressed={view === v} className={cx('rounded-lg px-3 py-1.5', view === v ? 'bg-brand-weak text-brand-strong' : 'text-ink-weak')}>
+                {v === 'map' ? '지도' : '팀'}
+              </button>
+            ))}
+          </div>
+        }
       />
+
+      {view === 'map' ? (
+        <StepMap h={h} />
+      ) : (
+      <>
 
       <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {h.teams.map((t) => {
@@ -120,6 +136,8 @@ export default function Agents() {
           <Empty>아직 실행이 없어요. 질문하기나 매장의 하루 재생으로 시작해 보세요.</Empty>
         )}
       </Panel>
+      </>
+      )}
     </>
   );
 }
