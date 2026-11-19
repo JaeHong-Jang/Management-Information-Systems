@@ -1,0 +1,71 @@
+{
+  "name": "윤슬 HQ 에이전트 하네스",
+  "version": "1.0.0",
+  "llm": {
+    "provider": "anthropic",
+    "model": "claude-opus-5-5",
+    "envModel": "CLAUDE_MODEL",
+    "fallbacks": "default",
+    "offline": "ANTHROPIC_API_KEY가 없거나 호출이 실패하면 규칙 기반으로 같은 모양의 결과를 낸다. 점수·순위·비율은 언제나 규칙 코드가 계산한다. 화면에 '규칙 모드'로 표시한다.",
+    "ollama": { "model": "ax4-light:q4_K_M", "envModel": "OLLAMA_MODEL", "envHost": "OLLAMA_HOST" }
+  },
+  "teams": [
+    { "id": "lead", "name": "지휘", "color": "#4F6BED", "agents": ["orchestrator"] },
+    { "id": "monitor", "name": "관측팀", "color": "#2A9D8F", "agents": ["review-collector", "complaint-tagger", "variance-scorer"] },
+    { "id": "diagnose", "name": "진단팀", "color": "#7B61C9", "agents": ["cause-analyst", "drift-detector"] },
+    { "id": "prescribe", "name": "처방팀", "color": "#D9A21B", "agents": ["playbook-writer", "sv-planner", "briefing-writer"] },
+    { "id": "capture", "name": "수집팀", "color": "#4C9A4A", "agents": ["privacy-guard", "interviewer", "card-writer"] },
+    { "id": "answer", "name": "답변팀", "color": "#3B8FC2", "agents": ["librarian", "coach", "escalator"] },
+    { "id": "verify", "name": "검증팀", "color": "#C2672F", "agents": ["quote-checker", "citation-checker", "policy-checker", "wording-guard"] },
+    { "id": "keeper", "name": "위키 관리팀", "color": "#8A8F98", "agents": ["synthesizer", "linter", "promoter"] }
+  ],
+  "agents": [
+    { "id": "orchestrator", "team": "lead", "name": "오케스트레이터", "role": "들어온 요청을 흐름(관측·진단·처방·승격·질문·기록·승인·점검·브리핑)에 배정하고 실행 순서와 결과 요약을 맡는다", "card": "agents/lead/orchestrator.md", "llm": false },
+
+    { "id": "review-collector", "team": "monitor", "name": "리뷰 수집원", "role": "매장별 카카오·네이버 리뷰(처방 이후 가상 리뷰 포함)를 저장소로 가져오고 건수를 센다", "card": "agents/monitor/review-collector.md", "llm": false },
+    { "id": "complaint-tagger", "team": "monitor", "name": "불만 분류원", "role": "리뷰에 불만 유형 12종을 정규식으로 붙이고, AI가 켜져 있으면 저평점 리뷰만 근거 문장과 함께 다시 분류한다", "card": "agents/monitor/complaint-tagger.md", "llm": true },
+    { "id": "variance-scorer", "team": "monitor", "name": "편차 채점원", "role": "공개 배점 R1~R5로 매장 위험 점수와 순위를 계산한다", "card": "agents/monitor/variance-scorer.md", "llm": false },
+
+    { "id": "cause-analyst", "team": "diagnose", "name": "원인 분석가", "role": "저평점 리뷰의 불만을 지식 공백·운영·인력·매장 자체 규칙·위생·품질로 나누고 리뷰 인용을 붙인다", "card": "agents/diagnose/cause-analyst.md", "llm": true },
+    { "id": "drift-detector", "team": "diagnose", "name": "표준 차이 탐지원", "role": "리뷰에 드러난 매장 운영이 본사 표준과 다른 곳(이용시간·소인원 거절·최소주문)을 찾아 기록한다", "card": "agents/diagnose/drift-detector.md", "llm": false },
+
+    { "id": "playbook-writer", "team": "prescribe", "name": "처방 카드 작성자", "role": "지식 공백 원인을 매장 사례 카드 초안으로 만든다. 점장이 승인해야 위키에 들어간다", "card": "agents/prescribe/playbook-writer.md", "llm": true },
+    { "id": "sv-planner", "team": "prescribe", "name": "SV 과제 설계자", "role": "매장 자체 규칙·운영·인력·위생·품질 원인을 SV 방문 점검 항목으로 만든다", "card": "agents/prescribe/sv-planner.md", "llm": false },
+    { "id": "briefing-writer", "team": "prescribe", "name": "브리핑 작성자", "role": "매장 상위 불만 순서로 손님께 미리 알릴 문장을 근무 전 브리핑으로 묶는다", "card": "agents/prescribe/briefing-writer.md", "llm": true },
+
+    { "id": "privacy-guard", "team": "capture", "name": "개인정보·익명화 가드", "role": "기록·리뷰 속 전화번호·카드번호·고객 실명을 가린다. 가린 개수를 남긴다", "card": "agents/capture/privacy-guard.md", "llm": false },
+    { "id": "interviewer", "team": "capture", "name": "회고 인터뷰어", "role": "무엇을 했는지만 적힌 기록에서 빠진 판단 이유·하면 안 되는 것·점장 호출 기준을 되묻는다", "card": "agents/capture/interviewer.md", "llm": true },
+    { "id": "card-writer", "team": "capture", "name": "사례 카드 편집자", "role": "기록과 되묻기 답을 상황·판단 이유·대응·금지·호출 기준의 사례 카드로 정리한다", "card": "agents/capture/card-writer.md", "llm": true },
+
+    { "id": "librarian", "team": "answer", "name": "검색 사서", "role": "이 매장 카드와 본사 카드 중 승인된 것에서 질문과 가까운 카드를 찾는다(한국어 2-gram BM25)", "card": "agents/answer/librarian.md", "llm": false },
+    { "id": "coach", "team": "answer", "name": "현장 코치", "role": "찾은 카드만 근거로 알바가 바로 따라 할 답을 쓴다. 문장마다 카드 번호를 붙인다", "card": "agents/answer/coach.md", "llm": true },
+    { "id": "escalator", "team": "answer", "name": "점장 연결", "role": "근거가 없거나 안전 상황이거나 점장 호출 기준에 걸리면 점장에게 넘긴다", "card": "agents/answer/escalator.md", "llm": false },
+
+    { "id": "quote-checker", "team": "verify", "name": "리뷰 인용 검증", "role": "진단의 인용이 실제로 그 매장 리뷰이고 문장이 원문에 그대로 있는지 본다. 아니면 인용을 뺀다", "card": "agents/verify/quote-checker.md", "llm": false },
+    { "id": "citation-checker", "team": "verify", "name": "카드 인용 검증", "role": "답과 처방이 가리키는 카드·진단·리뷰 번호가 실제로 있는지 본다. 근거 없는 줄은 뺀다", "card": "agents/verify/citation-checker.md", "llm": false },
+    { "id": "policy-checker", "team": "verify", "name": "표준 우선 검증", "role": "인용한 카드끼리 출처가 다르면 본사 표준 > 공식규정 > 현장노하우 순서로 따르라는 안내를 붙인다", "card": "agents/verify/policy-checker.md", "llm": false },
+    { "id": "wording-guard", "team": "verify", "name": "표현 검증", "role": "고객 탓, 단정, 임의 무료·환불 약속 같은 금지 표현을 막는다", "card": "agents/verify/wording-guard.md", "llm": false },
+
+    { "id": "synthesizer", "team": "keeper", "name": "종합 편집자", "role": "토픽에 카드가 늘거나 바뀌면 그 매장 토픽의 핵심 판단 원칙을 다시 쓴다", "card": "agents/keeper/synthesizer.md", "llm": true },
+    { "id": "linter", "team": "keeper", "name": "위키 점검관", "role": "상충·만료·효과 낮음·중복·빈 토픽·승인 대기·본사 표준 불일치를 찾아 점장 할 일로 만든다", "card": "agents/keeper/linter.md", "llm": true },
+    { "id": "promoter", "team": "keeper", "name": "표준 승격 제안자", "role": "같은 불만이 위험 상위 20개 매장 중 5곳 이상에서 반복되면 본사 표준 개정 제안을 만든다", "card": "agents/keeper/promoter.md", "llm": false }
+  ],
+  "flows": {
+    "ingest": { "name": "리뷰 관측", "steps": ["orchestrator", "review-collector", "privacy-guard", "complaint-tagger", "variance-scorer"] },
+    "diagnose": { "name": "매장 원인 진단", "steps": ["orchestrator", "cause-analyst", "drift-detector", "quote-checker", "wording-guard"] },
+    "prescribe": { "name": "처방 초안", "steps": ["orchestrator", "playbook-writer", "sv-planner", "briefing-writer", "citation-checker", "wording-guard"] },
+    "promote": { "name": "표준 개정 제안", "steps": ["orchestrator", "promoter", "wording-guard"] },
+    "ask": { "name": "알바 질문", "steps": ["orchestrator", "privacy-guard", "librarian", "coach", "citation-checker", "policy-checker", "wording-guard", "escalator"] },
+    "record": { "name": "노하우 기록", "steps": ["orchestrator", "privacy-guard", "interviewer", "card-writer", "wording-guard"] },
+    "approve": { "name": "점장 승인", "steps": ["orchestrator", "synthesizer"] },
+    "resolve": { "name": "점장 답변 재축적", "steps": ["orchestrator", "privacy-guard", "card-writer", "wording-guard", "synthesizer"] },
+    "briefing": { "name": "근무 전 브리핑", "steps": ["orchestrator", "briefing-writer", "wording-guard"] },
+    "lint": { "name": "위키 점검", "steps": ["orchestrator", "linter"] }
+  },
+  "gates": [
+    { "id": "diagnose-gate", "flow": "diagnose", "agents": ["quote-checker", "wording-guard"], "onFail": "그 매장 리뷰가 아니거나 원문에 없는 인용은 뺀다. 인용이 하나도 남지 않은 진단 결과는 낮은 확신으로 표시한다" },
+    { "id": "prescribe-gate", "flow": "prescribe", "agents": ["citation-checker", "wording-guard"], "onFail": "없는 진단·카드·리뷰를 가리키는 처방 근거는 빼고, 금지 표현이 있는 처방은 초안으로만 둔다" },
+    { "id": "answer-gate", "flow": "ask", "agents": ["citation-checker", "policy-checker", "wording-guard"], "onFail": "근거 없는 문장을 빼고 다시 확인한다. 남는 문장이 없으면 점장에게 넘긴다" },
+    { "id": "card-gate", "flow": "record", "agents": ["wording-guard"], "onFail": "막힌 표현을 표시하고 작성자에게 고쳐 달라고 되돌린다(저장은 승인 대기로)" }
+  ]
+}

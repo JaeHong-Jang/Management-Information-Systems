@@ -1,0 +1,295 @@
+// 매장 흐름(오케스트레이터가 정한 에이전트 순서). harness.config.json의 flows와 같은 순서로 에이전트를 부른다.
+// 모든 흐름은 매장 하나(storeId) 안에서만 돈다: 카드·질문·사람·기록이 다른 매장과 섞이지 않는다.
+import type { AskResult, Briefing, Card, InterviewDraft, LintIssue } from '@shared/contracts';
+import { agentDef, config } from '../harness/config.js';
+import { Run } from '../harness/runner.js';
+import { cardWriter, interviewer, privacyGuard, type FollowupAnswer, type StoreCtx } from '../agents/capture.js';
+import { coach, escalator, librarian } from '../agents/answer.js';
+import { citationChecker, dropForbiddenLines, policyChecker, wordingGuard } from '../agents/verify.js';
+import { linter, synthesizer } from '../agents/keeper.js';
+import { briefingItems, briefingWriter } from '../agents/prescribe.js';
+import { forbidden, maskPii } from '../tools/policies.js';
+import { search } from '../tools/search.js';
+import { scoreOf } from '../hq/service.js';
+import * as db from '../store/db.js';
+import { anonNode, cardEdges, cardNode, edge, personNode, questionEdges, questionNode, standardNode } from '../store/graph.js';
+
+const forbiddenIn = (text: string) => forbidden(text).map((f) => `"${f.match}" — ${f.why}`);
+const httpError = (status: number, message: string) => Object.assign(new Error(message), { status });
+
+export function requireStore(storeId: string) {
+  const s = db.store(storeId);
+  if (!s) throw httpError(404, `매장을 찾을 수 없어요: ${storeId}`);
+  return s;
+}
+export const ctxOf = (storeId: string): StoreCtx => ({ brand: db.get().brand.name, store: requireStore(storeId).name });
+
+/** 카드 노드를 내보낼 때는 연결 대상(본사 표준)도 함께 보낸다 */
+const withContext = (c: Card) => {
+  const st = c.standardId ? db.standard(c.standardId) : undefined;
+  return [cardNode(c), ...(st ? [standardNode(st)] : [])];
+};
+
+const plan = (flow: keyof typeof config.flows) => config.flows[flow].steps.filter((s) => s !== 'orchestrator').map((s) => agentDef(s).name).join(' → ');
+
+export async function orchestrate(run: Run, note = '') {
+  await run.step('orchestrator', () => ({ out: null, summary: `${config.flows[run.flow].name}: ${plan(run.flow)}${note ? ` · ${note}` : ''}` }));
+}
+
+export async function resynthesize(run: Run, storeId: string, topic: string) {
+  const summary = await run.step('synthesizer', () => synthesizer(topic, db.usableCards(storeId).usable.filter((c) => c.topic === topic), ctxOf(storeId)));
+  const d = db.get();
+  (d.topicSummaries[storeId] ??= {})[topic] = summary;
+  run.wiki({ op: '토픽 재종합', detail: `'${topic}' 핵심 원칙을 다시 정리`, nodes: [], edges: [] });
+}
+
+/** 카드·질문이 이 매장 것인지 확인한다(다른 매장 카드를 이 매장 화면에서 바꾸지 못하게) */
+function ownCard(storeId: string, id: string): Card {
+  const c = db.card(id);
+  if (!c || (c.storeId !== storeId && c.scope !== 'brand')) throw httpError(404, '이 매장의 카드를 찾을 수 없어요');
+  return c;
+}
+function ownQuestion(storeId: string, id: string) {
+  const q = db.question(id);
+  if (!q || q.storeId !== storeId) throw httpError(404, '이 매장의 질문을 찾을 수 없어요');
+  return q;
+}
+
+// ---------- 알바 질문 ----------
+
+export async function ask(storeId: string, rawText: string, askerId: string): Promise<AskResult> {
+  const ctx = ctxOf(storeId);
+  // 개인정보는 실행 기록·모델 입력·저장보다 먼저 가린다
+  const text = maskPii(rawText).text;
+  const run = new Run('ask', storeId, db.personLabel(askerId), text);
+  await orchestrate(run);
+  await run.step('privacy-guard', () => privacyGuard(rawText));
+  const { usable, excluded } = db.usableCards(storeId);
+  const hits = await run.step('librarian', () => librarian(text, usable, excluded));
+  const draft = await run.step('coach', () => coach(text, hits, ctx));
+  const c1 = await run.step('citation-checker', () => citationChecker(draft, new Set(usable.map((c) => c.id)), new Set(hits.map((h) => h.card.id))));
+  const c2 = await run.step('policy-checker', () => policyChecker(c1.answer, usable));
+  const words = await run.step('wording-guard', () => wordingGuard(c2.answer.answer));
+  run.gate('answer-gate', [...c1.problems, ...c2.problems, ...words], config.gates.find((g) => g.id === 'answer-gate')!.onFail);
+  // 게이트는 경고가 아니라 출력 통제다: 금지 표현 줄은 알바에게 보이지 않는다
+  const checked = { ...c2.answer, answer: dropForbiddenLines(c2.answer.answer) };
+  const esc = await run.step('escalator', () => escalator(text, checked, usable));
+
+  let final = checked;
+  if (esc.why === 'safety') {
+    final = { ...checked, answer: `안전과 관련된 상황이에요(${esc.safety}). 혼자 처리하지 말고 점장님께 바로 연락하세요. 위급하면 119나 112에 먼저 신고하세요.`, confidence: 'low', cited: [] };
+  } else if (esc.escalate && esc.why === 'call' && esc.callCard) {
+    const c = esc.callCard;
+    const interim = c.actions.filter((a) => !forbidden(a).length).slice(0, 2).map((a, i) => `${i + 1}. ${a} [${c.id}]`);
+    final = { ...checked, answer: [`점장 호출 기준에 해당해요: ${c.escalateWhen} [${c.id}]`, '점장님께 바로 알렸어요. 그동안 할 수 있는 것:', ...interim].join('\n'), cited: [c.id], confidence: 'low' };
+  } else if (esc.escalate) {
+    final = { ...checked, answer: '매장 위키에 이 상황에 맞는 사례가 아직 없어요. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가돼요.', cited: [], confidence: 'none' };
+  }
+  // 마지막 관문: 알바에게 가기 직전에 금지 표현 줄을 빼고, 이유도 다시 검사한다
+  final = { ...final, answer: dropForbiddenLines(final.answer), why: forbidden(final.why).length || esc.why === 'safety' ? '' : final.why };
+  for (const id of final.cited) db.card(id)!.uses++;
+  const q = db.createQuestion({ storeId, text, askerId, status: esc.escalate ? 'escalated' : 'answered', answer: final.answer, why: final.why, cited: final.cited, confidence: final.confidence, runId: run.runId });
+  run.wiki({
+    op: esc.escalate ? '점장에게 넘김' : '질문에 답함',
+    detail: `[${q.id}] ${text.slice(0, 40)}${final.cited.length ? ` → ${final.cited.join(', ')}` : ''}`,
+    nodes: [questionNode(q), ...final.cited.map((id) => cardNode(db.card(id)!))],
+    edges: questionEdges(q),
+  });
+  run.end(true, esc.escalate ? '점장 답을 기다려요' : `근거 ${final.cited.length}개로 답했어요`);
+  return { question: q, candidates: hits.map((h) => ({ id: h.card.id, title: h.card.title, score: Number(h.score.toFixed(2)) })), runId: run.runId };
+}
+
+export async function feedback(storeId: string, questionId: string, solved: boolean) {
+  const q = ownQuestion(storeId, questionId);
+  q.feedback = solved ? 'solved' : 'unsolved';
+  for (const id of q.cited) {
+    const c = db.card(id);
+    if (c) solved ? c.helpful++ : c.notHelpful++;
+  }
+  const run = new Run('ask', storeId, db.personLabel(q.askerId), `피드백: ${solved ? '해결됨' : '해결 안 됨'}`);
+  const escalate = !solved && q.status === 'answered';
+  if (escalate) q.status = 'escalated';
+  await orchestrate(run, escalate ? '해결 안 됨 → 점장에게 넘김' : '해결됨 → 카드 도움 횟수 반영');
+  run.wiki({ op: solved ? '해결 확인' : '점장에게 넘김', detail: `[${q.id}] ${solved ? '위키 답으로 해결' : '위키 답으로 해결 안 됨'}`, nodes: [questionNode(q)], edges: [] });
+  run.end(true, solved ? '해결 확인' : '점장 대기');
+  return q;
+}
+
+// ---------- 노하우 기록 ----------
+
+export async function interview(storeId: string, raw: string, authorId: string, answers: FollowupAnswer[] = []): Promise<InterviewDraft> {
+  const ctx = ctxOf(storeId);
+  const run = new Run('record', storeId, db.personLabel(authorId), maskPii(raw).text);
+  await orchestrate(run, answers.length ? '되묻기 답 반영' : '첫 기록');
+  const safe = await run.step('privacy-guard', () => privacyGuard(raw));
+  const safeAnswers = answers.map((a) => ({ ...a, answer: privacyGuard(a.answer).out.text }));
+  const followups = await run.step('interviewer', () => interviewer(safe.text, answers.length > 0, ctx));
+  const draft = await run.step('card-writer', () => cardWriter(safe.text, safeAnswers, db.get().topics, ctx));
+  const words = await run.step('wording-guard', () => wordingGuard([draft.title, draft.reason, ...draft.actions, draft.avoid].join('\n')));
+  run.gate('card-gate', words, config.gates.find((g) => g.id === 'card-gate')!.onFail);
+  run.end(true, followups.length ? `되묻기 ${followups.length}개` : '카드 초안 완성');
+  const via = run.steps.find((s) => s.agentId === 'card-writer')?.via;
+  return { ...draft, followups, masked: safe.masked, problems: words, via };
+}
+
+export const cardText = (c: Pick<Card, 'title' | 'situation' | 'reason' | 'actions' | 'avoid' | 'escalateWhen'> & { customerNotice?: string }) =>
+  [c.title, c.situation, c.reason, ...c.actions, c.avoid, c.escalateWhen, c.customerNotice ?? ''].join('\n');
+
+export async function submitCard(storeId: string, input: Omit<InterviewDraft, 'followups' | 'masked' | 'problems'> & { credit?: boolean }, authorId: string): Promise<Card> {
+  requireStore(storeId);
+  // 사람이 고친 필드도 저장 전에 다시 가리고 다시 검사한다. 매장에서는 본사 표준 카드를 만들 수 없다
+  const mask = (s: string) => maskPii(s ?? '').text;
+  const draft = {
+    ...input,
+    title: mask(input.title), situation: mask(input.situation), reason: mask(input.reason), actions: input.actions.map(mask), avoid: mask(input.avoid), escalateWhen: mask(input.escalateWhen),
+    ...(input.customerNotice ? { customerNotice: mask(input.customerNotice) } : {}),
+    source: input.source === '공식규정' ? '공식규정' : '현장노하우',
+  } as const;
+  const problems = forbiddenIn(cardText(draft));
+  const author = db.person(authorId);
+  const direct = author?.role === '점장' && author.storeId === storeId && !problems.length;
+  const run = new Run('record', storeId, db.personLabel(authorId), draft.title);
+  await orchestrate(run, direct ? '점장 작성 → 바로 승인' : problems.length ? `금지 표현 ${problems.length}건 → 승인 대기` : '승인 대기로 저장');
+  const c = db.createCard(draft, authorId, direct ? 'approved' : 'pending', '기록', { storeId });
+  if (input.credit === false) c.credit = false;
+  run.wiki({
+    op: direct ? '카드 추가' : '카드 승인 대기',
+    detail: `[${c.id}] ${c.title} — ${c.credit === false ? '이름 비공개' : db.personLabel(authorId)}`,
+    nodes: [...(c.credit === false ? [anonNode()] : author ? [personNode(author)] : []), ...withContext(c)],
+    edges: cardEdges(c),
+  });
+  if (direct) await resynthesize(run, storeId, c.topic);
+  run.end(true, `[${c.id}] 저장`);
+  return c;
+}
+
+// ---------- 점장: 승인·반려·갱신·보관 ----------
+
+export async function cardAction(storeId: string, id: string, action: 'approve' | 'reject' | 'renew' | 'archive', edits?: Partial<Card>, reason?: string): Promise<Card> {
+  const c = ownCard(storeId, id);
+  if (c.scope === 'brand') throw httpError(403, '본사 카드는 매장에서 바꿀 수 없어요');
+  const label = { approve: '승인', reject: '반려', renew: '갱신', archive: '보관' }[action];
+  const run = new Run('approve', storeId, '점장', `[${id}] ${label}`);
+  await orchestrate(run, label);
+  if (action === 'approve') {
+    if (edits) {
+      // 매장이 바꿀 수 있는 칸만 받는다
+      const { title, topic, situation, reason: r, actions, avoid, escalateWhen, customerNotice, tags } = edits;
+      Object.assign(c, Object.fromEntries(Object.entries({ title, topic, situation, reason: r, actions, avoid, escalateWhen, customerNotice, tags }).filter(([, v]) => v !== undefined)));
+    }
+    const problems = forbiddenIn(cardText(c));
+    if (problems.length) {
+      run.gate('card-gate', problems, '승인하지 않음: 표현을 고친 뒤 다시 승인');
+      run.end(false, '승인 막힘');
+      throw httpError(400, `표현을 다듬어야 승인할 수 있어요: ${problems.join(' / ')}`);
+    }
+    c.status = 'approved';
+    c.updated = db.today();
+    // 점장 답에서 생긴 카드가 승인되면 기다리던 질문을 닫는다
+    for (const q of db.get().questions.filter((x) => x.storeId === storeId && x.cardId === c.id && x.status === 'escalated')) {
+      q.status = 'resolved';
+      q.managerAnswer = [...c.actions.map((a, i) => `${i + 1}. ${a} [${c.id}]`), c.avoid ? `하지 말 것: ${c.avoid} [${c.id}]` : ''].filter(Boolean).join('\n');
+      q.cited = [c.id];
+    }
+    // 처방으로 내려온 카드가 모두 승인되면 그 처방을 끝낸다
+    const p = c.prescriptionId ? db.prescription(c.prescriptionId) : undefined;
+    if (p && p.status === 'sent' && p.cardIds.every((cid) => db.card(cid)?.status === 'approved')) {
+      p.status = 'done';
+      p.doneAt = db.today();
+    }
+  } else if (action === 'reject') c.status = 'rejected';
+  else if (action === 'archive') {
+    c.status = 'archived';
+    if (reason) c.archiveReason = reason.slice(0, 200);
+  } else {
+    c.updated = db.today();
+    c.expires = db.addDays(db.today(), c.source === '현장노하우' ? 120 : 180);
+  }
+  run.wiki({ op: `카드 ${label}`, detail: `[${c.id}] ${c.title}${c.archiveReason && action === 'archive' ? ` — 사유: ${c.archiveReason}` : ''}`, nodes: action === 'approve' ? withContext(c) : [cardNode(c)], edges: action === 'approve' ? cardEdges(c) : [] });
+  if (action === 'approve' || action === 'archive') await resynthesize(run, storeId, c.topic);
+  run.end(true, `[${c.id}] ${label}`);
+  return c;
+}
+
+export async function resolve(storeId: string, questionId: string, managerAnswer: string, managerId: string) {
+  const ctx = ctxOf(storeId);
+  const q = ownQuestion(storeId, questionId);
+  const answer = maskPii(managerAnswer).text;
+  const run = new Run('resolve', storeId, db.personLabel(managerId), answer);
+  await orchestrate(run, `[${q.id}] 점장 답을 사례로`);
+  const safe = await run.step('privacy-guard', () => privacyGuard(`${q.text}\n${managerAnswer}`));
+  const draft = await run.step('card-writer', () => cardWriter(safe.text, [], db.get().topics, ctx));
+  const words = await run.step('wording-guard', () => wordingGuard(cardText(draft)));
+  run.gate('card-gate', words, '금지 표현이 있어 승인 대기로 저장(점장이 고친 뒤 승인)');
+  const c = db.createCard({ ...draft, title: q.text.slice(0, 40), situation: q.text }, managerId, words.length ? 'pending' : 'approved', '에스컬레이션', { storeId, fromQuestionId: q.id });
+  // 표현 검사에 걸려 승인 대기가 된 답은 알바에게 보이지 않게 질문을 열어 둔다(승인될 때 닫힌다)
+  q.status = c.status === 'approved' ? 'resolved' : 'escalated';
+  q.managerAnswer = answer;
+  q.cardId = c.id;
+  const manager = db.person(managerId);
+  run.wiki({ op: '점장 답 → 새 카드', detail: `[${q.id}] → [${c.id}] ${c.title}`, nodes: [questionNode(q), ...withContext(c), ...(manager ? [personNode(manager)] : [])], edges: [...cardEdges(c), edge(q.id, c.id, 'became')] });
+  // 같은 내용을 기다리던 이 매장의 다른 질문도 이 카드로 함께 닫는다
+  const also = c.status === 'approved'
+    ? db.get().questions.filter((x) => x.storeId === storeId && x.status === 'escalated' && x.id !== q.id && (search(x.text, [c])[0]?.coverage ?? 0) >= 0.35 && (search(x.text, [c])[0]?.score ?? 0) >= 1)
+    : [];
+  for (const x of also) {
+    Object.assign(x, { status: 'resolved', managerAnswer: answer, cardId: c.id, cited: [c.id] });
+    run.wiki({ op: '비슷한 질문 함께 해결', detail: `[${x.id}] → [${c.id}]`, nodes: [questionNode(x)], edges: [edge(x.id, c.id, 'became')] });
+  }
+  if (c.status === 'approved') await resynthesize(run, storeId, c.topic);
+  run.end(true, c.status === 'approved' ? `질문이 사례 [${c.id}]가 되었어요${also.length ? ` · 비슷한 대기 질문 ${also.length}건도 해결` : ''}` : `[${c.id}] 표현 확인 필요 → 승인 대기`);
+  return { question: q, card: c, alsoResolved: also.map((x) => x.id) };
+}
+
+// ---------- 점검 ----------
+
+const lastLintKey = new Map<string, string>();
+
+/** 점검 결과가 지난번과 다를 때만 실행 기록을 남긴다(화면을 열 때마다 기록이 쌓이지 않게) */
+export async function lint(storeId: string): Promise<LintIssue[]> {
+  const ctx = ctxOf(storeId);
+  const r = await linter(storeId, ctx);
+  const d = db.get();
+  const mine = new Set(db.storeCards(storeId).map((c) => c.id));
+  d.links = [...d.links.filter((l) => !mine.has(l.source) && !mine.has(l.target)), ...r.out.links];
+  const key = r.out.issues.map((i) => `${i.kind}:${i.ids.join(',')}`).join('|');
+  if (key !== lastLintKey.get(storeId)) {
+    lastLintKey.set(storeId, key);
+    const run = new Run('lint', storeId, '위키 점검관', '정기 점검', 0);
+    await orchestrate(run);
+    await run.step('linter', () => r);
+    run.wiki({ op: '위키 점검', detail: `할 일 ${r.out.issues.length}건`, nodes: [], edges: [] });
+    run.end(true, `할 일 ${r.out.issues.length}건`);
+  } else db.save();
+  return r.out.issues;
+}
+
+// ---------- 근무 전 브리핑 ----------
+
+const briefingMemo = new Map<string, { key: string; briefing: Briefing }>();
+
+/** 승인된 매장·본사 카드 중 손님 안내 문장이 있는 것을 매장 상위 불만 순서로. 구성이 바뀔 때만 브리핑 흐름을 돌린다 */
+export async function briefing(storeId: string): Promise<Briefing> {
+  const ctx = ctxOf(storeId);
+  const cards = db.usableCards(storeId).usable;
+  const items = briefingItems(cards, scoreOf(storeId).topComplaints, db.today());
+  const key = JSON.stringify(items.map((i) => [i.cardId, i.say, db.card(i.cardId)?.updated]));
+  const memo = briefingMemo.get(storeId);
+  if (memo?.key === key) return memo.briefing;
+  const run = new Run('briefing', storeId, '브리핑 작성자', `${ctx.store} 근무 전 브리핑`, 0);
+  await orchestrate(run);
+  const written = await run.step('briefing-writer', () => briefingWriter(ctx, items, cards));
+  const words = await run.step('wording-guard', () => wordingGuard(written.map((i) => `${i.say}\n${i.why}`).join('\n')));
+  const safe = written.filter((i) => !forbidden(`${i.say}\n${i.why}`).length);
+  run.end(true, `브리핑 ${safe.length}개${words.length ? ` (금지 표현으로 ${written.length - safe.length}개 뺌)` : ''}`);
+  const via = run.steps.find((s) => s.agentId === 'briefing-writer')?.via ?? 'rules';
+  const b: Briefing = { storeId, date: db.today(), items: safe, via };
+  briefingMemo.set(storeId, { key, briefing: b });
+  return b;
+}
+
+/** 초기화 때 매장별 기억(점검·브리핑 결과)을 비운다 */
+export function clearCaches() {
+  lastLintKey.clear();
+  briefingMemo.clear();
+}

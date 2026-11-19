@@ -1,0 +1,94 @@
+[
+ {
+  "id": "S001",
+  "name": "강남 윤슬점",
+  "region": "서울",
+  "district": "강남구",
+  "area": "번화가",
+  "isTarget": true,
+  "kakao": {
+   "rating": 2.4,
+   "count": 14,
+   "lowShare": 0.5,
+   "recentMean": 2.0
+  },
+  "naver": {
+   "matched": true,
+   "visitorReviews": 120,
+   "pageMean": 3.4,
+   "pageN": 6,
+   "pageLow": 2,
+   "kindShare": 0.3
+  },
+  "cross": "양쪽 모두 낮음"
+ },
+ {
+  "id": "S002",
+  "name": "종로 A점",
+  "region": "서울",
+  "district": "종로구",
+  "area": "번화가",
+  "isTarget": false,
+  "kakao": {
+   "rating": 4.2,
+   "count": 12,
+   "lowShare": 0.08,
+   "recentMean": 4.4
+  },
+  "naver": {
+   "matched": true,
+   "visitorReviews": 50,
+   "pageMean": 4.6,
+   "pageN": 5,
+   "pageLow": 0,
+   "kindShare": 0.6
+  },
+  "cross": "양쪽 모두 낮지 않음"
+ },
+ {
+  "id": "S003",
+  "name": "마포 A점",
+  "region": "서울",
+  "district": "마포구",
+  "area": "대학가",
+  "isTarget": false,
+  "kakao": {
+   "rating": 3.0,
+   "count": 11,
+   "lowShare": 0.36,
+   "recentMean": 2.8
+  },
+  "naver": {
+   "matched": false,
+   "visitorReviews": null,
+   "pageMean": null,
+   "pageN": 0,
+   "pageLow": 0,
+   "kindShare": null
+  },
+  "cross": "판정 불가(표본 부족)"
+ },
+ {
+  "id": "S004",
+  "name": "수원 A점",
+  "region": "경기",
+  "district": "수원시",
+  "area": "주거지",
+  "isTarget": false,
+  "kakao": {
+   "rating": 3.5,
+   "count": 5,
+   "lowShare": 0.2,
+   "recentMean": null
+  },
+  "naver": {
+   "matched": false,
+   "visitorReviews": null,
+   "pageMean": null,
+   "pageN": 0,
+   "pageLow": 0,
+   "kindShare": null
+  },
+  "cross": "판정 불가(표본 부족)"
+ }
+]

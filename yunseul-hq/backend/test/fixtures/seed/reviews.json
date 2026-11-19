@@ -1,0 +1,292 @@
+[
+ {
+  "id": "R001",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 1,
+  "date": "2025-03-10",
+  "text": "웨이팅도 없는데 2시간 지났다고 나가라고 하네요. 미리 안내도 없었어요.",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R002",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 1,
+  "date": "2025-06-02",
+  "text": "자리 많은데도 두 시간 되니까 퇴장하라고 함. 직원 태도도 별로.",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R003",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 2,
+  "date": "2025-08-15",
+  "text": "안주 품절이라고 다른 안주로 바꿔 달래요. 처음부터 말해 주지.",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R004",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 1,
+  "date": "2025-09-20",
+  "text": "중간 정산 한다고 계산을 두 번이나 함. 영수증 금액도 더 나왔어요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R005",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 2,
+  "date": "2024-05-01",
+  "text": "신분증 사진은 안 된다고 실물 민증 가져오래요. 미리 안내 좀 해주세요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R006",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 1,
+  "date": "2024-11-11",
+  "text": "불친절하고 반말해요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R007",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 2,
+  "date": "2025-10-01",
+  "text": "주문이 누락돼서 한참 기다렸어요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R008",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 1,
+  "date": "2025-02-02",
+  "text": "머리카락이 나왔어요. 위생 최악",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R009",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 5,
+  "date": "2024-03-03",
+  "text": "맥주 시원하고 좋아요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R010",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 4,
+  "date": "2024-06-06",
+  "text": "가성비 좋아요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R011",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 5,
+  "date": "2023-12-01",
+  "text": "분위기 좋음",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R012",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 3,
+  "date": "2025-04-04",
+  "text": "다른 지점은 시간 제한 없던데요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R013",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 2,
+  "date": "2025-11-01",
+  "text": "두 시간 제한 있는 거 들어갈 때 말 안 해줌",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R014",
+  "storeId": "S001",
+  "platform": "네이버",
+  "star": 2.0,
+  "date": "2025-10-10",
+  "text": "1시간 반 만에 나가라고 해서 당황했어요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R015",
+  "storeId": "S001",
+  "platform": "네이버",
+  "star": 4.5,
+  "date": "2025-09-09",
+  "text": "치킨 맛있어요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R016",
+  "storeId": "S001",
+  "platform": "네이버",
+  "star": 3.0,
+  "date": "2025-07-07",
+  "text": "보통이에요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R020",
+  "storeId": "S002",
+  "platform": "카카오",
+  "star": 1,
+  "date": "2025-05-05",
+  "text": "벌레가 나왔어요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R021",
+  "storeId": "S002",
+  "platform": "카카오",
+  "star": 5,
+  "date": "2025-06-01",
+  "text": "직원분들 친절해요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R022",
+  "storeId": "S002",
+  "platform": "카카오",
+  "star": 4,
+  "date": "2024-01-01",
+  "text": "맥주가 시원해요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R023",
+  "storeId": "S002",
+  "platform": "네이버",
+  "star": 5.0,
+  "date": "2025-02-02",
+  "text": "또 올게요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R030",
+  "storeId": "S003",
+  "platform": "카카오",
+  "star": 1,
+  "date": "2025-03-03",
+  "text": "2인은 안 받는다고 해서 그냥 나왔어요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R031",
+  "storeId": "S003",
+  "platform": "카카오",
+  "star": 2,
+  "date": "2025-04-04",
+  "text": "2명이라 안 받는대요. 골라 받는 듯",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R032",
+  "storeId": "S003",
+  "platform": "카카오",
+  "star": 1,
+  "date": "2025-05-05",
+  "text": "최소 주문 2만원 있다고 해서 황당했어요. 미리 안내도 없음",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R033",
+  "storeId": "S003",
+  "platform": "카카오",
+  "star": 4,
+  "date": "2024-04-04",
+  "text": "안주가 푸짐해요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R034",
+  "storeId": "S003",
+  "platform": "카카오",
+  "star": 5,
+  "date": "2024-08-08",
+  "text": "좋아요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R035",
+  "storeId": "S003",
+  "platform": "카카오",
+  "star": 2,
+  "date": "2025-06-06",
+  "text": "음식이 늦게 나와요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R040",
+  "storeId": "S004",
+  "platform": "카카오",
+  "star": 4,
+  "date": "2025-01-10",
+  "text": "괜찮아요",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R041",
+  "storeId": "S004",
+  "platform": "카카오",
+  "star": 3,
+  "date": "2025-02-10",
+  "text": "보통",
+  "tags": [],
+  "tagVia": "rules"
+ },
+ {
+  "id": "R042",
+  "storeId": "S004",
+  "platform": "카카오",
+  "star": 5,
+  "date": "2025-03-10",
+  "text": "좋아요",
+  "tags": [],
+  "tagVia": "rules"
+ }
+]

@@ -1,0 +1,46 @@
+[
+ {
+  "id": "V001",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 5,
+  "date": "2026-11-25",
+  "text": "들어갈 때 이용시간 안내를 먼저 해줘서 좋았어요",
+  "tags": [],
+  "tagVia": "rules",
+  "virtual": true
+ },
+ {
+  "id": "V002",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 4,
+  "date": "2026-12-01",
+  "text": "친절하게 안내해 주셨어요",
+  "tags": [],
+  "tagVia": "rules",
+  "virtual": true
+ },
+ {
+  "id": "V003",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 5,
+  "date": "2026-12-08",
+  "text": "맥주 시원하고 좋아요",
+  "tags": [],
+  "tagVia": "rules",
+  "virtual": true
+ },
+ {
+  "id": "V004",
+  "storeId": "S001",
+  "platform": "카카오",
+  "star": 3,
+  "date": "2026-12-15",
+  "text": "웨이팅 있을 때만 시간 제한 있다고 알려줬어요",
+  "tags": [],
+  "tagVia": "rules",
+  "virtual": true
+ }
+]
