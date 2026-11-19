@@ -10,6 +10,7 @@ import type {
   HqStandard,
   InterviewDraft,
   LintIssue,
+  Onboarding,
   Outcome,
   Platform,
   Prescription,
@@ -96,6 +97,7 @@ export const api = {
     post<InterviewDraft>(`/stores/${id}/record/interview`, { raw, authorId, answers }),
   submitCard: (id: string, draft: DraftFields, authorId: string) => post<Card>(`/stores/${id}/cards`, { draft, authorId }),
   card: (id: string, cid: string, action: CardAction, reason?: string) => post<Card>(`/stores/${id}/cards/${cid}/${action}`, { reason }),
+  readOnboarding: (id: string, personId: string, cardId: string) => post<Onboarding>(`/stores/${id}/onboarding/read`, { personId, cardId }),
   lint: (id: string) => call<LintIssue[]>(`/stores/${id}/lint`),
 
   // 공통

@@ -12,14 +12,14 @@ import { ManagerPage } from '@/features/manager';
 import { StaffPage } from '@/features/staff';
 import { WikiPage } from '@/features/wiki';
 import { GraphPage } from '@/features/graph';
-import { Empty } from '@/shared/ui';
+import { Empty, ErrorState, Loading } from '@/shared/ui';
 
 export function App() {
   return (
     <PresentProvider>
       <AppDataProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/hq" replace />} />
+          <Route path="/" element={<RoleHome />} />
           <Route element={<AppShell />}>
             <Route path="/hq" element={<HqOverviewPage />} />
             <Route path="/hq/stores/:id" element={<StoreDetailPage />} />
@@ -36,6 +36,18 @@ export function App() {
         </Routes>
       </AppDataProvider>
     </PresentProvider>
+  );
+}
+
+/** 첫 진입: 역할에 맞는 첫 화면으로. 타깃 매장 id가 오기 전에는 로딩을 보여 준다 */
+function RoleHome() {
+  const { role, targetId, overview } = useApp();
+  if (role === 'SV') return <Navigate to="/hq" replace />;
+  if (targetId) return <Navigate to={`/store/${targetId}/${role === '점장' ? 'manager' : 'staff'}`} replace />;
+  return (
+    <div className="p-[var(--gutter)]">
+      {overview.error ? <ErrorState message={overview.error} onRetry={overview.reload} /> : <Loading label="매장을 불러오는 중이에요" />}
+    </div>
   );
 }
 

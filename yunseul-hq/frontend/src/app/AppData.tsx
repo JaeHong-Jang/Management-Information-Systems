@@ -25,13 +25,12 @@ export const useApp = () => {
 
 function readRole(): AppRole {
   try {
-    const r = localStorage.getItem('yunseul-hq.role');
+    const r = localStorage.getItem('yunseul-hq.role.v3');
     if (r === 'SV' || r === '점장' || r === '직원') return r;
-    if (r === '알바') return '직원'; // v1에 저장된 값
   } catch {
     /* 저장소를 못 쓰면 기본값 */
   }
-  return 'SV';
+  return '직원'; // v3: 첫 화면은 직원 (새 키라 예전 저장값은 무시)
 }
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
@@ -43,7 +42,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const setRole = useCallback((r: AppRole) => {
     setRoleState(r);
     try {
-      localStorage.setItem('yunseul-hq.role', r);
+      localStorage.setItem('yunseul-hq.role.v3', r);
     } catch {
       /* 무시 */
     }

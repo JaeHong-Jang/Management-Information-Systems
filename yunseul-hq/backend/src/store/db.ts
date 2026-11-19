@@ -3,9 +3,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
-  Brand, Card, CardOrigin, CardStatus, ComplaintType, Diagnosis, HqStandard, LogEntry, Person, Prescription, Question, Review, RuleDrift, Source, StandardProposal, Store,
+  Brand, Card, CardOrigin, CardStatus, ComplaintType, Diagnosis, HqStandard, LogEntry, OnboardingRead, Person, Prescription, Question, Review, RuleDrift, Source, StandardProposal, Store,
 } from '@shared/contracts';
 import { SEED_DIR, STORE_DIR } from '../paths.js';
+import { addRead, brandShares, computeOnboarding, computeSituations } from '../rules/situations.js';
 import { retag } from '../rules/tagging.js';
 
 const STORE_FILE = join(STORE_DIR, 'store.json');
@@ -35,6 +36,7 @@ export interface Db {
   drifts: RuleDrift[];
   prescriptions: Prescription[];
   proposals: StandardProposal[];
+  onboardingReads: OnboardingRead[]; // 신입이 첫 근무 준비 카드를 읽은 기록(사람·카드마다 1건)
 }
 
 let db: Db | null = null;
@@ -59,6 +61,18 @@ interface KnowledgeSeed {
   topicSummaries?: Record<string, string> | Record<string, Record<string, string>>;
 }
 
+/** 시연용 시드: 타깃 매장의 P005(1주차 신입)가 첫 근무 준비 카드 앞 3장을 읽은 상태. 시드 시점의 카드·리뷰로 계산한다 */
+export function seedReads(d: Pick<Db, 'brand' | 'stores' | 'reviews' | 'cards' | 'questions' | 'people'>): OnboardingRead[] {
+  const target = d.stores.find((s) => s.isTarget)?.id ?? d.stores[0]?.id;
+  const reads: OnboardingRead[] = [];
+  if (!target || !d.people.some((p) => p.id === 'P005' && p.storeId === target)) return reads;
+  const mine = d.reviews.filter((r) => r.storeId === target);
+  const cards = d.cards.filter((c) => c.scope === 'brand' || c.storeId === target);
+  const situations = computeSituations({ storeId: target, reviews: mine, cards, questions: d.questions.filter((q) => q.storeId === target), brand: brandShares(d.reviews) });
+  computeOnboarding(target, situations, []).items.slice(0, 3).forEach((it, i) => addRead(reads, 'P005', it.cardId, `${addDays(d.brand.dataAsOf, -(i === 0 ? 2 : 1))}T1${i}:00:00`));
+  return reads;
+}
+
 /** 시드에서 새 저장소를 만든다. 리뷰는 규칙으로 다시 태깅한다 */
 export function fromSeed(): Db {
   const brand = readSeed<Brand>('brand.json');
@@ -74,11 +88,12 @@ export function fromSeed(): Db {
   const ts = k.topicSummaries ?? {};
   const flat = Object.values(ts).some((v) => typeof v === 'string');
   const topicSummaries = (flat ? (target ? { [target]: ts as Record<string, string> } : {}) : ts) as Record<string, Record<string, string>>;
+  const reviews = readSeed<Review[]>('reviews.json').map(retag);
   return {
     schema: SCHEMA,
     brand,
     stores,
-    reviews: readSeed<Review[]>('reviews.json').map(retag),
+    reviews,
     virtualPool: readSeed<Review[]>('virtual_after.json', []).map((r) => ({ ...retag(r), virtual: true })),
     simulated: [],
     standards: readSeed<HqStandard[]>('standards.json'),
@@ -93,6 +108,7 @@ export function fromSeed(): Db {
     drifts: [],
     prescriptions: [],
     proposals: [],
+    onboardingReads: seedReads({ brand, stores, reviews, cards, questions, people }),
   };
 }
 
@@ -101,6 +117,7 @@ export function load(): { db: Db; fresh: boolean } {
   if (existsSync(STORE_FILE)) {
     const d = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
     if (d.schema === SCHEMA) {
+      d.onboardingReads ??= seedReads(d); // v3 이전에 저장한 파일에는 읽음 기록이 없다
       db = d;
       touchReviews();
       return { db, fresh: false };

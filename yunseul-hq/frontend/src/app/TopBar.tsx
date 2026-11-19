@@ -8,9 +8,9 @@ import { useApp, type AppRole } from './AppData';
 import { useStoreId } from './useStoreId';
 
 const ROLES: { id: AppRole; label: string }[] = [
-  { id: 'SV', label: '본사 SV' },
-  { id: '점장', label: '점장' },
   { id: '직원', label: '직원' },
+  { id: '점장', label: '점장' },
+  { id: 'SV', label: '본사 SV' },
 ];
 
 const AI_LABEL = { claude: 'Claude', ollama: 'Ollama', rules: '규칙' } as const;

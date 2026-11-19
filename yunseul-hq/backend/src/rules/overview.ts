@@ -34,7 +34,7 @@ export interface OverviewInput {
   lastDiagnosis: Map<string, string>;
 }
 
-export function overviewParts(inp: OverviewInput): Omit<HqOverview, 'brand' | 'today' | 'ai'> {
+export function overviewParts(inp: OverviewInput): Omit<HqOverview, 'brand' | 'today' | 'ai' | 'situations'> {
   const { stores, stats } = inp;
   const score = (id: string) => stats.get(id)!.score;
   const ranked = stores.filter(rankEligible);

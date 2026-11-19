@@ -6,7 +6,7 @@ import { status as aiStatus } from './harness/llm.js';
 import { bus } from './harness/trace.js';
 import * as flows from './flows/index.js';
 import * as hq from './flows/hq.js';
-import { overview, reviewPage, storeDetail } from './hq/service.js';
+import { markOnboardingRead, overview, reviewPage, storeDetail, storeOnboarding, storeSituations } from './hq/service.js';
 import * as db from './store/db.js';
 import { buildGraph } from './store/graph.js';
 
@@ -71,8 +71,16 @@ app.get('/api/stores/:id/state', route((req, res) => {
     topicSummaries: d.topicSummaries[store.id] ?? {},
     log: d.log.filter((l) => l.storeId === store.id || l.storeId === null).slice(-40).reverse(),
     ai: aiStatus,
+    situations: storeSituations(store.id),
+    onboarding: storeOnboarding(store.id),
   };
   res.json(state);
+}));
+app.post('/api/stores/:id/onboarding/read', route((req, res) => {
+  flows.requireStore(sid(req));
+  const { personId, cardId } = req.body ?? {};
+  if (!personId || !cardId) return bad(res, '사람과 카드를 알려 주세요');
+  res.json(markOnboardingRead(sid(req), String(personId), String(cardId)));
 }));
 app.get('/api/stores/:id/briefing', route(async (req, res) => res.json(await flows.briefing(sid(req)))));
 app.post('/api/stores/:id/ask', route(async (req, res) => {

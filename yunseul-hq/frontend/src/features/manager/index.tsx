@@ -1,7 +1,7 @@
-// /store/:id/manager 점장: '오늘 할 일' 한 줄 → 우리 매장 진단 → 받은 처방 → 승인 대기 카드 → 넘어온 질문 → 위키 점검
+// /store/:id/manager 점장: 오늘 할 일 한 줄 → 넘어온 질문 → 새 알바 준비 상태 → 우리 매장 상황 표 → 승인 대기 카드 → 위키 점검 → (접힘) 받은 처방·진단
 import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BookOpen, ClipboardList, Clock, ListTodo, MessageCircleQuestion } from 'lucide-react';
+import { BookOpen, ClipboardList, Clock, MessageCircleQuestion, UserPlus } from 'lucide-react';
 import { api } from '@/shared/api/client';
 import { useLive } from '@/shared/api/live';
 import { useApp } from '@/app/AppData';
@@ -10,6 +10,8 @@ import { AsyncView, PageHeader } from '@/shared/ui';
 import { cx } from '@/shared/lib/format';
 import { DiagnosisSummary } from './DiagnosisSummary';
 import { LintPanel } from './LintPanel';
+import { NewcomerPanel } from './NewcomerPanel';
+import { SituationTable } from './SituationTable';
 import { PendingCards } from './PendingCards';
 import { QuestionsPanel } from './QuestionsPanel';
 import { ReceivedPrescriptions } from './ReceivedPrescriptions';
@@ -49,10 +51,19 @@ export function ManagerPage() {
         const manager = s.people.find((p) => p.role === '점장');
         const pending = s.cards.filter((c) => c.status === 'pending');
         const escalated = s.questions.filter((q) => q.status === 'escalated');
+        const situations = s.situations ?? [];
+        const onboarding = s.onboarding ?? { storeId: id, items: [], reads: [] };
+        const gaps = situations.filter((x) => x.gap).length;
+        const preparing = s.people.filter((p) => {
+          if (p.role !== '신입') return false;
+          const read = new Set(onboarding.reads.filter((r) => r.personId === p.id).map((r) => r.cardId));
+          return onboarding.items.some((i) => !read.has(i.cardId));
+        }).length;
         const todo = [
-          { href: '#pending', label: '승인 대기', n: pending.length, icon: Clock },
           { href: '#questions', label: '넘어온 질문', n: escalated.length, icon: MessageCircleQuestion },
-          { href: '#lint', label: '점검', n: lint.data?.length ?? null, icon: ListTodo },
+          { href: '#situations', label: '카드 없는 상황', n: gaps, icon: BookOpen },
+          { href: '#newcomers', label: '첫 근무 준비 중인 신입', n: preparing, icon: UserPlus, unit: '명' },
+          { href: '#pending', label: '승인 대기', n: pending.length, icon: Clock },
         ];
         return (
           <>
@@ -71,33 +82,32 @@ export function ManagerPage() {
               <ClipboardList size={16} aria-hidden className="text-ink" />
               {todo.map((t, i) => {
                 const Icon = t.icon;
-                const has = (t.n ?? 0) > 0;
+                const has = t.n > 0;
                 return (
                   <span key={t.href} className="inline-flex items-center gap-2">
-                    {i > 0 && <span className="text-text-muted" aria-hidden>·</span>}
+                    {i > 0 && <span className="hidden text-text-muted sm:inline" aria-hidden>·</span>}
                     <a href={t.href} className={cx('inline-flex min-h-[40px] items-center gap-1.5 rounded-ctl px-2 text-body hover:bg-ink-weak', has ? 'font-bold text-ink' : 'text-text-muted')}>
                       <Icon size={15} aria-hidden className={has ? 'text-amber-text' : undefined} />
                       {t.label}
-                      <span className={cx('num rounded-badge px-1.5', has ? 'bg-yellow text-ink' : 'bg-surface-sunken')}>{t.n ?? '…'}</span>
+                      <span className={cx('num rounded-badge px-1.5', has ? 'bg-yellow text-ink' : 'bg-surface-sunken')}>{t.n}{t.unit ?? ''}</span>
                     </a>
                   </span>
                 );
               })}
             </nav>
-            <div className="grid grid-cols-12 gap-5">
-              <div className="col-span-12 xl:col-span-7">
-                <DiagnosisSummary detail={detail} />
-              </div>
-              <div className="col-span-12 xl:col-span-5">
-                <ReceivedPrescriptions prescriptions={s.prescriptions} storeId={id} />
-              </div>
-              <div className="col-span-12 xl:col-span-7">
-                <PendingCards storeId={id} cards={pending} people={s.people} onChanged={refresh} />
-              </div>
-              <div className="col-span-12 space-y-5 xl:col-span-5">
-                <QuestionsPanel storeId={id} questions={s.questions} people={s.people} managerId={manager?.id ?? ''} onChanged={refresh} />
-                <LintPanel lint={lint} />
-              </div>
+            <div className="space-y-5">
+              <QuestionsPanel storeId={id} questions={s.questions} people={s.people} managerId={manager?.id ?? ''} onChanged={refresh} />
+              <NewcomerPanel people={s.people} onboarding={onboarding} />
+              <SituationTable storeId={id} situations={situations} topics={s.topics} people={s.people} onChanged={refresh} />
+              <PendingCards storeId={id} cards={pending} people={s.people} onChanged={refresh} />
+              <LintPanel lint={lint} />
+              <details className="rounded-card border border-line bg-surface shadow-card">
+                <summary className="min-h-[48px] cursor-pointer select-none px-4 py-3 font-display text-section">본사에서 받은 처방과 진단 요약 보기</summary>
+                <div className="grid grid-cols-12 gap-5 p-4 pt-0">
+                  <div className="col-span-12 xl:col-span-7"><DiagnosisSummary detail={detail} /></div>
+                  <div className="col-span-12 xl:col-span-5"><ReceivedPrescriptions prescriptions={s.prescriptions} storeId={id} /></div>
+                </div>
+              </details>
             </div>
           </>
         );

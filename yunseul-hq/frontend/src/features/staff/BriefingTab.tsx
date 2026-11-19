@@ -15,7 +15,7 @@ export function BriefingTab({ storeId, cards }: { storeId: string; cards: Card[]
         <section>
           <PageHeader title="오늘 브리핑" en="BRIEFING" sub={`${br.date} 근무 전에 읽어 주세요. 손님께 미리 말씀드리면 생기지 않는 불만이에요.`} actions={<ViaBadge via={br.via} />} />
           {br.items.length === 0 ? (
-            <Empty title="오늘 따로 알릴 것이 없어요">근무 중에 막히면 '물어보기'에서 바로 물어보세요.</Empty>
+            <Empty title="오늘 따로 알릴 것이 없어요">근무 중에 막히면 위에서 바로 물어보세요.</Empty>
           ) : (
             <ol className="space-y-4">
               {br.items.map((it, i) => (

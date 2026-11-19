@@ -4,7 +4,9 @@
 
 ## 1. 한 줄 정의
 
-역전할머니맥주 본사가 전국 가맹점 리뷰에서 서비스 편차가 큰 매장을 찾고, 원인을 리뷰 근거로 진단하고, 지식으로 풀 수 있는 원인은 매장 사례 카드와 근무 전 브리핑으로 내려보내는 서비스다. 매장에서 쌓인 노하우와 점장 답은 다시 근거가 되고, 여러 매장에 공통인 것은 본사 표준 개정 제안으로 올라간다.
+**(v3)** 가맹점 서비스 편차의 뿌리는 매장마다 '겪어 본 사람만 아는 대처법'이 사람 머릿속에만 있다는 것이다. 알바가 바뀌면 새로 온 사람은 처음부터 다시 배우고, 갑자기 터진 상황에서 막힌다. 윤슬은 직원이 막힌 순간에 우리 매장 대처 카드로 바로 답하고, 답이 없으면 선배·점장에게 넘겨 그 답을 카드로 남기고, 새 알바가 첫 근무 전에 이 매장에서 실제로 자주 터진 상황부터 읽게 한다. 전국 리뷰는 '어떤 상황이 실제로 손님 불만이 됐는지'를 알려 주는 근거로 쓰여 카드의 우선순위를 정한다. 본사 화면은 그 근거와 매장 간 카드 공유를 보는 보조 화면이다. 개편 브리프는 `docs/PIVOT.md`.
+
+(v2까지의 정의) 역전할머니맥주 본사가 전국 가맹점 리뷰에서 서비스 편차가 큰 매장을 찾고, 원인을 리뷰 근거로 진단하고, 지식으로 풀 수 있는 원인은 매장 사례 카드와 근무 전 브리핑으로 내려보내는 서비스다. 매장에서 쌓인 노하우와 점장 답은 다시 근거가 되고, 여러 매장에 공통인 것은 본사 표준 개정 제안으로 올라간다. v3에서도 이 기능은 남지만 본사 보조 화면으로 내려간다.
 
 - 브랜드는 실명(역전할머니맥주)이다. 매장은 모두 익명이다. 시연 타깃은 **강남 윤슬점**이다(실제 리뷰 데이터는 서울 강남구의 한 매장 것이지만, 화면·시드·문서 어디에도 실제 매장명과 주소를 쓰지 않는다).
 - 본사 표준은 가상이다(`HqStandard.virtual = true`). 실제 역전할머니맥주 본사 규정이라고 쓰지 않는다.
@@ -19,6 +21,8 @@
 | 알바(강남 윤슬점) | 휴대폰 | 근무 전 브리핑 확인, 상황 질문 → 근거 카드 답, 사례 기록 |
 
 ### 화면 목록(라우트)
+
+> v3 우선순위: 직원 → 점장 → 본사 순이다. 첫 화면은 직원 홈(`/store/:id/staff`)이고, 역할 전환 순서도 직원 / 점장 / 본사 SV다. 직원·점장 화면의 v3 구성은 `docs/PIVOT.md` §3이 이 절보다 우선한다.
 
 본사 SV (`/hq`)
 - `/hq` 전국 현황: KPI 6개, 위험 순위 표, 평점 분포(카카오·네이버), 매장 × 불만 유형 히트맵, 지역별 요약
@@ -124,7 +128,7 @@
 
 | 메서드 | 경로 | 응답 |
 |---|---|---|
-| GET | /api/hq/overview | HqOverview |
+| GET | /api/hq/overview | HqOverview (v3: `situations` 추가, 전국에서 자주 터지는 상황) |
 | GET | /api/hq/stores/:id | StoreDetail |
 | GET | /api/hq/reviews?storeId&platform&type&maxStar&q&offset&limit | ReviewPage |
 | POST | /api/hq/stores/:id/diagnose | RunAccepted (끝나면 Diagnosis 저장) |
@@ -135,7 +139,8 @@
 | POST | /api/hq/proposals/:id/approve · /reject | StandardProposal |
 | POST | /api/hq/drifts/:id/accept · /fix | RuleDrift |
 | POST | /api/hq/simulate/:storeId | Outcome (가상 처방 이후 리뷰를 넣고 효과 계산) |
-| GET | /api/stores/:id/state | StoreState |
+| GET | /api/stores/:id/state | StoreState (v3: `situations`, `onboarding` 추가) |
+| POST | /api/stores/:id/onboarding/read | body `{ personId, cardId }` → Onboarding (읽음 표시, 중복은 한 번만. 매장 사람이 아니거나 목록에 없는 카드면 400) |
 | GET | /api/stores/:id/briefing | Briefing |
 | POST | /api/stores/:id/ask | AskResult |
 | POST | /api/stores/:id/questions/:qid/feedback · /resolve | Question |

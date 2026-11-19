@@ -2,13 +2,13 @@
 // + 에이전트 한 줄 진행(관광공사 agent-work-line): 답을 기다리는 동안 지금 일하는 에이전트와 'N초 경과', 끝나면 한 줄로 접힌다.
 import { useMemo, useState } from 'react';
 import { CircleCheck, Clock, Loader2, Send, ThumbsDown, ThumbsUp } from 'lucide-react';
-import type { AskResult, Card, Question } from '@shared/contracts';
+import type { AskResult, Card, Question, Situation } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useAgentNames } from '@/shared/api/harness';
 import { useLive, type RunView } from '@/shared/api/live';
 import { useAction } from '@/shared/lib/useAsync';
 import { elapsedSec, useNow } from '@/shared/lib/useNow';
-import { Button, CardDrawer, CiteChip, CiteText, InlineError, PageHeader, RunProgress, Tag } from '@/shared/ui';
+import { Button, CardDrawer, CiteChip, CiteText, InlineError, RunProgress, Tag } from '@/shared/ui';
 
 const CONF = { high: '근거 충분', low: '근거 약함', none: '근거 없음' } as const;
 
@@ -39,7 +39,7 @@ function WaitingLine({ run, names }: { run: RunView | null; names: Record<string
   );
 }
 
-export function AskTab({ storeId, me, cards }: { storeId: string; me: string; cards: Card[] }) {
+export function AskTab({ storeId, me, cards, situations }: { storeId: string; me: string; cards: Card[]; situations: Situation[] }) {
   const [text, setText] = useState('');
   const [history, setHistory] = useState<AskResult[]>([]);
   const [since, setSince] = useState<number | null>(null);
@@ -63,18 +63,38 @@ export function AskTab({ storeId, me, cards }: { storeId: string; me: string; ca
 
   return (
     <section>
-      <PageHeader title="물어보기" en="ASK" sub="근무 중 막히는 상황을 적어 주세요. 매장 카드와 본사 표준에서 근거를 찾아 답해요." />
+      <h1 className="font-display text-display text-ink">
+        지금 <span className="hl-line">막혔어요</span>
+      </h1>
+      <p className="mb-3 mt-1 text-body text-text-subtle">막히는 상황을 적어 주세요. 매장 카드와 본사 표준에서 근거를 찾아 답해요.</p>
       <form onSubmit={(e) => { e.preventDefault(); void ask(); }}>
         <label className="block">
           <span className="sr-only">질문</span>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            rows={3}
+            rows={4}
             placeholder="예: 두 명인데 4인석 앉혀도 돼요?"
             className="w-full rounded-card border border-line-strong bg-surface p-3 text-mobile"
           />
         </label>
+        {situations.length > 0 && (
+          <div className="mt-2" role="group" aria-label="자주 터지는 상황">
+            <p className="mb-1 text-caption text-text-muted">이 매장에서 자주 터지는 상황</p>
+            <div className="flex flex-wrap gap-1.5">
+              {situations.slice(0, 5).map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setText(st.title)}
+                  className="min-h-[44px] rounded-badge border border-line-strong bg-surface px-3 text-body text-ink hover:bg-ink-weak"
+                >
+                  {st.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <Button type="submit" variant="primary" size="lg" icon={Send} busy={act.busy === 'ask'} disabled={!text.trim() || !me} className="mt-2 w-full">
           물어보기
         </Button>

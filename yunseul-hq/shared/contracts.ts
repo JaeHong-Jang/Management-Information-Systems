@@ -348,6 +348,7 @@ export interface HqOverview {
   heatmap: { storeId: string; counts: Partial<Record<ComplaintType, number>>; lowTotal: number }[]; // 위험 상위 30개 매장
   complaintTotals: { type: ComplaintType; count: number; cause: CauseClass }[]; // 브랜드 전체 저평점 리뷰 기준
   regions: { region: string; stores: number; meanRating: number | null; highRisk: number }[];
+  situations: BrandSituation[]; // brandShare 내림차순
 }
 
 export interface StoreDetail {
@@ -363,6 +364,51 @@ export interface StoreDetail {
 
 export interface ReviewPage { total: number; items: Review[] }
 
+// ----------------------------------------------------------------------
+// 상황 (v3: 직원이 막히는 순간이 중심. docs/PIVOT.md)
+// ----------------------------------------------------------------------
+
+/** 직원이 근무 중 맞닥뜨리는 상황. 규칙 상수(backend/src/rules/situations.ts)로 정의하고 리뷰 불만 유형·카드 주제와 잇는다. */
+export interface SituationDef {
+  id: string; // 'T01'
+  title: string; // 직원 입장 표현. 예: '이용시간이 다 됐다고 알려야 할 때'
+  complaintTypes: ComplaintType[]; // 이 상황을 잘못 처리하면 리뷰에 남는 불만 유형
+  cardTopics: string[]; // 이 상황을 다루는 카드 주제(Card.topic)
+}
+
+export interface SituationQuote { reviewId: string; text: string; star: number | null; date: string }
+
+/** 한 매장에서 본 상황. 숫자는 모두 규칙 계산 */
+export interface Situation extends SituationDef {
+  storeReviews: number; // 이 매장 실제 리뷰(virtual 제외) 중 해당 불만 유형이 붙은 수
+  storeShare: number; // 이 매장 불만 태그가 하나라도 붙은 리뷰 중 비율 0~1
+  brandShare: number; // 브랜드 전체에서 같은 방식으로 센 비율(비교용)
+  quotes: SituationQuote[]; // 이 매장 리뷰 인용, 최대 2
+  cardIds: string[]; // 이 상황에 쓸 승인 카드(매장 카드 먼저, 그다음 브랜드 카드)
+  storeCard: boolean; // 승인된 매장 카드가 하나라도 있는지
+  questions: number; // 이 매장 직원이 이 상황으로 물은 수
+  openQuestions: number; // 그중 아직 점장 답이 없는 수
+  gap: boolean; // 리뷰로는 자주 터지는데(storeReviews ≥ 3) 매장 카드가 없음 → 점장이 카드를 만들 차례
+  priority: number; // 가르칠 순서 점수(규칙). 높을수록 먼저
+}
+
+export interface OnboardingItem { situationId: string; situationTitle: string; cardId: string; why: string }
+export interface OnboardingRead { personId: string; cardId: string; at: string }
+
+/** 새 알바 첫 근무 준비: 읽을 카드 목록과 읽음 기록. 퀴즈 없음, 읽음 표시만 */
+export interface Onboarding {
+  storeId: string;
+  items: OnboardingItem[]; // 상황 우선순위 순, 상황마다 카드 1장, 최대 8장
+  reads: OnboardingRead[];
+}
+
+/** 본사용: 전국에서 자주 터지는 상황 */
+export interface BrandSituation extends SituationDef {
+  brandShare: number;
+  storesTop3: number; // 이 상황이 불만 상위 3위 안에 드는 순위 대상 매장 수
+  brandCardIds: string[]; // 이 상황을 다루는 브랜드 카드
+}
+
 export interface StoreState {
   store: Store;
   today: string;
@@ -374,6 +420,8 @@ export interface StoreState {
   topicSummaries: Record<string, string>;
   log: LogEntry[];
   ai: AiStatus;
+  situations: Situation[]; // priority 내림차순
+  onboarding: Onboarding;
 }
 
 export interface AskResult { question: Question; candidates: { id: string; title: string; score: number }[]; runId: string }
