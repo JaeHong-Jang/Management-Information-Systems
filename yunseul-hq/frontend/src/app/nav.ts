@@ -11,12 +11,19 @@ export interface NavItem {
   on: (path: string, sp: URLSearchParams) => boolean;
   /** 실행 중 점을 붙일 메뉴 */
   live?: boolean;
+  /** 숫자 배지(점장 '오늘 할 일'의 넘어온 질문 수) */
+  badge?: number;
+  /** 새 답이 왔다는 점(직원 '홈') */
+  dot?: boolean;
+  /** 사이드바에만 둔다(하단 탭에서는 뺀다) */
+  sidebarOnly?: boolean;
 }
+export interface NavSignals { newAnswer: boolean; escalated: number }
 export interface NavGroup { group: string; en: string; items: NavItem[] }
 
 const prefix = (p: string) => (path: string) => path === p || path.startsWith(`${p}/`);
 
-export function navFor(role: AppRole, storeId: string | null, storeName: string): NavGroup[] {
+export function navFor(role: AppRole, storeId: string | null, storeName: string, signals: NavSignals = { newAnswer: false, escalated: 0 }): NavGroup[] {
   if (role === 'SV') {
     const groups: NavGroup[] = [
       { group: '전국', en: 'NATION', items: [{ to: '/hq', label: '전국 상황', short: '전국', icon: MapIcon, on: (p) => p === '/hq' }] },
@@ -41,13 +48,13 @@ export function navFor(role: AppRole, storeId: string | null, storeName: string)
   if (!storeId) return [];
   if (role === '점장')
     return [
-      { group: '우리 매장', en: 'STORE', items: [{ to: `/store/${storeId}/manager`, label: '오늘 할 일', short: '할 일', icon: ClipboardList, on: (p) => p.endsWith('/manager') }] },
+      { group: '우리 매장', en: 'STORE', items: [{ to: `/store/${storeId}/manager`, label: '오늘 할 일', short: '할 일', icon: ClipboardList, on: (p) => p.endsWith('/manager'), badge: signals.escalated }] },
       {
         group: '지식',
         en: 'WIKI',
         items: [
           { to: `/store/${storeId}/wiki`, label: '매장 위키', short: '위키', icon: BookOpen, on: (p) => p.endsWith('/wiki') },
-          { to: `/graph?storeId=${storeId}`, label: '지식 그래프', short: '그래프', icon: Network, on: prefix('/graph') },
+          { to: `/graph?storeId=${storeId}`, label: '지식 그래프', short: '그래프', icon: Network, on: prefix('/graph'), sidebarOnly: true },
         ],
       },
     ];
@@ -61,7 +68,7 @@ export function navFor(role: AppRole, storeId: string | null, storeName: string)
       group: '근무',
       en: 'SHIFT',
       items: [
-        { to: `/store/${storeId}/staff?tab=home`, label: '홈', short: '홈', icon: Home, on: staffTab('home') },
+        { to: `/store/${storeId}/staff?tab=home`, label: '홈', short: '홈', icon: Home, on: staffTab('home'), dot: signals.newAnswer },
         { to: `/store/${storeId}/staff?tab=prep`, label: '첫 근무 준비', short: '준비', icon: GraduationCap, on: staffTab('prep') },
         { to: `/store/${storeId}/staff?tab=record`, label: '기록하기', short: '기록', icon: PenLine, on: staffTab('record') },
       ],

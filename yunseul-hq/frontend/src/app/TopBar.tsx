@@ -34,6 +34,7 @@ export function TopBar() {
   const { present, toggle } = usePresent();
   const storeId = useStoreId();
   const nav = useNavigate();
+  const isStaff = role === '직원'; // 직원 화면: AI 모드·실시간·심사 모드 칩은 숨긴다
   const storeName = overview.data?.stores.find((r) => r.store.id === (role === 'SV' ? null : storeId))?.store.name;
   const where = role === 'SV' ? `전국 ${overview.data ? `${overview.data.brand.storeCount.toLocaleString()}곳` : ''}` : storeName ?? '강남 윤슬점';
 
@@ -73,10 +74,16 @@ export function TopBar() {
           </span>
           <span className={cx(chip, 'border border-dashed border-white/50 text-white/90')} title="본사 표준과 처방 이후 리뷰는 가상이에요">
             <FlaskConical size={13} aria-hidden />
-            <span className="hidden xl:inline">가상 표준·가상 시나리오 포함</span>
-            <span className="xl:hidden">가상 포함</span>
+            {isStaff ? (
+              '가상 포함'
+            ) : (
+              <>
+                <span className="hidden xl:inline">가상 표준·가상 시나리오 포함</span>
+                <span className="xl:hidden">가상 포함</span>
+              </>
+            )}
           </span>
-          {ai && (
+          {ai && !isStaff && (
             <span
               className={cx(chip, ai.lastError ? 'bg-yellow text-ink' : 'bg-white/10 text-white/90')}
               title={ai.lastError ? `최근 LLM 오류: ${ai.lastError}` : ai.model ?? '규칙 모드: 숫자와 분류를 규칙 코드로 내요'}
@@ -86,10 +93,13 @@ export function TopBar() {
               {ai.model && <span className="dev hidden font-mono text-white/60 xl:inline">· {ai.model}</span>}
             </span>
           )}
-          <span className={cx(chip, connected ? 'text-white' : 'text-yellow-hl')} role="status">
-            {connected ? <Radio size={13} aria-hidden /> : <WifiOff size={13} aria-hidden />}
-            <span className="max-sm:sr-only">{connected ? '실시간 연결됨' : '실시간 끊김'}</span>
-          </span>
+          {!isStaff && (
+            <span className={cx(chip, connected ? 'text-white' : 'text-yellow-hl')} role="status">
+              {connected ? <Radio size={13} aria-hidden /> : <WifiOff size={13} aria-hidden />}
+              <span className="max-sm:sr-only">{connected ? '실시간 연결됨' : '실시간 끊김'}</span>
+            </span>
+          )}
+          {!isStaff && (
           <button
             type="button"
             onClick={toggle}
@@ -100,6 +110,7 @@ export function TopBar() {
             <Presentation size={13} aria-hidden />
             <span className="max-sm:sr-only">심사 모드</span>
           </button>
+          )}
         </div>
       </div>
     </header>

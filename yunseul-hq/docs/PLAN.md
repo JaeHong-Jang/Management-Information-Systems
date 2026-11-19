@@ -139,14 +139,15 @@
 | POST | /api/hq/proposals/:id/approve · /reject | StandardProposal |
 | POST | /api/hq/drifts/:id/accept · /fix | RuleDrift |
 | POST | /api/hq/simulate/:storeId | Outcome (가상 처방 이후 리뷰를 넣고 효과 계산) |
-| GET | /api/stores/:id/state | StoreState (v3: `situations`, `onboarding` 추가) |
+| GET | /api/stores/:id/state | StoreState (v3: `situations`, `onboarding` 추가 · v3.1: `now` 추가) |
 | POST | /api/stores/:id/onboarding/read | body `{ personId, cardId }` → Onboarding (읽음 표시, 중복은 한 번만. 매장 사람이 아니거나 목록에 없는 카드면 400) |
 | GET | /api/stores/:id/briefing | Briefing |
-| POST | /api/stores/:id/ask | AskResult |
+| POST | /api/stores/:id/ask | AskResult. body `{ text, askerId, situationId? }` (v3.1: situationId가 있으면 검색 없이 그 상황 카드로 답하고 text는 생략 가능, 없는 상황이면 400. 넘김이면 `nearCardId`) |
 | POST | /api/stores/:id/questions/:qid/feedback · /resolve | Question |
 | POST | /api/stores/:id/record/interview | InterviewDraft |
 | POST | /api/stores/:id/cards | Card |
 | POST | /api/stores/:id/cards/:cid/approve · /reject · /archive | Card |
+| POST | /api/stores/:id/cards/:cid/edit | Card. body `{ edits, editorId }` (v3.1: 그 매장 점장이 고치면 승인 유지, 아니면 승인 대기. 본사 카드 403) |
 | GET | /api/stores/:id/lint | LintIssue[] |
 | GET | /api/graph?storeId | Graph |
 | GET | /api/harness | HarnessConfig |

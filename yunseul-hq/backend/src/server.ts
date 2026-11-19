@@ -63,6 +63,7 @@ app.get('/api/stores/:id/state', route((req, res) => {
   const state: StoreState = {
     store,
     today: db.today(),
+    now: db.now(),
     people: d.people.filter((p) => p.storeId === store.id),
     cards: db.storeCards(store.id),
     questions: d.questions.filter((x) => x.storeId === store.id),
@@ -84,9 +85,9 @@ app.post('/api/stores/:id/onboarding/read', route((req, res) => {
 }));
 app.get('/api/stores/:id/briefing', route(async (req, res) => res.json(await flows.briefing(sid(req)))));
 app.post('/api/stores/:id/ask', route(async (req, res) => {
-  const { text, askerId } = req.body ?? {};
-  if (!text?.trim()) return bad(res, '질문이 비어 있어요');
-  res.json(await flows.ask(sid(req), text, askerId || db.defaultPerson(sid(req), '신입')));
+  const { text, askerId, situationId } = req.body ?? {};
+  if (!text?.trim() && !situationId) return bad(res, '질문이 비어 있어요');
+  res.json(await flows.ask(sid(req), text ?? '', askerId || db.defaultPerson(sid(req), '신입'), situationId ? String(situationId) : undefined));
 }));
 app.post('/api/stores/:id/questions/:qid/feedback', route(async (req, res) => res.json(await flows.feedback(sid(req), String(req.params.qid), Boolean(req.body?.solved)))));
 app.post('/api/stores/:id/questions/:qid/resolve', route(async (req, res) => {
@@ -106,6 +107,7 @@ app.post('/api/stores/:id/cards', route(async (req, res) => {
 }));
 app.post('/api/stores/:id/cards/:cid/:action', route(async (req, res) => {
   const action = String(req.params.action);
+  if (action === 'edit') return res.json(await flows.cardEdit(sid(req), String(req.params.cid), req.body?.edits, String(req.body?.editorId || db.defaultPerson(sid(req), '점장'))));
   if (!['approve', 'reject', 'renew', 'archive'].includes(action)) return bad(res, '알 수 없는 작업');
   res.json(await flows.cardAction(sid(req), String(req.params.cid), action as 'approve', req.body?.edits, req.body?.reason));
 }));

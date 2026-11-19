@@ -26,3 +26,20 @@ export function time(iso: string | null | undefined) {
 }
 
 export const cx = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
+
+/** a가 b보다 몇 분 뒤인지. 둘 다 서버 형식(타임존 없는 ISO)이라 같은 기준으로 읽는다. 읽지 못하면 null */
+export function minutesBetween(later: string | null | undefined, earlier: string | null | undefined): number | null {
+  if (!later || !earlier) return null;
+  const a = new Date(later).getTime();
+  const b = new Date(earlier).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return Math.max(0, Math.round((a - b) / 60000));
+}
+
+export function agoLabel(min: number | null) {
+  if (min == null) return '';
+  if (min < 1) return '방금 전';
+  if (min < 60) return `${min}분 전`;
+  if (min < 60 * 24) return `${Math.floor(min / 60)}시간 전`;
+  return `${Math.floor(min / (60 * 24))}일 전`;
+}

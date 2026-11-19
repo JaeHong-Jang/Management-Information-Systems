@@ -1,176 +1,133 @@
-// 물어보기: 답 + 근거 카드 칩([C015] 누르면 카드 서랍, 닫으면 누른 칩으로 돌아감 — 관광공사 useEvidenceDrawer)
-// + 에이전트 한 줄 진행(관광공사 agent-work-line): 답을 기다리는 동안 지금 일하는 에이전트와 'N초 경과', 끝나면 한 줄로 접힌다.
-import { useMemo, useState } from 'react';
-import { CircleCheck, Clock, Loader2, Send, ThumbsDown, ThumbsUp } from 'lucide-react';
-import type { AskResult, Card, Question, Situation } from '@shared/contracts';
+// 물어보기: 상황 버튼(한 줄 가로 스크롤, 누르면 바로 보냄) → 입력창 + 바로 아래 보내기 → 답 → 내 질문.
+// 답: 손님께 이렇게 말하세요(말풍선) → 이렇게 해요 2줄 → 더 보기 → 근거 카드 칩(맨 끝 한 번).
+// 직원 화면이라 runId·에이전트 수·진행 단계는 보이지 않는다.
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Loader2, PhoneCall, Send, ThumbsDown, ThumbsUp } from 'lucide-react';
+import type { Card, Question, Situation } from '@shared/contracts';
 import { api } from '@/shared/api/client';
-import { useAgentNames } from '@/shared/api/harness';
-import { useLive, type RunView } from '@/shared/api/live';
+import { useStoreData } from '@/app/StoreData';
 import { useAction } from '@/shared/lib/useAsync';
-import { elapsedSec, useNow } from '@/shared/lib/useNow';
-import { Button, CardDrawer, CiteChip, CiteText, InlineError, RunProgress, Tag } from '@/shared/ui';
+import { Button, CardDrawer, CiteChip, CiteText, InlineError, Tag } from '@/shared/ui';
+import { MyQuestions } from './MyQuestions';
 
 const CONF = { high: '근거 충분', low: '근거 약함', none: '근거 없음' } as const;
+const CALL = '점장님을 직접 불러 주세요';
 
-/** 답을 기다리는 동안: 이 매장의 '질문' 실행 중 클릭 뒤에 시작된 것 */
-function useAskRun(storeId: string, since: number | null): RunView | null {
-  const { runs } = useLive();
-  if (since == null) return null;
-  return runs.find((r) => r.flow === 'ask' && r.storeId === storeId && Date.parse(r.at) >= since - 5000) ?? null;
-}
-
-function WaitingLine({ run, names }: { run: RunView | null; names: Record<string, string> }) {
-  const now = useNow(!!run?.runningSince);
-  const sec = elapsedSec(run?.runningSince, now);
+/** 손님께 할 말 말풍선 */
+function Say({ text, label = '손님께 이렇게 말하세요' }: { text: string; label?: string }) {
   return (
-    <p className="mt-3 flex min-h-[44px] items-center gap-2 rounded-ctl bg-surface-sunken px-3 text-body text-text-subtle" role="status" aria-live="polite">
-      <Loader2 size={16} className="shrink-0 animate-spin text-ink" aria-hidden />
-      {run?.running ? (
-        <>
-          <b className="text-text">{names[run.running] ?? run.running}</b> 일하는 중
-          {sec != null && <span className="num text-text-muted">· {sec}초 경과</span>}
-        </>
-      ) : run ? (
-        `답변팀이 다음 단계로 넘기는 중이에요 · ${run.steps.length}단계 끝`
-      ) : (
-        '답변팀에 질문을 넘겼어요'
-      )}
-    </p>
+    <div>
+      <p className="text-caption font-bold text-text-subtle">{label}</p>
+      <p className="bubble mt-1 px-5 py-3.5 text-mobile font-medium text-ink">“{text}”</p>
+    </div>
   );
 }
 
-export function AskTab({ storeId, me, cards, situations }: { storeId: string; me: string; cards: Card[]; situations: Situation[] }) {
-  const [text, setText] = useState('');
-  const [history, setHistory] = useState<AskResult[]>([]);
-  const [since, setSince] = useState<number | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
-  const act = useAction();
-  const names = useAgentNames();
-  const cardMap = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
-  const waiting = useAskRun(storeId, act.busy === 'ask' ? since : null);
-
-  const ask = async () => {
-    const t = text.trim();
-    if (!t || !me) return;
-    setSince(Date.now());
-    const r = await act.run('ask', () => api.ask(storeId, t, me));
-    if (r) {
-      setHistory((h) => [r, ...h]);
-      setText('');
-    }
-  };
-  const update = (q: Question) => setHistory((h) => h.map((r) => (r.question.id === q.id ? { ...r, question: q } : r)));
-
+function Steps({ label, actions }: { label: string; actions: string[] }) {
+  if (actions.length === 0) return null;
   return (
-    <section>
-      <h1 className="font-display text-display text-ink">
-        지금 <span className="hl-line">막혔어요</span>
-      </h1>
-      <p className="mb-3 mt-1 text-body text-text-subtle">막히는 상황을 적어 주세요. 매장 카드와 본사 표준에서 근거를 찾아 답해요.</p>
-      <form onSubmit={(e) => { e.preventDefault(); void ask(); }}>
-        <label className="block">
-          <span className="sr-only">질문</span>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={4}
-            placeholder="예: 두 명인데 4인석 앉혀도 돼요?"
-            className="w-full rounded-card border border-line-strong bg-surface p-3 text-mobile"
-          />
-        </label>
-        {situations.length > 0 && (
-          <div className="mt-2" role="group" aria-label="자주 터지는 상황">
-            <p className="mb-1 text-caption text-text-muted">이 매장에서 자주 터지는 상황</p>
-            <div className="flex flex-wrap gap-1.5">
-              {situations.slice(0, 5).map((st) => (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => setText(st.title)}
-                  className="min-h-[44px] rounded-badge border border-line-strong bg-surface px-3 text-body text-ink hover:bg-ink-weak"
-                >
-                  {st.title}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        <Button type="submit" variant="primary" size="lg" icon={Send} busy={act.busy === 'ask'} disabled={!text.trim() || !me} className="mt-2 w-full">
-          물어보기
-        </Button>
-      </form>
-      {act.busy === 'ask' && <WaitingLine run={waiting} names={names} />}
-      <InlineError message={act.error} />
-
-      <ul className="mt-5 space-y-4">
-        {history.map((r) => (
-          <AnswerItem key={r.question.id} r={r} storeId={storeId} cardMap={cardMap} names={names} activeCard={open} onCite={(id) => setOpen(id)} onUpdate={update} />
-        ))}
-      </ul>
-      <CardDrawer cardId={open} card={open ? cardMap.get(open) : null} onClose={() => setOpen(null)} />
-    </section>
+    <div className="mt-4">
+      <p className="text-caption font-bold text-text-subtle">{label}</p>
+      <ol className="mt-1 list-decimal space-y-1 pl-5 text-mobile">{actions.map((a, i) => <li key={i}>{a}</li>)}</ol>
+    </div>
   );
 }
 
-function AnswerItem({ r, storeId, cardMap, names, activeCard, onCite, onUpdate }: {
-  r: AskResult;
-  storeId: string;
+/** 점장 호출 문구 속 '점장님을 직접 불러 주세요'만 굵게 */
+function Emphasized({ text, onCite }: { text: string; onCite: (id: string) => void }) {
+  const i = text.indexOf(CALL);
+  if (i < 0) return <CiteText text={text} onOpen={onCite} />;
+  return (
+    <>
+      <CiteText text={text.slice(0, i)} onOpen={onCite} />
+      <b className="text-ink">{CALL}</b>
+      <CiteText text={text.slice(i + CALL.length)} onOpen={onCite} />
+    </>
+  );
+}
+
+function Answer({ q, cardMap, storeId, onCite, onUpdate }: {
+  q: Question;
   cardMap: Map<string, Card>;
-  names: Record<string, string>;
-  activeCard: string | null;
+  storeId: string;
   onCite: (id: string) => void;
   onUpdate: (q: Question) => void;
 }) {
-  const q = r.question;
   const act = useAction();
-  const { runs } = useLive();
-  const run = runs.find((x) => x.runId === r.runId) ?? null;
+  const escalated = q.status === 'escalated';
+  const top = cardMap.get(q.cited[0] ?? '');
+  const near = escalated ? cardMap.get(q.nearCardId ?? '') : undefined;
   const fb = async (solved: boolean) => {
     const n = await act.run(solved ? 'yes' : 'no', () => api.feedback(storeId, q.id, solved));
     if (n) onUpdate(n);
   };
+  const more = top
+    ? [
+        ...(top.actions.length > 2 ? [{ l: '이어서 해요', v: <ol start={3} className="list-decimal pl-5">{top.actions.slice(2).map((a, i) => <li key={i}>{a}</li>)}</ol> }] : []),
+        ...((q.why || top.reason) ? [{ l: '왜 그렇게 해요', v: q.why || top.reason }] : []),
+        ...(top.avoid ? [{ l: '하지 말 것', v: top.avoid }] : []),
+        ...(top.escalateWhen ? [{ l: '이럴 땐 점장님 부르기', v: top.escalateWhen }] : []),
+      ]
+    : q.why ? [{ l: '왜 그렇게 해요', v: q.why }] : [];
+
   return (
-    <li className="animate-rise rounded-card border border-line bg-surface p-4 shadow-card">
-      <p className="text-caption text-text-muted">내 질문</p>
+    <div className="animate-rise rounded-card border border-line bg-surface p-4 shadow-card">
+      <p className="text-caption text-text-muted">내가 물어본 것</p>
       <p className="font-bold">{q.text}</p>
 
-      {q.status === 'escalated' && (
-        <p className="mt-3 flex items-start gap-2 rounded-ctl border border-amber-bar bg-amber-weak p-3 text-mobile text-amber-text">
-          <Clock size={18} className="mt-0.5 shrink-0" aria-hidden />
-          근거 카드가 없어서 점장님께 넘겼어요. 답이 오면 카드로 남아요.
-        </p>
+      {escalated ? (
+        <div className="mt-3">
+          <p className="rounded-ctl border border-amber-bar bg-amber-weak p-3 text-mobile text-amber-text">
+            <PhoneCall size={16} className="mr-1.5 inline align-[-2px]" aria-hidden />
+            <Emphasized text={q.answer || `${CALL}.`} onCite={onCite} />
+          </p>
+          {near && (
+            <div className="mt-4">
+              <p className="mb-2 font-display text-section text-ink">지금 할 수 있는 것</p>
+              {near.customerNotice && <Say text={near.customerNotice} />}
+              <Steps label="이렇게 해요" actions={near.actions.slice(0, 2)} />
+              <p className="mt-3 flex flex-wrap items-center gap-1 text-caption text-text-muted">
+                가장 가까운 카드
+                <CiteChip id={near.id} onOpen={onCite} title={near.title} />
+              </p>
+            </div>
+          )}
+        </div>
+      ) : top ? (
+        <div className="mt-3">
+          {top.customerNotice && <Say text={top.customerNotice} />}
+          <Steps label="이렇게 해요" actions={top.actions.slice(0, 2)} />
+          {top.actions.length === 0 && q.answer && <p className="mt-3 whitespace-pre-line text-mobile"><CiteText text={q.answer} onOpen={onCite} /></p>}
+          {more.length > 0 && (
+            <details className="mt-3 rounded-ctl bg-surface-sunken px-3">
+              <summary className="flex min-h-[44px] cursor-pointer items-center text-body font-bold text-ink">더 보기</summary>
+              <dl className="space-y-2 pb-3 text-body">
+                {more.map((m) => (
+                  <div key={m.l}>
+                    <dt className="text-caption font-bold text-text-subtle">{m.l}</dt>
+                    <dd>{m.v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          )}
+        </div>
+      ) : (
+        <p className="mt-3 whitespace-pre-line text-mobile"><CiteText text={q.answer} onOpen={onCite} /></p>
       )}
-      {q.answer && (
-        <p className="mt-3 whitespace-pre-line text-mobile leading-relaxed">
-          <CiteText text={q.answer} onOpen={onCite} activeId={activeCard} />
-        </p>
-      )}
-      {q.why && (
-        <p className="mt-2 text-body text-text-subtle">
-          <span className="mr-1 font-bold text-text">왜</span>
-          {q.why}
-        </p>
-      )}
-      {q.managerAnswer && (
-        <p className="mt-2 flex items-start gap-1.5 text-body"><CircleCheck size={15} className="mt-0.5 shrink-0 text-done" aria-hidden />점장 답: {q.managerAnswer}</p>
-      )}
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <Tag tone={q.confidence === 'high' ? 'done' : q.confidence === 'low' ? 'amber' : 'neutral'}>{CONF[q.confidence]}</Tag>
-        {q.cited.length > 0 && <span className="text-caption text-text-muted">근거 카드</span>}
-        {q.cited.map((id) => (
-          <CiteChip key={id} id={id} onOpen={onCite} active={activeCard === id} title={cardMap.get(id)?.title} />
-        ))}
-      </div>
 
-      {/* 에이전트 한 줄: 끝난 실행이라 접혀 있다. 펼치면 단계와 게이트 */}
-      <div className="mt-3 border-t border-line pt-2">
-        {run ? <RunProgress run={run} names={names} /> : <p className="num dev text-caption text-text-muted">실행 {r.runId}</p>}
-      </div>
+      {!escalated && q.cited.length > 0 && (
+        <p className="mt-3 flex flex-wrap items-center gap-1.5 text-caption text-text-muted">
+          <Tag tone={q.confidence === 'high' ? 'done' : q.confidence === 'low' ? 'amber' : 'neutral'}>{CONF[q.confidence]}</Tag>
+          근거 카드
+          {q.cited.map((id) => <CiteChip key={id} id={id} onOpen={onCite} title={cardMap.get(id)?.title} />)}
+        </p>
+      )}
 
-      {q.status !== 'escalated' && (
+      {!escalated && (
         <div className="mt-3">
           {q.feedback ? (
-            <p className="text-caption text-text-muted">{q.feedback === 'solved' ? '도움이 됐다고 남겼어요' : '해결 안 됐다고 남겼어요. 점장님께 전달돼요'}</p>
+            <p className="text-caption text-text-muted">{q.feedback === 'solved' ? '도움이 됐다고 남겼어요' : '해결 안 됐다고 남겼어요. 점장님께 넘어가요'}</p>
           ) : (
             <div className="grid grid-cols-2 gap-2">
               <Button size="lg" icon={ThumbsUp} busy={act.busy === 'yes'} onClick={() => fb(true)}>해결됐어요</Button>
@@ -180,6 +137,110 @@ function AnswerItem({ r, storeId, cardMap, names, activeCard, onCite, onUpdate }
           <InlineError message={act.error} />
         </div>
       )}
-    </li>
+    </div>
+  );
+}
+
+export function AskTab({ storeId, me, cards, situations, questions, now }: {
+  storeId: string;
+  me: string;
+  cards: Card[];
+  situations: Situation[];
+  questions: Question[];
+  now: string;
+}) {
+  const [text, setText] = useState('');
+  const [latest, setLatest] = useState<Question | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const act = useAction();
+  const { state } = useStoreData();
+  const cardMap = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
+  const answerRef = useRef<HTMLDivElement>(null);
+  const busy = act.busy === 'ask';
+
+  const ask = async (t: string, situationId?: string) => {
+    const body = t.trim();
+    if (!body || !me || busy) return;
+    const r = await act.run('ask', () => api.ask(storeId, body, me, situationId));
+    if (r) {
+      setLatest(r.question);
+      if (!situationId) setText('');
+      void state.reload();
+    }
+  };
+  const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // 한글 조합 중 Enter는 글자 확정이라 보내지 않는다
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      void ask(text);
+    }
+  };
+
+  // 답이 오면 맨 위가 상단바 아래에 오도록 스크롤(하단 탭에 가리지 않게 scroll-margin)
+  useEffect(() => {
+    if (!latest) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    answerRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }, [latest?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <section id="ask" className="scroll-mt-24">
+      <h1 className="font-display text-display text-ink">
+        지금 <span className="hl-line">막혔어요</span>
+      </h1>
+      {situations.length > 0 && (
+        <div className="mt-3" role="group" aria-label="자주 터지는 상황. 누르면 바로 물어봐요">
+          <p className="mb-1.5 text-caption text-text-muted">자주 터지는 상황 · 누르면 바로 물어봐요</p>
+          <div className="-mx-[var(--gutter)] flex snap-x gap-2 overflow-x-auto px-[var(--gutter)] pb-2 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
+            {situations.slice(0, 5).map((st) => (
+              <button
+                key={st.id}
+                type="button"
+                disabled={busy || !me}
+                onClick={() => void ask(st.title, st.id)}
+                className="min-h-[48px] shrink-0 snap-start whitespace-nowrap rounded-badge border border-line-strong bg-surface px-4 text-body font-medium text-ink hover:bg-ink-weak disabled:opacity-50"
+              >
+                {st.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <form onSubmit={(e) => { e.preventDefault(); void ask(text); }} className="mt-1">
+        <label className="block">
+          <span className="sr-only">질문</span>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={onKey}
+            rows={3}
+            placeholder="막힌 상황을 적어 주세요. 예: 두 명인데 4인석 앉혀도 돼요?"
+            className="w-full rounded-card border border-line-strong bg-surface p-3 text-mobile"
+          />
+        </label>
+        <p className="mt-1 text-caption text-text-muted">Enter로 보내고, Shift+Enter로 줄을 바꿔요.</p>
+        <Button type="submit" variant="primary" size="lg" icon={Send} busy={busy} disabled={!text.trim() || !me} className="mt-2 w-full">
+          보내기
+        </Button>
+      </form>
+      {busy && (
+        <p className="mt-3 flex min-h-[44px] items-center gap-2 rounded-ctl bg-surface-sunken px-3 text-body text-text-subtle" role="status" aria-live="polite">
+          <Loader2 size={16} className="shrink-0 animate-spin text-ink" aria-hidden />
+          답을 찾고 있어요
+        </p>
+      )}
+      <InlineError message={act.error} />
+
+      {latest && (
+        <div ref={answerRef} className="mt-5 scroll-mb-[88px] scroll-mt-[112px]">
+          <Answer key={latest.id} q={latest} cardMap={cardMap} storeId={storeId} onCite={setOpen} onUpdate={(q) => { setLatest(q); void state.reload(); }} />
+        </div>
+      )}
+
+      <div className="mt-8">
+        <MyQuestions questions={questions} now={now} excludeId={latest?.id ?? null} onCite={setOpen} />
+      </div>
+      <CardDrawer cardId={open} card={open ? cardMap.get(open) : null} onClose={() => setOpen(null)} />
+    </section>
   );
 }

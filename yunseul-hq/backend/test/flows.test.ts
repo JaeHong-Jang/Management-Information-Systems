@@ -7,7 +7,8 @@ import * as db from '../src/store/db.js';
 import { bus } from '../src/harness/trace.js';
 import { config } from '../src/harness/config.js';
 import { buildGraph } from '../src/store/graph.js';
-import { allStats, storeDetail } from '../src/hq/service.js';
+import { allStats, storeDetail, storeSituations } from '../src/hq/service.js';
+import { app } from '../src/server.js';
 import { wordingGuard } from '../src/agents/verify.js';
 
 beforeEach(() => {
@@ -237,6 +238,92 @@ describe('알바 질문', () => {
     expect(d1.topic).toBe('결제·계산');
     const c = await flows.submitCard('S001', d1, 'P002');
     expect(c).toMatchObject({ storeId: 'S001', scope: 'store', status: 'pending' });
+  });
+});
+
+describe('v3.1 알바 질문 개선', () => {
+  const sitWithCards = () => storeSituations('S001').find((x) => x.cardIds.length > 0)!;
+
+  it('상황 버튼은 검색 없이 그 상황의 첫 카드로 답하고 실행 기록을 남긴다', async () => {
+    const sit = sitWithCards();
+    const { events, off } = collect();
+    const r = await flows.ask('S001', '', 'P003', sit.id);
+    off();
+    expect(r.question).toMatchObject({ status: 'answered', confidence: 'high', cited: [sit.cardIds[0]], situationId: sit.id, text: sit.title });
+    expect(r.question.nearCardId).toBeUndefined();
+    expect(agentsOf(events, r.runId)).not.toContain('librarian');
+    expect(bus.run(r.runId)).toBeTruthy();
+  });
+
+  it('없는 situationId는 400', async () => {
+    await expect(flows.ask('S001', '', 'P003', 'T99')).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('상황 버튼 질문에 전화번호가 있으면 가린다', async () => {
+    const r = await flows.ask('S001', '010-1234-5678 손님 문의', 'P003', sitWithCards().id);
+    expect(r.question.text).not.toMatch(/1234-5678/);
+  });
+
+  it('넘김이면 가장 가까운 카드를 nearCardId로, 안전 상황은 없다', async () => {
+    const r = await flows.ask('S001', '이용시간 때문에 손님이 화내요 어떡해요 강아지도 있어요', 'P003');
+    if (r.question.status === 'escalated') expect(r.question.nearCardId).toBeTruthy();
+    const none = await flows.ask('S001', '손님이 강아지를 데리고 들어왔어요', 'P003');
+    expect(none.question.status).toBe('escalated');
+    expect(none.question.answer).toMatch(/점장님을 직접 불러 주세요/);
+    expect(none.question.answer).not.toMatch(/바로 알렸어요/);
+    const safe = await flows.ask('S001', '취한 손님이 다른 손님을 때리려고 해요', 'P003');
+    expect(safe.question.nearCardId).toBeUndefined();
+  });
+
+  it('아직이에요를 누르면 넘김 문구로 바뀌고 가까운 카드가 남는다', async () => {
+    const r = await flows.ask('S001', '', 'P003', sitWithCards().id);
+    const q = await flows.feedback('S001', r.question.id, false);
+    expect(q.status).toBe('escalated');
+    expect(q.answer).toBe('해결이 안 돼서 점장님께 넘겼어요. 급하면 직접 불러 주세요.');
+    expect(q.nearCardId).toBe(r.question.cited[0]);
+  });
+
+  it('점장 답의 첫 문장(40자 이내)이 카드 제목, 질문 원문이 situation', async () => {
+    const first = await flows.ask('S001', '외국인 손님이 알리페이로 결제하고 싶대요', 'P003');
+    const { card } = await flows.resolve('S001', first.question.id, '알리페이는 안 된다. 카드나 현금을 안내한다. 결제 수단을 모르면 불만이 커지기 때문이다.', 'P001');
+    expect(card.title).toBe('알리페이는 안 된다');
+    expect(card.situation).toBe(first.question.text);
+  });
+
+  it('카드 고치기: 점장이 고치면 승인 유지, 다른 사람이 고치면 승인 대기', async () => {
+    const own = db.get().cards.find((c) => c.storeId === 'S001' && c.status === 'approved')!;
+    const a = await flows.cardEdit('S001', own.id, { title: '고친 제목' }, 'P001');
+    expect(a).toMatchObject({ title: '고친 제목', status: 'approved' });
+    const b = await flows.cardEdit('S001', own.id, { title: '또 고친 제목' }, 'P003');
+    expect(b).toMatchObject({ title: '또 고친 제목', status: 'pending' });
+  });
+
+  it('카드 고치기: 본사 카드는 403, 금지 표현은 400', async () => {
+    const brand = db.get().cards.find((c) => c.scope === 'brand')!;
+    await expect(flows.cardEdit('S001', brand.id, { title: 'x' }, 'P001')).rejects.toMatchObject({ status: 403 });
+    const own = db.get().cards.find((c) => c.storeId === 'S001')!;
+    await expect(flows.cardEdit('S001', own.id, { avoid: '최소주문은 없다고 말한다 무조건 환불해 드립니다' }, 'P001')).rejects.toBeDefined();
+  });
+
+  it('HTTP: 상황 버튼 ask, edit 라우트, state.now', async () => {
+    const sit = sitWithCards();
+    const server = app.listen(0);
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/stores/S001`;
+    const post = (path: string, body: unknown) => fetch(`${base}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    try {
+      const st = await (await fetch(`${base}/state`)).json();
+      expect(st.now).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+      const ok = await post('/ask', { situationId: sit.id, askerId: 'P003' });
+      expect(ok.status).toBe(200);
+      expect((await ok.json()).question.cited).toEqual([sit.cardIds[0]]);
+      expect((await post('/ask', { situationId: 'T99' })).status).toBe(400);
+      expect((await post('/ask', {})).status).toBe(400);
+      const own = db.get().cards.find((c) => c.storeId === 'S001' && c.status === 'approved')!;
+      const ed = await post(`/cards/${own.id}/edit`, { edits: { title: '새 제목' }, editorId: 'P001' });
+      expect(await ed.json()).toMatchObject({ title: '새 제목', status: 'approved' });
+    } finally {
+      server.close();
+    }
   });
 });
 

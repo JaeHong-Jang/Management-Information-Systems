@@ -71,6 +71,7 @@ export interface StandardsView {
 export type FollowupAnswer = { question: string; answer: string };
 export type DraftFields = Omit<InterviewDraft, 'followups' | 'masked' | 'problems' | 'via'>;
 export type CardAction = 'approve' | 'reject' | 'archive';
+export type CardEdits = Partial<Pick<Card, 'title' | 'situation' | 'reason' | 'actions' | 'avoid' | 'escalateWhen' | 'customerNotice'>>;
 export type PrescriptionAction = 'send' | 'done' | 'reject';
 
 export const api = {
@@ -90,13 +91,16 @@ export const api = {
   // 매장
   state: (id: string) => call<StoreState>(`/stores/${id}/state`),
   briefing: (id: string) => call<Briefing>(`/stores/${id}/briefing`),
-  ask: (id: string, text: string, askerId: string) => post<AskResult>(`/stores/${id}/ask`, { text, askerId }),
+  ask: (id: string, text: string, askerId: string, situationId?: string) =>
+    post<AskResult>(`/stores/${id}/ask`, { text, askerId, ...(situationId ? { situationId } : {}) }),
   feedback: (id: string, qid: string, solved: boolean) => post<Question>(`/stores/${id}/questions/${qid}/feedback`, { solved }),
   resolve: (id: string, qid: string, answer: string, managerId: string) => post<Question>(`/stores/${id}/questions/${qid}/resolve`, { answer, managerId }),
   interview: (id: string, raw: string, authorId: string, answers: FollowupAnswer[] = []) =>
     post<InterviewDraft>(`/stores/${id}/record/interview`, { raw, authorId, answers }),
   submitCard: (id: string, draft: DraftFields, authorId: string) => post<Card>(`/stores/${id}/cards`, { draft, authorId }),
-  card: (id: string, cid: string, action: CardAction, reason?: string) => post<Card>(`/stores/${id}/cards/${cid}/${action}`, { reason }),
+  card: (id: string, cid: string, action: CardAction, reason?: string, edits?: CardEdits) =>
+    post<Card>(`/stores/${id}/cards/${cid}/${action}`, { reason, ...(edits ? { edits } : {}) }),
+  editCard: (id: string, cid: string, edits: CardEdits, editorId: string) => post<Card>(`/stores/${id}/cards/${cid}/edit`, { edits, editorId }),
   readOnboarding: (id: string, personId: string, cardId: string) => post<Onboarding>(`/stores/${id}/onboarding/read`, { personId, cardId }),
   lint: (id: string) => call<LintIssue[]>(`/stores/${id}/lint`),
 

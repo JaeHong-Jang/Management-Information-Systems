@@ -255,6 +255,8 @@ export interface Question {
   managerAnswer?: string;
   cardId?: string;
   runId?: string;
+  situationId?: string; // v3.1: 상황 버튼으로 물은 질문. 검색 없이 그 상황 카드로 답한다
+  nearCardId?: string; // v3.1: 점장에게 넘긴 질문이라도 지금 당장 쓸 가장 가까운 카드(대사·행동 2줄만 보여 준다)
 }
 
 export interface Briefing {
@@ -422,6 +424,7 @@ export interface StoreState {
   ai: AiStatus;
   situations: Situation[]; // priority 내림차순
   onboarding: Onboarding;
+  now: string; // v3.1: 서버 기준 현재 시각(Question.time과 같은 형식). 넘어온 질문의 '몇 분 전' 계산용
 }
 
 export interface AskResult { question: Question; candidates: { id: string; title: string; score: number }[]; runId: string }

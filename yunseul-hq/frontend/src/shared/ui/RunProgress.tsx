@@ -2,6 +2,7 @@
 // 진행 중: 지금 일하는 에이전트와 'N초 경과'(실제 agent-start 시각 기준) + 지나간 단계.
 // 끝나면 한 줄 요약으로 접힌다. 펼치면 단계·게이트 기록이 그대로 있다. 이벤트 없이 움직이는 표시는 없다.
 import { CircleCheck, CircleX, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { useApp } from '@/app/AppData';
 import type { RunView } from '../api/live';
 import { elapsedSec, useNow } from '../lib/useNow';
 import { cx } from '../lib/format';
@@ -33,7 +34,9 @@ function StepList({ run, n }: { run: RunView; n: (id: string) => string }) {
 }
 
 export function RunProgress({ run, names, compact }: { run: RunView | null; names?: Record<string, string>; compact?: boolean }) {
+  const { role } = useApp();
   const now = useNow(!!run && !run.done && !!run.runningSince);
+  if (role === '직원') return null; // 직원 화면에는 runId·에이전트 수·단계를 보이지 않는다
   if (!run)
     return (
       <p className="flex items-center gap-2 text-caption text-text-muted" role="status">

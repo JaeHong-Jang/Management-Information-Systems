@@ -11,7 +11,7 @@ import { pct } from '@/shared/lib/format';
 const field = 'w-full rounded-ctl border border-line-strong bg-surface p-2.5 text-body';
 
 function StatusTag({ s }: { s: Situation }) {
-  if (s.gap) return <Tag tone="amber">카드 없음</Tag>;
+  if (s.gap) return <Tag tone="amber">{s.cardIds.length > 0 ? '매장 카드 없음 · 본사 카드만' : '카드 없음'}</Tag>;
   if (s.openQuestions > 0) return <Tag tone="amber">답 대기 {s.openQuestions}</Tag>;
   return <Tag tone="done">카드 있음</Tag>;
 }
@@ -85,13 +85,17 @@ export function SituationTable({ storeId, situations, topics, people, onChanged 
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [showRest, setShowRest] = useState(false);
   const managerId = people.find((p) => p.role === '점장')?.id ?? '';
   const form = (s: Situation) => (
     <CardForm storeId={storeId} s={s} topics={topics} managerId={managerId} onCancel={() => setOpen(null)} onDone={() => { setOpen(null); onChanged(); }} />
   );
   const make = (s: Situation) =>
     s.gap && open !== s.id ? <Button size="sm" icon={CirclePlus} onClick={() => setOpen(s.id)}>카드 만들기</Button> : null;
-  const gaps = situations.filter((s) => s.gap).length;
+  const gapRows = situations.filter((s) => s.gap);
+  const rest = situations.filter((s) => !s.gap);
+  const gaps = gapRows.length;
+  const list = showRest ? [...gapRows, ...rest] : gapRows; // 카드 없는 상황을 먼저, 나머지는 눌러야 보인다
   const compare = (s: Situation) => `${pct(s.storeShare)} (브랜드 ${pct(s.brandShare)})`;
 
   return (
@@ -112,7 +116,7 @@ export function SituationTable({ storeId, situations, topics, people, onChanged 
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {situations.map((s) => (
+                {list.map((s) => (
                   <Fragment key={s.id}>
                     <tr className="align-top">
                       <td className="py-2.5 pr-3 font-medium">{s.title}</td>
@@ -128,7 +132,7 @@ export function SituationTable({ storeId, situations, topics, people, onChanged 
             </table>
           </div>
           <ul className="space-y-3 md:hidden">
-            {situations.map((s) => (
+            {list.map((s) => (
               <li key={s.id} className="rounded-card border border-line p-3">
                 <p className="font-bold">{s.title}</p>
                 <p className="num mt-1 text-caption text-text-muted">리뷰 불만 {s.storeReviews}건 · {compare(s)}</p>
@@ -139,6 +143,17 @@ export function SituationTable({ storeId, situations, topics, people, onChanged 
               </li>
             ))}
           </ul>
+          {gaps === 0 && <p className="text-body text-text-muted">매장 카드가 없는 상황은 없어요.</p>}
+          {rest.length > 0 && (
+            <button
+              type="button"
+              aria-expanded={showRest}
+              onClick={() => setShowRest((v) => !v)}
+              className="mt-2 inline-flex min-h-[44px] items-center rounded-ctl px-2 text-body font-bold text-ink hover:bg-ink-weak"
+            >
+              {showRest ? '카드 있는 상황 접기' : `카드 있는 상황 ${rest.length}개 더 보기`}
+            </button>
+          )}
         </>
       )}
     </Panel>

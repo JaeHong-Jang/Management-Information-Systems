@@ -4,13 +4,13 @@ import type { AskResult, Briefing, Card, InterviewDraft, LintIssue } from '@shar
 import { agentDef, config } from '../harness/config.js';
 import { Run } from '../harness/runner.js';
 import { cardWriter, interviewer, privacyGuard, type FollowupAnswer, type StoreCtx } from '../agents/capture.js';
-import { coach, escalator, librarian } from '../agents/answer.js';
+import { cardLines, coach, escalator, librarian } from '../agents/answer.js';
 import { citationChecker, dropForbiddenLines, policyChecker, wordingGuard } from '../agents/verify.js';
 import { linter, synthesizer } from '../agents/keeper.js';
 import { briefingItems, briefingWriter } from '../agents/prescribe.js';
 import { forbidden, maskPii } from '../tools/policies.js';
-import { search } from '../tools/search.js';
-import { scoreOf } from '../hq/service.js';
+import { search, tokens } from '../tools/search.js';
+import { scoreOf, storeSituations } from '../hq/service.js';
 import * as db from '../store/db.js';
 import { anonNode, cardEdges, cardNode, edge, personNode, questionEdges, questionNode, standardNode } from '../store/graph.js';
 
@@ -57,15 +57,34 @@ function ownQuestion(storeId: string, id: string) {
 
 // ---------- 알바 질문 ----------
 
-export async function ask(storeId: string, rawText: string, askerId: string): Promise<AskResult> {
+/** 상황 버튼으로 물으면 검색 없이 그 상황의 카드(매장 카드 우선)로 바로 답한다. 없는 상황이면 400 */
+function situationCard(storeId: string, situationId: string, usable: Card[]) {
+  const sit = storeSituations(storeId).find((s) => s.id === situationId);
+  if (!sit) throw httpError(400, `알 수 없는 상황이에요: ${situationId}`);
+  return { sit, card: sit.cardIds.map((id) => usable.find((c) => c.id === id)).find(Boolean) };
+}
+
+// 어느 매장 상황에나 나오는 낱말 조각. 이것만 겹쳐서는 같은 주제라고 보지 않는다
+const TOPIC_NOISE = new Set(['테이', '이블', '주문', '직원']);
+
+/** 질문과 카드의 제목·주제·태그가 의미 있는 2글자 조각 하나라도 겹치는지 */
+export function onTopic(text: string, card: Card): boolean {
+  const q = new Set(tokens(text));
+  return tokens([card.title, card.topic, ...card.tags].join(' ')).some((t) => t.length >= 2 && !TOPIC_NOISE.has(t) && q.has(t));
+}
+
+export async function ask(storeId: string, rawText: string, askerId: string, situationId?: string): Promise<AskResult> {
   const ctx = ctxOf(storeId);
+  const picked = situationId ? situationCard(storeId, situationId, db.usableCards(storeId).usable) : undefined;
   // 개인정보는 실행 기록·모델 입력·저장보다 먼저 가린다
-  const text = maskPii(rawText).text;
+  const text = maskPii(rawText?.trim() ? rawText : picked?.sit.title ?? '').text;
   const run = new Run('ask', storeId, db.personLabel(askerId), text);
   await orchestrate(run);
-  await run.step('privacy-guard', () => privacyGuard(rawText));
+  await run.step('privacy-guard', () => privacyGuard(rawText || text));
+  if (picked?.card) return askBySituation(run, storeId, text, askerId, picked.card, situationId!);
   const { usable, excluded } = db.usableCards(storeId);
-  const hits = await run.step('librarian', () => librarian(text, usable, excluded));
+  // 제목·주제·태그가 질문과 겹치지 않는 카드는 본문 낱말이 우연히 겹쳐도 근거로 쓰지 않는다('옆 테이블 항의'에 중간결제 카드가 붙던 문제)
+  const hits = (await run.step('librarian', () => librarian(text, usable, excluded))).filter((h) => onTopic(text, h.card));
   const draft = await run.step('coach', () => coach(text, hits, ctx));
   const c1 = await run.step('citation-checker', () => citationChecker(draft, new Set(usable.map((c) => c.id)), new Set(hits.map((h) => h.card.id))));
   const c2 = await run.step('policy-checker', () => policyChecker(c1.answer, usable));
@@ -76,19 +95,22 @@ export async function ask(storeId: string, rawText: string, askerId: string): Pr
   const esc = await run.step('escalator', () => escalator(text, checked, usable));
 
   let final = checked;
+  // 점수가 낮아도 가장 가까운 카드(hits는 이미 주제가 겹치는 카드만 남아 있다)
+  let nearCardId: string | undefined = esc.escalate && esc.why !== 'safety' ? hits[0]?.card.id : undefined;
   if (esc.why === 'safety') {
     final = { ...checked, answer: `안전과 관련된 상황이에요(${esc.safety}). 혼자 처리하지 말고 점장님께 바로 연락하세요. 위급하면 119나 112에 먼저 신고하세요.`, confidence: 'low', cited: [] };
   } else if (esc.escalate && esc.why === 'call' && esc.callCard) {
     const c = esc.callCard;
     const interim = c.actions.filter((a) => !forbidden(a).length).slice(0, 2).map((a, i) => `${i + 1}. ${a} [${c.id}]`);
-    final = { ...checked, answer: [`점장 호출 기준에 해당해요: ${c.escalateWhen} [${c.id}]`, '점장님께 바로 알렸어요. 그동안 할 수 있는 것:', ...interim].join('\n'), cited: [c.id], confidence: 'low' };
+    final = { ...checked, answer: [`점장 호출 기준에 해당해요: ${c.escalateWhen} [${c.id}]`, '점장님을 직접 불러 주세요. 그동안 할 수 있는 것:', ...interim].join('\n'), cited: [c.id], confidence: 'low' };
+    nearCardId = c.id;
   } else if (esc.escalate) {
-    final = { ...checked, answer: '매장 위키에 이 상황에 맞는 사례가 아직 없어요. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가돼요.', cited: [], confidence: 'none' };
+    final = { ...checked, answer: '매장 위키에 딱 맞는 사례가 아직 없어요. 지금은 점장님을 직접 불러 주세요. 질문은 점장님 할 일에 올라가 있고, 답이 오면 여기 \'내 질문\'에 보여요.', cited: [], confidence: 'none' };
   }
   // 마지막 관문: 알바에게 가기 직전에 금지 표현 줄을 빼고, 이유도 다시 검사한다
   final = { ...final, answer: dropForbiddenLines(final.answer), why: forbidden(final.why).length || esc.why === 'safety' ? '' : final.why };
   for (const id of final.cited) db.card(id)!.uses++;
-  const q = db.createQuestion({ storeId, text, askerId, status: esc.escalate ? 'escalated' : 'answered', answer: final.answer, why: final.why, cited: final.cited, confidence: final.confidence, runId: run.runId });
+  const q = db.createQuestion({ storeId, text, askerId, status: esc.escalate ? 'escalated' : 'answered', answer: final.answer, why: final.why, cited: final.cited, confidence: final.confidence, runId: run.runId, ...(nearCardId ? { nearCardId } : {}), ...(situationId ? { situationId } : {}) });
   run.wiki({
     op: esc.escalate ? '점장에게 넘김' : '질문에 답함',
     detail: `[${q.id}] ${text.slice(0, 40)}${final.cited.length ? ` → ${final.cited.join(', ')}` : ''}`,
@@ -97,6 +119,19 @@ export async function ask(storeId: string, rawText: string, askerId: string): Pr
   });
   run.end(true, esc.escalate ? '점장 답을 기다려요' : `근거 ${final.cited.length}개로 답했어요`);
   return { question: q, candidates: hits.map((h) => ({ id: h.card.id, title: h.card.title, score: Number(h.score.toFixed(2)) })), runId: run.runId };
+}
+
+/** 상황 버튼 답: 검색·코치 없이 카드 그대로. 금지 표현 줄은 여기서도 뺀다 */
+async function askBySituation(run: Run, storeId: string, text: string, askerId: string, card: Card, situationId: string): Promise<AskResult> {
+  const words = await run.step('wording-guard', () => wordingGuard(cardLines(card).join('\n')));
+  run.gate('answer-gate', words, config.gates.find((g) => g.id === 'answer-gate')!.onFail);
+  const answer = dropForbiddenLines(cardLines(card).join('\n'));
+  const why = forbidden(card.reason).length ? '' : card.reason;
+  card.uses++;
+  const q = db.createQuestion({ storeId, text, askerId, status: 'answered', answer, why, cited: [card.id], confidence: 'high', runId: run.runId, situationId });
+  run.wiki({ op: '질문에 답함', detail: `[${q.id}] ${text.slice(0, 40)} → ${card.id}`, nodes: [questionNode(q), cardNode(card)], edges: questionEdges(q) });
+  run.end(true, `상황 ${situationId}의 카드 [${card.id}]로 답했어요`);
+  return { question: q, candidates: [], runId: run.runId };
 }
 
 export async function feedback(storeId: string, questionId: string, solved: boolean) {
@@ -108,7 +143,11 @@ export async function feedback(storeId: string, questionId: string, solved: bool
   }
   const run = new Run('ask', storeId, db.personLabel(q.askerId), `피드백: ${solved ? '해결됨' : '해결 안 됨'}`);
   const escalate = !solved && q.status === 'answered';
-  if (escalate) q.status = 'escalated';
+  if (escalate) {
+    q.status = 'escalated';
+    q.nearCardId ??= q.cited[0];
+    q.answer = '해결이 안 돼서 점장님께 넘겼어요. 급하면 직접 불러 주세요.';
+  }
   await orchestrate(run, escalate ? '해결 안 됨 → 점장에게 넘김' : '해결됨 → 카드 도움 횟수 반영');
   run.wiki({ op: solved ? '해결 확인' : '점장에게 넘김', detail: `[${q.id}] ${solved ? '위키 답으로 해결' : '위키 답으로 해결 안 됨'}`, nodes: [questionNode(q)], edges: [] });
   run.end(true, solved ? '해결 확인' : '점장 대기');
@@ -165,6 +204,30 @@ export async function submitCard(storeId: string, input: Omit<InterviewDraft, 'f
 
 // ---------- 점장: 승인·반려·갱신·보관 ----------
 
+/** 카드 고치기. 그 매장 점장이 고치면 승인 상태 그대로, 다른 사람이 고치면 승인 대기로 돌린다 */
+export async function cardEdit(storeId: string, id: string, edits: Partial<Card> | undefined, editorId: string): Promise<Card> {
+  const c = ownCard(storeId, id);
+  if (c.scope === 'brand') throw httpError(403, '본사 카드는 매장에서 바꿀 수 없어요');
+  const mask = (v: unknown) => (typeof v === 'string' ? maskPii(v).text : undefined);
+  const { actions, tags, topic } = edits ?? {};
+  const next = {
+    ...c,
+    ...Object.fromEntries(Object.entries({ title: mask(edits?.title), situation: mask(edits?.situation), reason: mask(edits?.reason), avoid: mask(edits?.avoid), escalateWhen: mask(edits?.escalateWhen), customerNotice: mask(edits?.customerNotice), topic, tags, actions: Array.isArray(actions) ? actions.map((a) => mask(a) ?? '') : undefined }).filter(([, v]) => v !== undefined)),
+  };
+  const problems = forbiddenIn(cardText(next));
+  if (problems.length) throw httpError(400, `표현을 다듬어야 저장할 수 있어요: ${problems.join(' / ')}`);
+  const editor = db.person(editorId);
+  const byManager = editor?.role === '점장' && editor.storeId === storeId;
+  const run = new Run('approve', storeId, db.personLabel(editorId), `[${id}] 고침`);
+  await orchestrate(run, byManager ? '점장이 고침 → 승인 유지' : '점장이 아닌 사람이 고침 → 승인 대기');
+  Object.assign(c, next, { updated: db.today() });
+  if (!byManager && c.status === 'approved') c.status = 'pending';
+  run.wiki({ op: '카드 고침', detail: `[${c.id}] ${c.title}${c.status === 'pending' ? ' — 승인 대기로 돌림' : ''}`, nodes: withContext(c), edges: cardEdges(c) });
+  await resynthesize(run, storeId, c.topic);
+  run.end(true, `[${c.id}] 고침`);
+  return c;
+}
+
 export async function cardAction(storeId: string, id: string, action: 'approve' | 'reject' | 'renew' | 'archive', edits?: Partial<Card>, reason?: string): Promise<Card> {
   const c = ownCard(storeId, id);
   if (c.scope === 'brand') throw httpError(403, '본사 카드는 매장에서 바꿀 수 없어요');
@@ -211,6 +274,9 @@ export async function cardAction(storeId: string, id: string, action: 'approve' 
   return c;
 }
 
+/** 점장 답의 첫 문장(40자 이내). 카드 제목으로 쓴다 */
+const firstSentence = (t: string) => (t.split(/[.!?。\n]/).map((x) => x.trim()).find(Boolean) ?? '').slice(0, 40);
+
 export async function resolve(storeId: string, questionId: string, managerAnswer: string, managerId: string) {
   const ctx = ctxOf(storeId);
   const q = ownQuestion(storeId, questionId);
@@ -221,7 +287,7 @@ export async function resolve(storeId: string, questionId: string, managerAnswer
   const draft = await run.step('card-writer', () => cardWriter(safe.text, [], db.get().topics, ctx));
   const words = await run.step('wording-guard', () => wordingGuard(cardText(draft)));
   run.gate('card-gate', words, '금지 표현이 있어 승인 대기로 저장(점장이 고친 뒤 승인)');
-  const c = db.createCard({ ...draft, title: q.text.slice(0, 40), situation: q.text }, managerId, words.length ? 'pending' : 'approved', '에스컬레이션', { storeId, fromQuestionId: q.id });
+  const c = db.createCard({ ...draft, title: firstSentence(answer) || q.text.slice(0, 40), situation: q.text }, managerId, words.length ? 'pending' : 'approved', '에스컬레이션', { storeId, fromQuestionId: q.id });
   // 표현 검사에 걸려 승인 대기가 된 답은 알바에게 보이지 않게 질문을 열어 둔다(승인될 때 닫힌다)
   q.status = c.status === 'approved' ? 'resolved' : 'escalated';
   q.managerAnswer = answer;

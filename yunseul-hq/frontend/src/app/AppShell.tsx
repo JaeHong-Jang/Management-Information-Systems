@@ -1,5 +1,6 @@
 // 세 역할 공통 셸 하나: 상단바(ink) + 왼쪽 사이드바 240px(≥1024) / 하단 탭(<1024, 최대 5칸 + 더보기) + 본문.
-// 본문은 최대 1280px 12열. 직원 화면은 같은 셸에서 본문 폭만 640px로 좁힌다(휴대폰 프레임 없음).
+// 본문은 최대 1280px 12열. 직원 화면의 폭(홈 두 열 · 나머지 640px)은 직원 화면이 정한다(.frame이 max-w 유틸보다 뒤에 있어 셸에서 덮을 수 없다).
+// 사이드바: 지금 맥락 카드 → 메뉴 → 실데이터 짧은 목록 → (맨 아래) 상태·고지. SidebarPanels.tsx
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { MoreHorizontal } from 'lucide-react';
@@ -7,7 +8,10 @@ import { LiveProvider, useLive } from '@/shared/api/live';
 import { cx } from '@/shared/lib/format';
 import { useApp, useRoleSync, type AppRole } from './AppData';
 import { navFor, type NavGroup, type NavItem } from './nav';
+import { SidebarData, SidebarFoot, SidebarTop } from './SidebarPanels';
+import { StoreDataProvider, useStoreData } from './StoreData';
 import { TopBar } from './TopBar';
+import { useHashScroll } from './useHashScroll';
 import { useStoreId } from './useStoreId';
 
 function routeRole(pathname: string): AppRole | null {
@@ -25,7 +29,9 @@ export function AppShell() {
   // 본사는 전 매장 이벤트, 점장·직원은 그 매장 + 본사 이벤트만 받는다
   return (
     <LiveProvider storeId={role === 'SV' ? null : storeId}>
-      <Frame />
+      <StoreDataProvider>
+        <Frame />
+      </StoreDataProvider>
     </LiveProvider>
   );
 }
@@ -38,22 +44,24 @@ function Frame() {
   const storeId = useStoreId();
   const navStore = role === 'SV' ? targetId : storeId;
   const navName = overview.data?.stores.find((r) => r.store.id === navStore)?.store.name ?? targetName;
-  const groups = navFor(role, navStore, navName);
+  const { unseen, escalated } = useStoreData();
+  const groups = navFor(role, navStore, navName, { newAnswer: unseen.length > 0, escalated });
   const running = runs.some((r) => !r.done);
   const isOn = (it: NavItem) => it.on(pathname, sp);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+  useHashScroll();
 
   return (
     <div className="min-h-screen">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-ctl focus:bg-surface focus:px-3 focus:py-2">본문으로 건너뛰기</a>
       <TopBar />
       <div className="lg:flex">
-        <Sidebar groups={groups} isOn={isOn} running={running} />
+        <Sidebar role={role} groups={groups} isOn={isOn} running={running} />
         <main id="main" className="min-w-0 flex-1 pb-28 pt-6 lg:pb-12">
-          <div className={cx('frame', role === '직원' && 'max-w-[calc(640px+var(--gutter)*2)]')}>
+          <div className="frame">
             <Outlet />
           </div>
         </main>
@@ -74,10 +82,32 @@ function LiveDot({ on }: { on: boolean }) {
   );
 }
 
-function Sidebar({ groups, isOn, running }: { groups: NavGroup[]; isOn: (it: NavItem) => boolean; running: boolean }) {
+/** 메뉴 옆 표시: 숫자 배지 또는 새 답 점 */
+function Signal({ it, floating }: { it: NavItem; floating?: boolean }) {
+  const pos = floating ? 'absolute -right-2 -top-1' : 'ml-auto';
+  if (it.badge && it.badge > 0)
+    return (
+      <span className={cx(pos, 'num inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-yellow px-1 text-[0.6875rem] font-bold leading-none text-ink ring-2 ring-surface')}>
+        {it.badge}
+        <span className="sr-only">건 넘어왔어요</span>
+      </span>
+    );
+  if (it.dot)
+    return (
+      <span className={cx(pos, 'inline-block h-2.5 w-2.5 rounded-full bg-yellow ring-2 ring-surface')}>
+        <span className="sr-only">새 답이 왔어요</span>
+      </span>
+    );
+  return null;
+}
+
+function Sidebar({ role, groups, isOn, running }: { role: AppRole; groups: NavGroup[]; isOn: (it: NavItem) => boolean; running: boolean }) {
   return (
     <nav aria-label="메뉴" className="hidden border-r border-line bg-surface lg:sticky lg:top-14 lg:block lg:h-[calc(100vh-56px)] lg:w-sidebar lg:shrink-0 lg:overflow-y-auto">
-      <div className="flex h-full flex-col px-3 py-5">
+      <div className="flex min-h-full flex-col px-3 py-5">
+        <div className="mb-5">
+          <SidebarTop role={role} />
+        </div>
         <div className="space-y-5">
           {groups.map((g) => (
             <div key={g.group}>
@@ -98,6 +128,7 @@ function Sidebar({ groups, isOn, running }: { groups: NavGroup[]; isOn: (it: Nav
                         <Icon size={16} aria-hidden />
                         <span className="min-w-0">{it.label}</span>
                         {it.live && <LiveDot on={running} />}
+                        <Signal it={it} />
                       </Link>
                     </li>
                   );
@@ -106,16 +137,15 @@ function Sidebar({ groups, isOn, running }: { groups: NavGroup[]; isOn: (it: Nav
             </div>
           ))}
         </div>
-        <p className="mt-auto px-2 pt-6 text-caption text-text-muted">
-          브랜드는 실명, 매장은 익명이에요. 본사 표준과 처방 이후 리뷰는 가상이에요.
-        </p>
+        <SidebarData role={role} />
+        <SidebarFoot role={role} />
       </div>
     </nav>
   );
 }
 
 function BottomTabs({ groups, isOn, running }: { groups: NavGroup[]; isOn: (it: NavItem) => boolean; running: boolean }) {
-  const items = groups.flatMap((g) => g.items);
+  const items = groups.flatMap((g) => g.items).filter((it) => !it.sidebarOnly);
   const [more, setMore] = useState(false);
   const { pathname, search } = useLocation();
   const box = useRef<HTMLDivElement>(null);
@@ -150,6 +180,7 @@ function BottomTabs({ groups, isOn, running }: { groups: NavGroup[]; isOn: (it: 
                 <Link to={it.to} aria-current={isOn(it) ? 'page' : undefined} className={cx('flex min-h-[48px] items-center gap-3 rounded-ctl px-3 text-body', isOn(it) ? 'bg-ink text-white' : 'text-text hover:bg-ink-weak')}>
                   <Icon size={18} aria-hidden />
                   {it.label}
+                  <Signal it={it} />
                 </Link>
               </li>
             );
@@ -168,6 +199,7 @@ function BottomTabs({ groups, isOn, running }: { groups: NavGroup[]; isOn: (it: 
                   <span className="relative">
                     <Icon size={20} aria-hidden />
                     {it.live && running && <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-yellow ring-2 ring-surface" aria-label="실행 중" />}
+                    <Signal it={it} floating />
                   </span>
                   <span className="truncate">{it.short}</span>
                 </Link>

@@ -88,15 +88,31 @@ export function whyText(s: Situation): string {
   return '본사 기본 응대예요';
 }
 
-/** 첫 근무 준비 목록: priority 순으로 카드가 있는 상황마다 카드 1장(매장 카드 우선), 최대 8장. 같은 카드를 두 상황이 쓰면(예: 응대 기본) 먼저 나온 상황에만 싣고, 다른 카드가 없는 상황은 건너뛴다. situations는 priority 순이어야 한다 */
+/** 카드가 있으면 순위와 관계없이 첫 근무 준비에 꼭 넣는 법·안전 상황: 신분증 확인, 취객·계산 분쟁 */
+export const MANDATORY_SITUATIONS = ['T06', 'T10'];
+
+/** 첫 근무 준비 목록: 필수 상황(T06·T10)은 카드가 있으면 항상 넣고, 나머지는 priority 순으로 채워 최대 8장. 목록은 priority 순. 상황마다 카드 1장(매장 카드 우선)이고, 같은 카드를 두 상황이 쓰면(예: 응대 기본) 먼저 나온 상황에만 싣는다. situations는 priority 순이어야 한다 */
 export function onboardingItems(situations: Situation[]): OnboardingItem[] {
   const used = new Set<string>();
-  const items: OnboardingItem[] = [];
-  for (const s of situations) {
+  const mandatory = new Map<string, string>();
+  for (const s of situations.filter((x) => MANDATORY_SITUATIONS.includes(x.id))) {
     const cardId = s.cardIds.find((id) => !used.has(id));
-    if (!cardId || items.length >= ONBOARDING_MAX) continue;
-    used.add(cardId);
-    items.push({ situationId: s.id, situationTitle: s.title, cardId, why: whyText(s) });
+    if (cardId) {
+      used.add(cardId);
+      mandatory.set(s.id, cardId);
+    }
+  }
+  const items: OnboardingItem[] = [];
+  let free = ONBOARDING_MAX - mandatory.size;
+  for (const s of situations) {
+    const must = mandatory.get(s.id);
+    const cardId = must ?? (free > 0 ? s.cardIds.find((id) => !used.has(id)) : undefined);
+    if (!cardId) continue;
+    if (!must) {
+      used.add(cardId);
+      free--;
+    }
+    items.push({ situationId: s.id, situationTitle: s.title, cardId, why: must && s.storeReviews < GAP_MIN_REVIEWS ? '법·안전 문제라 꼭 먼저 읽어요' : whyText(s) });
   }
   return items;
 }

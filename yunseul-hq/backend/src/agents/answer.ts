@@ -30,6 +30,14 @@ export function librarian(question: string, cards: Card[], excluded: { id: strin
 
 const NO_ANSWER = '매장 위키에 이 상황에 맞는 사례가 아직 없어요. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가돼요.';
 
+/** 카드 한 장을 답 줄로 펼친다(제목·대응·하지 말 것·점장 호출). 줄마다 근거 카드 번호가 붙는다 */
+export function cardLines(c: Card): string[] {
+  const lines = [`${c.title} [${c.id}]`, ...c.actions.map((a, i) => `${i + 1}. ${a} [${c.id}]`)];
+  if (c.avoid) lines.push(`하지 말 것: ${c.avoid} [${c.id}]`);
+  if (c.escalateWhen) lines.push(`점장 호출: ${c.escalateWhen} [${c.id}]`);
+  return lines;
+}
+
 export function answerByRules(hits: Hit[]): Answer {
   const top = hits[0];
   if (!top || top.score < 3.5 || top.coverage < 0.25) return { answer: NO_ANSWER, why: '', cited: [], confidence: 'none', needsManager: true };
@@ -39,9 +47,7 @@ export function answerByRules(hits: Hit[]): Answer {
     .sort((a, b) => SOURCE_RANK[b.card.source] - SOURCE_RANK[a.card.source] || b.score - a.score)[0];
   const ordered = higher ? [higher, ...hits.filter((h) => h !== higher)] : hits;
   const c = ordered[0].card;
-  const lines = [`${c.title} [${c.id}]`, ...c.actions.map((a, i) => `${i + 1}. ${a} [${c.id}]`)];
-  if (c.avoid) lines.push(`하지 말 것: ${c.avoid} [${c.id}]`);
-  if (c.escalateWhen) lines.push(`점장 호출: ${c.escalateWhen} [${c.id}]`);
+  const lines = cardLines(c);
   const other = ordered.slice(1).find((h) => h.card.topic === c.topic && h.card.source !== c.source && h.score > top.score * 0.5);
   const cited = [c.id];
   if (other) {

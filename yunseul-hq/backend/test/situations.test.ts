@@ -101,6 +101,19 @@ describe('첫 근무 준비', () => {
     expect(onboardingItems(computeSituations({ storeId: 'S1', reviews: mine, cards, questions: [], brand }))).toHaveLength(8);
   });
 
+  it('필수 상황 T06·T10은 순위가 낮아도 카드가 있으면 항상 넣고 목록은 priority 순', () => {
+    const cards = SITUATIONS.flatMap((s) => s.cardTopics.map((t, i) => card(`B${s.id}${i}`, t)));
+    const sits = computeSituations({ storeId: 'S1', reviews: mine, cards, questions: [], brand });
+    const items = onboardingItems(sits);
+    const ids = items.map((i) => i.situationId);
+    expect(items).toHaveLength(8);
+    expect(ids).toContain('T06');
+    expect(ids).toContain('T10');
+    const order = sits.map((s) => s.id);
+    expect(ids).toEqual([...ids].sort((a, b) => order.indexOf(a) - order.indexOf(b)));
+    expect(items.find((i) => i.situationId === 'T06')!.why).toBe('법·안전 문제라 꼭 먼저 읽어요');
+  });
+
   it('why 문구 세 갈래', () => {
     const base = computeSituations({ storeId: 'S1', reviews: mine, cards: [card('B03', '최소주문', { tags: ['최소주문'] })], questions: [q('Q1', '최소주문?'), q('Q2', '최소주문 알려줘')], brand });
     expect(whyText(sit(base, 'T01'))).toBe('이 매장 리뷰 3건에서 이 상황이 불만이 됐어요');
@@ -136,6 +149,12 @@ describe('저장소와 읽음 표시', () => {
     expect(storeSituations('S001')).toHaveLength(10);
     expect(overview().situations).toHaveLength(10);
     expect(storeOnboarding('S001').items.length).toBeGreaterThan(0);
+  });
+
+  it('시드: 첫 근무 준비에 필수 상황 T06이 들어 있다', () => {
+    const o = storeOnboarding('S001');
+    const ids = o.items.map((i) => i.situationId);
+    expect(ids).toContain('T06');
   });
 
   it('읽음 표시: 중복은 한 번만, 로그 한 줄', () => {
