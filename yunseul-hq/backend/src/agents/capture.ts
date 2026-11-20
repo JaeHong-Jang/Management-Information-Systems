@@ -12,7 +12,7 @@ export interface FollowupAnswer { question: string; answer: string }
 
 export function privacyGuard(raw: string): StepOut<{ text: string; masked: number }> {
   const r = maskPii(raw);
-  return { out: r, summary: r.masked ? `전화번호·카드번호·고객 이름 ${r.masked}곳을 가렸습니다` : '가릴 개인정보 없음' };
+  return { out: r, summary: r.masked ? `전화번호·카드번호·고객 이름 ${r.masked}곳 가림 처리` : '가릴 개인정보 없음' };
 }
 
 // ---------- 회고 인터뷰어 ----------
@@ -47,7 +47,7 @@ export function followupsByRules(raw: string): string[] {
 export interface StoreCtx { brand: string; store: string }
 
 export async function interviewer(raw: string, answered: boolean, ctx: StoreCtx): Promise<StepOut<string[]>> {
-  if (answered) return { out: [], summary: '되묻기 답을 받았으니 더 묻지 않습니다', status: 'skipped' };
+  if (answered) return { out: [], summary: '되묻기 답변 수신 · 추가 질문 없음', status: 'skipped' };
   const { value, via } = await llmOr(
     async () =>
       (await ask('interviewer', {
@@ -58,7 +58,7 @@ export async function interviewer(raw: string, answered: boolean, ctx: StoreCtx)
     () => followupsByRules(raw),
     llmEnabled(),
   );
-  return { out: value, via, summary: value.length ? `빠진 내용을 ${value.length}개 되묻습니다: ${value[0]}` : '판단 이유까지 들어 있어 되묻지 않습니다' };
+  return { out: value, via, summary: value.length ? `누락 내용 ${value.length}개 재질문: ${value[0]}` : '판단 근거 포함 · 재질문 없음' };
 }
 
 // ---------- 사례 카드 편집자 ----------

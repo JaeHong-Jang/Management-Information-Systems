@@ -142,13 +142,12 @@ export function RankingTable({ rows, shapes }: { rows: StoreRow[]; shapes: Map<s
           <thead className="bg-surface-sunken text-left text-caption text-text-muted">
             <tr>
               <th scope="col" className="whitespace-nowrap px-3 py-2 text-right font-medium">순위</th>
-              <Th k="name" first="asc">매장</Th>
-              <th scope="col" className="px-3 py-2 font-medium">지역 · 상권</th>
+              <Th k="name" first="asc">매장 · 지역</Th>
               <Th k="rating" first="asc" right>카카오</Th>
               <Th k="naver" first="asc" right>네이버</Th>
               <th scope="col" className="px-3 py-2 font-medium">교차 판정</th>
               <Th k="risk" first="desc">위험</Th>
-              <th scope="col" className="px-3 py-2 font-medium">주요 불만(저평점)</th>
+              <th scope="col" className="w-[22%] px-3 py-2 font-medium">주요 불만(저평점)</th>
               <th scope="col" className="px-3 py-2 font-medium">추세</th>
             </tr>
           </thead>
@@ -160,18 +159,18 @@ export function RankingTable({ rows, shapes }: { rows: StoreRow[]; shapes: Map<s
                 <tr
                   key={s.id}
                   onClick={() => nav(`/hq/stores/${s.id}`)}
-                  className={cx('cursor-pointer border-t border-line hover:bg-ink-weak focus:bg-ink-weak', s.isTarget && 'bg-yellow-weak')}
+                  className={cx('cursor-pointer border-t border-line transition-colors hover:bg-ink-weak focus:bg-ink-weak', s.isTarget && 'bg-yellow-weak')}
                 >
                   <td className={cx('num px-3 py-2 text-right text-text-subtle', high && 'shadow-[inset_4px_0_0_var(--brand-red)]')}>{score.rank ?? '—'}</td>
                   <td className="px-3 py-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Link to={`/hq/stores/${s.id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-ink hover:underline">{s.name}</Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link to={`/hq/stores/${s.id}`} onClick={(e) => e.stopPropagation()} className="whitespace-nowrap font-bold text-ink hover:underline">{s.name}</Link>
                       {s.isTarget && <Tag tone="ink">시연 매장</Tag>}
                       {s.excluded && <Tag title={s.excluded}>분석 제외</Tag>}
                       {!s.excluded && score.rank == null && <Tag>표본 부족</Tag>}
                     </div>
+                    <p className="whitespace-nowrap text-caption text-text-muted">{s.region} {s.district} · {s.area}</p>
                   </td>
-                  <td className="px-3 py-2 text-text-subtle"><span className="whitespace-nowrap">{s.region} {s.district}</span><br /><span className="text-caption">{s.area}</span></td>
                   <td className="whitespace-nowrap px-3 py-2 text-right">
                     <span className="num inline-flex items-center gap-1">
                       <Star size={12} className="text-text-muted" aria-hidden />

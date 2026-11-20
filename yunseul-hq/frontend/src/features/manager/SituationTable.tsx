@@ -91,9 +91,11 @@ export function SituationTable({ storeId, situations, topics, people, onChanged 
               <li className="manager-situation" key={s.id}>
                 <div className="min-w-0">
                   <h3>{s.title}</h3>
-                  <p className="text-caption text-text-muted">불만 리뷰 <b className="num">{s.storeReviews}건</b> · 매장 {pct(s.storeShare)} / 브랜드 {pct(s.brandShare)}</p>
-                  <p className="text-caption text-text-muted">직원 질문 <span className="num">{s.questions}건</span>{s.openQuestions > 0 && ` · 미답변 ${s.openQuestions}건`}</p>
-                  {s.cardIds.length > 0 && <div className="manager-card-refs"><span>관련 카드</span>{s.cardIds.map((c) => <Link key={c} to={`/store/${storeId}/wiki#${c}`}>{c}</Link>)}</div>}
+                  <dl className="manager-facts">
+                    <div><dt>불만 리뷰</dt><dd><b className="num">{s.storeReviews}건</b><span>매장 {pct(s.storeShare)} · 브랜드 {pct(s.brandShare)}</span></dd></div>
+                    <div><dt>직원 질문</dt><dd><b className="num">{s.questions}건</b>{s.openQuestions > 0 && <span>미답변 {s.openQuestions}건</span>}</dd></div>
+                    <div><dt>관련 카드</dt><dd>{s.cardIds.length > 0 ? s.cardIds.map((c) => <Link key={c} to={`/store/${storeId}/wiki#${c}`}>{c}</Link>) : <span>없음</span>}</dd></div>
+                  </dl>
                 </div>
                 {s.gap ? <Button size="sm" icon={CirclePlus} onClick={() => setOpen(s.id)}>카드 작성</Button> : <Tag tone={s.storeCard ? 'done' : 'neutral'}>{s.storeCard ? '매장 카드 등록' : s.cardIds.length ? '본사 카드만 등록' : '카드 미등록'}</Tag>}
               </li>

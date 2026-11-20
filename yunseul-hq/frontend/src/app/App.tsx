@@ -62,7 +62,7 @@ function StoreHome() {
 
 function NotFound() {
   return (
-    <Empty title="페이지를 찾을 수 없습니다">
+    <Empty title="해당 페이지 없음">
       <Link className="text-ink underline" to="/">업무 홈으로 이동</Link>
     </Empty>
   );

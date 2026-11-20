@@ -38,6 +38,7 @@ const TYPES = Object.keys(GROUPS) as NodeType[];
 function GraphExplorer({ graph, storeId }: { graph: Graph; storeId?: string }) {
   const [selectedId, setSelectedId] = useState('');
   const [local, setLocal] = useState(false);
+  const [layered, setLayered] = useState(() => window.innerWidth >= 700); // 휴대폰은 관계망이 기본
   const [hidden, setHidden] = useState<Set<NodeType>>(new Set());
   const [query, setQuery] = useState('');
   const [openSearch, setOpenSearch] = useState(false);
@@ -62,6 +63,13 @@ function GraphExplorer({ graph, storeId }: { graph: Graph; storeId?: string }) {
     });
   }, [graph.edges, byId, selected]);
   const direct = useMemo(() => new Set([selected?.id ?? '', ...relations.map(r => r.node.id)]), [selected, relations]);
+  // 연결 항목을 관계 종류별로 묶는다
+  const relationGroups = useMemo(() => {
+    const groups = new Map<string, typeof relations>();
+    relations.forEach(r => groups.set(r.label, [...(groups.get(r.label) ?? []), r]));
+    return [...groups];
+  }, [relations]);
+  const typeCount = (type: NodeType) => graph.nodes.filter(n => n.type === type).length;
   const display = useMemo(() => local ? {
     nodes: visible.nodes.filter(n => direct.has(n.id)),
     edges: visible.edges.filter(e => direct.has(e.source) && direct.has(e.target)),
@@ -111,24 +119,30 @@ function GraphExplorer({ graph, storeId }: { graph: Graph; storeId?: string }) {
           </button></li>)}</ul> : <p>일치하는 항목 없음</p>}
         </div>}
       </div>
-      <div className="kg-modes" role="group" aria-label="관계 표시 범위">
-        <button type="button" aria-pressed={!local} onClick={() => setLocal(false)}>전체 관계</button>
-        <button type="button" aria-pressed={local} onClick={() => setLocal(true)}>직접 연결</button>
+      <div className="kg-switches">
+        <div className="kg-modes" role="group" aria-label="배치 방식">
+          <button type="button" aria-pressed={layered} disabled={local} onClick={() => setLayered(true)}>구조 보기</button>
+          <button type="button" aria-pressed={!layered} disabled={local} onClick={() => setLayered(false)}>관계망</button>
+        </div>
+        <div className="kg-modes" role="group" aria-label="관계 표시 범위">
+          <button type="button" aria-pressed={!local} onClick={() => setLocal(false)}>전체 관계</button>
+          <button type="button" aria-pressed={local} onClick={() => setLocal(true)}>직접 연결</button>
+        </div>
       </div>
     </div>
     <div className="kg-grid">
       <section className="kg-map" aria-label="관계 지도">
-        <header className="kg-map-title"><h2>연결 지도</h2>
+        <header className="kg-map-title"><h2>연결 지도</h2><p className="kg-hint">항목 선택 시 직접 연결 강조 · 끌어서 이동 · Ctrl+휠 확대</p>
           <span aria-live="polite">항목 <b>{display.nodes.length}</b> · 연결 <b>{display.edges.length}</b></span>
           <button type="button" className="kg-mobile-inspect" onClick={() => {
             inspectorTitle.current?.focus({ preventScroll: true });
             inspectorTitle.current?.scrollIntoView({ block: 'start' });
           }}>상세 보기 <ChevronDown size={13} /></button>
         </header>
-        {selected && <NetworkCanvas key={(local ? selected.id : 'all') + ':' + [...hidden].sort().join(',')} graph={display} selected={selected} direct={direct} local={local} onPick={pick} />}
+        {selected && <NetworkCanvas key={(local ? selected.id : layered ? 'layers' : 'all') + ':' + [...hidden].sort().join(',')} layered={layered} graph={display} selected={selected} direct={direct} local={local} onPick={pick} />}
         <div className="kg-legend" role="group" aria-label="표시할 항목 유형">
           <span>표시 유형</span>{types.map(type => <button key={type} type="button" aria-pressed={!hidden.has(type)} onClick={() => toggle(type)} disabled={!hidden.has(type) && types.filter(t => !hidden.has(t)).length === 1}>
-            <i style={{ backgroundColor: GROUPS[type].color }} />{GROUPS[type].name}
+            <i style={{ backgroundColor: GROUPS[type].color }} />{GROUPS[type].name}<b>{typeCount(type)}</b>
           </button>)}
         </div>
       </section>
@@ -141,9 +155,12 @@ function GraphExplorer({ graph, storeId }: { graph: Graph; storeId?: string }) {
           {selected.type === 'card' && storeId && <Link to={`/store/${storeId}/wiki#${selected.id}`}>위키 카드 열기 <ExternalLink size={13} /></Link>}
         </div>
         <div className="kg-rel-title"><h3>직접 연결 항목</h3><span>{new Set(relations.map(r => r.node.id)).size}개</span></div>
-        {relations.length ? <ul className="kg-relations">{relations.map(r => <li key={r.id}><button type="button" onClick={() => pick(r.node.id)}>
-          <span><small>{r.label}</small><strong>{r.node.label}</strong></span><ChevronRight size={15} aria-hidden="true" />
-        </button></li>)}</ul> : <p className="kg-empty">등록된 연결 없음</p>}
+        {relations.length ? <div className="kg-relations">{relationGroups.map(([label, items]) => <section key={label}>
+          <h4>{label}<span>{items.length}</span></h4>
+          <ul>{items.map(r => <li key={r.id}><button type="button" onClick={() => pick(r.node.id)}>
+            <i style={{ backgroundColor: GROUPS[r.node.type].color }} aria-hidden="true" /><strong>{r.node.label}</strong><ChevronRight size={15} aria-hidden="true" />
+          </button></li>)}</ul>
+        </section>)}</div> : <p className="kg-empty">등록된 연결 없음</p>}
       </aside>}
     </div>
   </section>;

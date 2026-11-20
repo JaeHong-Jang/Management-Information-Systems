@@ -23,7 +23,7 @@ function WhoPicker({ staff, onPick }: { staff: Person[]; onPick: (id: string) =>
   return (
     <section className="staff-picker" aria-labelledby="who">
       <h1 id="who" className="font-display text-display text-ink">근무자 선택</h1>
-      <p className="mb-4 mt-1 text-body text-text-subtle">선택한 이름으로 이 매장의 근무 기록을 조회하고 작성합니다.</p>
+      <p className="mb-4 mt-1 text-body text-text-subtle">선택한 근무자 기준으로 근무 기록 조회·작성</p>
       <ul className="space-y-2">
         {staff.map((p) => (
           <li key={p.id}>

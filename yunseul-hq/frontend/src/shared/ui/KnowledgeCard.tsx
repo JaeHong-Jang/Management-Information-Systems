@@ -93,7 +93,7 @@ export function CardDrawer({ card, cardId, onClose }: { card: Card | null | unde
   return (
     <Drawer open={!!cardId} onClose={onClose} eyebrow={<span className="num">근거 카드 {cardId}</span>} title={card?.title ?? cardId ?? ''}>
       {!card ? (
-        <p className="text-body text-text-muted">현재 매장의 위키에서 카드 {cardId}를 조회할 수 없습니다.</p>
+        <p className="text-body text-text-muted">현재 매장 위키에 카드 {cardId} 없음</p>
       ) : (
         <>
           <div className="mb-4">

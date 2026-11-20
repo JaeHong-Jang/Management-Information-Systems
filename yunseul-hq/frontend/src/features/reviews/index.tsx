@@ -98,7 +98,7 @@ export function ReviewsPage() {
           ) : !page.data ? (
             <Loading />
           ) : page.data.items.length === 0 ? (
-            <Empty title="검색 결과 없음">조회 조건 또는 본문 검색어를 변경할 수 있습니다.</Empty>
+            <Empty title="검색 결과 없음">조회 조건 또는 본문 검색어 변경 필요</Empty>
           ) : (
             <ul className="divide-y divide-line">
               {page.data.items.map((r) => <ReviewItem key={r.id} r={r} storeName={storeName.get(r.storeId)} onTag={(t) => set('type', t)} />)}

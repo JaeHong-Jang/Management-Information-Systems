@@ -50,7 +50,7 @@ function readSeed<T>(name: string, fallback?: T): T {
   const f = join(SEED_DIR, name);
   if (!existsSync(f)) {
     if (fallback !== undefined) return fallback;
-    throw new Error(`시드 파일이 없습니다: ${f}`);
+    throw new Error(`시드 파일 없음: ${f}`);
   }
   return JSON.parse(readFileSync(f, 'utf8')) as T;
 }

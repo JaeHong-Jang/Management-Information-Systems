@@ -74,7 +74,7 @@ function Frame() {
               {(activeItem || pathname === '/graph') && <><ChevronRight size={12} aria-hidden /><span aria-current="page">{activeItem?.label ?? '지식 그래프'}</span></>}
               <span className="portal-mobile-location"><Store size={13} aria-hidden />{scopeName}</span>
             </nav>
-            <Suspense fallback={<Loading />}><Outlet /></Suspense>
+            <div key={pathname + (tab ?? '')} className="page-enter"><Suspense fallback={<Loading />}><Outlet /></Suspense></div>
           </div>
         </main>
       </div>

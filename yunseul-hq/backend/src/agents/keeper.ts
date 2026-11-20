@@ -86,7 +86,7 @@ export async function linter(storeId: string, ctx: StoreCtx): Promise<StepOut<Li
           async () =>
             (await ask('linter', {
               system: storeSystem(ctx),
-              user: `같은 토픽의 카드들이다. 서로 모순되는 지시(한쪽은 하라, 한쪽은 하지 말라)만 찾아라. issue에는 근거와 상충 내용을 한 문장의 간결한 보고서 문체로 작성하고 후속 조치는 생략한다. 단순 중복은 제외.\n\n${approved.map((c) => `[${c.id}] (${c.topic}, ${c.source}) ${c.title} / 대응: ${c.actions.join(' / ')} / 금지: ${c.avoid}`).join('\n')}`,
+              user: `같은 토픽의 카드들이다. 서로 모순되는 지시(한쪽은 하라, 한쪽은 하지 말라)만 찾아라. issue에는 근거와 상충 내용을 명사형으로 끝나는 한 문장의 개조식으로 작성하고 후속 조치는 생략한다. 단순 중복은 제외.\n\n${approved.map((c) => `[${c.id}] (${c.topic}, ${c.source}) ${c.title} / 대응: ${c.actions.join(' / ')} / 금지: ${c.avoid}`).join('\n')}`,
               schema: z.object({ conflicts: z.array(z.object({ ids: z.array(z.string()), issue: z.string() })) }),
             }))?.conflicts ?? null,
           () => conflictsByRules(approved),

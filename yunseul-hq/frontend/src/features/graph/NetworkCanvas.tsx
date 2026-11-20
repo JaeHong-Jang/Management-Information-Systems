@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Maximize, Minus, Plus } from 'lucide-react';
 import type { Graph, GraphNode } from '@shared/contracts';
-import { fitNetwork, GROUPS, layoutNeighbors, layoutNetwork, type Point } from './network';
+import { fitNetwork, GROUPS, layoutLayers, layoutNeighbors, layoutNetwork, type Point } from './network';
 
 const HOME_VIEW = { x: 0, y: 0, scale: 1 };
 const MIN_SCALE = .6, MAX_SCALE = 3;
@@ -13,8 +13,8 @@ function zoomAround(view: View, scale: number, origin: Point): View {
   return { x: origin.x - (origin.x - view.x) * ratio, y: origin.y - (origin.y - view.y) * ratio, scale };
 }
 
-export function NetworkCanvas({ graph, selected, direct, local, onPick }: {
-  graph: Graph; selected: GraphNode; direct: Set<string>; local: boolean; onPick: (id: string) => void;
+export function NetworkCanvas({ graph, selected, direct, local, layered, onPick }: {
+  graph: Graph; selected: GraphNode; direct: Set<string>; local: boolean; layered: boolean; onPick: (id: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<SVGSVGElement>(null);
@@ -47,9 +47,10 @@ export function NetworkCanvas({ graph, selected, direct, local, onPick }: {
   }, []);
 
   const { width, height } = size;
-  const network = useMemo(() => local ? new Map() : layoutNetwork(graph), [local, graph]);
+  const layers = useMemo(() => layered && !local ? layoutLayers(graph.nodes, width) : null, [layered, local, graph.nodes, width]);
+  const network = useMemo(() => local || layers ? new Map() : layoutNetwork(graph), [local, layers, graph]);
   const positions = useMemo(() => local ? layoutNeighbors(selected, graph.nodes, width, height)
-    : fitNetwork(network, width, height), [local, selected, graph.nodes, network, width, height]);
+    : layers ? layers.positions : fitNetwork(network, width, height), [local, layers, selected, graph.nodes, network, width, height]);
   const previousSelection = useRef(selected.id);
   useEffect(() => {
     if (previousSelection.current === selected.id) return;
@@ -76,6 +77,14 @@ export function NetworkCanvas({ graph, selected, direct, local, onPick }: {
     return { node, x: p.x * view.scale + view.x, y: p.y * view.scale + view.y, radius };
   });
   const byId = new Map(dots.map(dot => [dot.node.id, dot]));
+  // 유형 묶음 이름: 묶음 위쪽에 옅게 적는다(전체 관계에서만)
+  const captions = local ? [] : layers ? layers.captions.map(c => ({ ...c, x: c.x * view.scale + view.x, y: c.y * view.scale + view.y })) : (Object.keys(GROUPS) as (keyof typeof GROUPS)[]).flatMap(type => {
+    const group = dots.filter(d => d.node.type === type);
+    if (group.length < 2) return [];
+    const x = group.reduce((sum, d) => sum + d.x, 0) / group.length;
+    const y = Math.min(...group.map(d => d.y - d.radius)) - 16;
+    return [{ type, x, y, text: `${GROUPS[type].name} ${group.length}` }];
+  });
   const active = hover ?? selected.id;
   const lit = hover ? new Set([hover]) : direct;
   if (hover) graph.edges.forEach(e => {
@@ -86,15 +95,24 @@ export function NetworkCanvas({ graph, selected, direct, local, onPick }: {
   // Keep the focused label first; omit crowded overview labels until zoom or hover.
   const priority = (id: string) => (id === active ? 3000 : id === selected.id ? 2000 : lit.has(id) ? 1000 : 0) + (degree.get(id) ?? 0);
   const blocks = dots.map(d => ({ l: d.x - d.radius, r: d.x + d.radius, t: d.y - d.radius, b: d.y + d.radius }));
-  const labels = [...dots].sort((a, b) => priority(b.node.id) - priority(a.node.id)).flatMap(d => {
+  const fitText = (label: string, room: number) => {
+    let used = 0, i = 0;
+    for (const char of label) { used += char.charCodeAt(0) > 255 ? 12 : 7; if (used > room) break; i += char.length; }
+    return i < label.length ? label.slice(0, Math.max(1, i - 1)) + '…' : label;
+  };
+  // 구조 보기: 이름은 늘 점 오른쪽, 열 너비만큼. 가리킨 항목만 전체 이름
+  const labels = layers ? dots.map(d => ({
+    id: d.node.id, x: d.x + d.radius + 7, y: d.y + 4,
+    text: d.node.id === hover ? d.node.label : fitText(d.node.label, (layers.room.get(d.node.id) ?? 120) * view.scale),
+  })) : [...dots].sort((a, b) => priority(b.node.id) - priority(a.node.id)).flatMap(d => {
     const focused = d.node.id === active || d.node.id === selected.id;
     if (d.x < 0 || d.x > width || d.y < 0 || d.y > height) return [];
-    const limit = focused ? 22 : local || view.scale > 1.45 ? 15 : 10;
+    const limit = focused ? 24 : local || view.scale > 1.45 ? 18 : 12;
     const text = d.node.label.length > limit ? d.node.label.slice(0, limit) + '…' : d.node.label;
     const textWidth = [...text].reduce((sum, char) => sum + (char.charCodeAt(0) > 255 ? 12 : 7), 6);
     const candidates = [
-      { x: d.x + d.radius + 5, y: d.y + 4 }, { x: d.x - d.radius - textWidth - 5, y: d.y + 4 },
-      { x: d.x - textWidth / 2, y: d.y + d.radius + 17 }, { x: d.x - textWidth / 2, y: d.y - d.radius - 6 },
+      { x: d.x - textWidth / 2, y: d.y + d.radius + 16 }, { x: d.x + d.radius + 5, y: d.y + 4 },
+      { x: d.x - d.radius - textWidth - 5, y: d.y + 4 }, { x: d.x - textWidth / 2, y: d.y - d.radius - 6 },
     ];
     const at = candidates.find(({ x, y }) => x > 3 && x + textWidth < width - 3 && y > 13 && y < height - 4 &&
       blocks.every(b => x + textWidth < b.l || x > b.r || y + 4 < b.t || y - 13 > b.b));
@@ -119,7 +137,7 @@ export function NetworkCanvas({ graph, selected, direct, local, onPick }: {
     }
   }
 
-  return <div className="kg-canvas" ref={host}>
+  return <div className="kg-canvas" ref={host} style={layers ? { height: layers.height } : undefined}>
     <svg ref={canvas} width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} role="group" tabIndex={0} aria-label="지식 관계도. 방향키로 이동, 더하기와 빼기로 확대 또는 축소, Home 키로 초기화" onKeyDown={keyDown}
       onPointerDown={e => {
         if (e.button !== 0) return;
@@ -141,9 +159,16 @@ export function NetworkCanvas({ graph, selected, direct, local, onPick }: {
       {graph.edges.map(edge => {
         const a = byId.get(edge.source)!, b = byId.get(edge.target)!;
         const highlighted = edge.source === active || edge.target === active;
-        return <line key={edge.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={highlighted ? 'kg-line is-active' : 'kg-line'} />;
+        const cls = highlighted ? 'kg-line is-active' : hover ? 'kg-line is-dim' : 'kg-line';
+        if (layers) {
+          const bend = a.x === b.x ? 46 * view.scale : (b.x - a.x) / 2;
+          const d = a.x === b.x ? `M${a.x},${a.y} C${a.x - bend},${a.y} ${b.x - bend},${b.y} ${b.x},${b.y}` : `M${a.x},${a.y} C${a.x + bend},${a.y} ${b.x - bend},${b.y} ${b.x},${b.y}`;
+          return <path key={edge.id} d={d} fill="none" className={cls} />;
+        }
+        return <line key={edge.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={cls} />;
       })}
-      {dots.map(({ node, x, y, radius }) => <g key={node.id} transform={`translate(${x},${y})`} className="kg-dot"
+      {captions.map(c => <text key={c.type} x={c.x} y={c.y} textAnchor={layers ? 'start' : 'middle'} pointerEvents="none" aria-hidden="true" className="kg-caption" fill={GROUPS[c.type].color}>{c.text}</text>)}
+      {dots.map(({ node, x, y, radius }) => <g key={node.id} transform={`translate(${x},${y})`} className={hover && !lit.has(node.id) ? 'kg-dot is-dim' : 'kg-dot'}
         role="button" tabIndex={0} aria-label={`${GROUPS[node.type].name} · ${node.label}`} aria-pressed={node.id === selected.id}
         onMouseEnter={() => { if (!drag.current) setHover(node.id); }} onMouseLeave={() => setHover(null)}
         onFocus={() => setHover(node.id)} onBlur={() => setHover(null)}
@@ -154,7 +179,7 @@ export function NetworkCanvas({ graph, selected, direct, local, onPick }: {
         {node.id === selected.id && <circle r={radius + 4} fill="none" stroke="#fff" strokeWidth="1.8" />}
         <circle r={radius} fill={GROUPS[node.type].color} />
       </g>)}
-      {labels.map(l => <text key={l.id} x={l.x} y={l.y} pointerEvents="none" aria-hidden="true" className={`kg-node-label ${l.id === active || l.id === selected.id ? 'is-focus' : lit.has(l.id) ? 'is-neighbor' : ''}`}>{l.text}</text>)}
+      {labels.map(l => <text key={l.id} x={l.x} y={l.y} pointerEvents="none" aria-hidden="true" className={`kg-node-label ${l.id === active || l.id === selected.id ? 'is-focus' : lit.has(l.id) ? 'is-neighbor' : hover ? 'is-dim' : ''}`}>{l.text}</text>)}
     </svg>
     <div className="kg-zoom" aria-label="그래프 배율">
       <button type="button" title="축소" aria-label="축소" disabled={view.scale <= MIN_SCALE} onClick={() => zoom(.8)}><Minus size={15} /></button>

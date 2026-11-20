@@ -64,7 +64,7 @@ export async function simulate(storeId: string): Promise<Outcome> {
   const d = db.get();
   if (!d.simulated.includes(storeId)) {
     const pool = d.virtualPool.filter((r) => r.storeId === storeId);
-    if (!pool.length) throw httpError(400, `${store.name}에는 처방 이후 가상 리뷰가 없습니다.`);
+    if (!pool.length) throw httpError(400, `${store.name}: 처방 이후 가상 리뷰 없음`);
     const run = new Run('ingest', storeId, '관측팀', `${store.name} 처방 이후 가상 리뷰 ${pool.length}건`);
     await orchestrate(run, '가상 리뷰로 처방 효과 보기');
     await run.step('review-collector', () => reviewCollector(pool, '처방 이후(가상)'));
@@ -222,7 +222,7 @@ export function prescribe(storeId: string, opts: { rulesOnly?: boolean } = {}): 
 
 export function prescriptionAction(id: string, action: 'send' | 'done' | 'reject'): Prescription {
   const p = db.prescription(id);
-  if (!p) throw httpError(404, '처방을 찾을 수 없습니다.');
+  if (!p) throw httpError(404, '해당 처방 없음');
   const actionName = { send: '발송', done: '완료', reject: '반려' }[action];
   const allowed = { send: ['draft'], done: ['draft', 'sent'], reject: ['draft', 'sent'] }[action];
   if (!allowed.includes(p.status)) {
@@ -264,8 +264,8 @@ export function promote(minStores = 5): { runId: string; done: Promise<StandardP
 
 export function proposalAction(id: string, action: 'approve' | 'reject'): StandardProposal {
   const p = db.get().proposals.find((x) => x.id === id);
-  if (!p) throw httpError(404, '개정 제안을 찾을 수 없습니다.');
-  if (p.status !== 'pending') throw httpError(400, '이미 처리된 제안입니다.');
+  if (!p) throw httpError(404, '해당 개정 제안 없음');
+  if (p.status !== 'pending') throw httpError(400, '이미 처리된 제안');
   p.status = action === 'approve' ? 'approved' : 'rejected';
   db.addLog(`개정 제안 ${action === 'approve' ? '승인' : '반려'}`, `[${p.id}] ${p.title}`, null);
   db.save();
@@ -274,7 +274,7 @@ export function proposalAction(id: string, action: 'approve' | 'reject'): Standa
 
 export function driftAction(id: string, action: 'accept' | 'fix'): RuleDrift {
   const dr = db.get().drifts.find((x) => x.id === id);
-  if (!dr) throw httpError(404, '규칙 차이 기록을 찾을 수 없습니다.');
+  if (!dr) throw httpError(404, '해당 규칙 차이 기록 없음');
   dr.status = action === 'accept' ? 'accepted' : 'fixed';
   db.addLog(action === 'accept' ? '규칙 차이 예외 인정' : '규칙 차이 수정 확인', `[${dr.id}] ${dr.observed}`, dr.storeId);
   db.save();

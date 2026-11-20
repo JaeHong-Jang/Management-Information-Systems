@@ -54,7 +54,7 @@ describe('근무 체크리스트', () => {
     expect(setManualCheck(storeId, itemId, personId, '2026-11-20', true).date).toBe('2026-11-20');
     vi.setSystemTime(new Date('2026-11-20T15:00:00.000Z'));
     expect(manualChecklist(storeId, personId)).toMatchObject({ date: '2026-11-21', checkedIds: [] });
-    expect(() => setManualCheck(storeId, itemId, personId, '2026-11-20', false)).toThrow(/근무일이 변경/);
+    expect(() => setManualCheck(storeId, itemId, personId, '2026-11-20', false)).toThrow(/근무일 변경/);
     expect(db.get().manualChecks).toHaveLength(1);
   });
 

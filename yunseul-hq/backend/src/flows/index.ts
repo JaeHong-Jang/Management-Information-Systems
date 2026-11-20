@@ -19,7 +19,7 @@ const httpError = (status: number, message: string) => Object.assign(new Error(m
 
 export function requireStore(storeId: string) {
   const s = db.store(storeId);
-  if (!s) throw httpError(404, `매장을 찾을 수 없습니다 (${storeId}).`);
+  if (!s) throw httpError(404, `해당 매장 없음 (${storeId})`);
   return s;
 }
 export const ctxOf = (storeId: string): StoreCtx => ({ brand: db.get().brand.name, store: requireStore(storeId).name });
@@ -46,12 +46,12 @@ export async function resynthesize(run: Run, storeId: string, topic: string) {
 /** 카드·질문이 이 매장 것인지 확인한다(다른 매장 카드를 이 매장 화면에서 바꾸지 못하게) */
 function ownCard(storeId: string, id: string): Card {
   const c = db.card(id);
-  if (!c || (c.storeId !== storeId && c.scope !== 'brand')) throw httpError(404, '해당 매장의 카드를 찾을 수 없습니다.');
+  if (!c || (c.storeId !== storeId && c.scope !== 'brand')) throw httpError(404, '해당 매장에 카드 없음');
   return c;
 }
 function ownQuestion(storeId: string, id: string) {
   const q = db.question(id);
-  if (!q || q.storeId !== storeId) throw httpError(404, '해당 매장의 질문을 찾을 수 없습니다.');
+  if (!q || q.storeId !== storeId) throw httpError(404, '해당 매장에 질문 없음');
   return q;
 }
 
@@ -60,7 +60,7 @@ function ownQuestion(storeId: string, id: string) {
 /** 상황 버튼으로 물으면 검색 없이 그 상황의 카드(매장 카드 우선)로 바로 답한다. 없는 상황이면 400 */
 function situationCard(storeId: string, situationId: string, usable: Card[]) {
   const sit = storeSituations(storeId).find((s) => s.id === situationId);
-  if (!sit) throw httpError(400, `등록되지 않은 상황입니다 (${situationId}).`);
+  if (!sit) throw httpError(400, `미등록 상황 (${situationId})`);
   return { sit, card: sit.cardIds.map((id) => usable.find((c) => c.id === id)).find(Boolean) };
 }
 
@@ -98,14 +98,14 @@ export async function ask(storeId: string, rawText: string, askerId: string, sit
   // 점수가 낮아도 가장 가까운 카드(hits는 이미 주제가 겹치는 카드만 남아 있다)
   let nearCardId: string | undefined = esc.escalate && esc.why !== 'safety' ? hits[0]?.card.id : undefined;
   if (esc.why === 'safety') {
-    final = { ...checked, answer: `안전과 관련된 상황입니다 (${esc.safety}). 단독 대응을 피하고 즉시 점장에게 직접 연락하십시오. 위급한 경우에는 119 또는 112에 먼저 신고하십시오.`, confidence: 'low', cited: [] };
+    final = { ...checked, answer: `안전 관련 상황 (${esc.safety}). 단독 대응 금지, 즉시 점장에게 직접 연락. 위급 시 119 또는 112 우선 신고.`, confidence: 'low', cited: [] };
   } else if (esc.escalate && esc.why === 'call' && esc.callCard) {
     const c = esc.callCard;
     const interim = c.actions.filter((a) => !forbidden(a).length).slice(0, 2).map((a, i) => `${i + 1}. ${a} [${c.id}]`);
-    final = { ...checked, answer: [`점장 호출 기준 · ${c.escalateWhen} [${c.id}]`, '점장에게 직접 연락하십시오. 도착 전 조치 사항은 다음과 같습니다.', ...interim].join('\n'), cited: [c.id], confidence: 'low' };
+    final = { ...checked, answer: [`점장 호출 기준 · ${c.escalateWhen} [${c.id}]`, '점장에게 직접 연락. 도착 전 조치 사항:', ...interim].join('\n'), cited: [c.id], confidence: 'low' };
     nearCardId = c.id;
   } else if (esc.escalate) {
-    final = { ...checked, answer: '매장 위키에서 해당 사례를 찾지 못했습니다. 점장에게 직접 연락하십시오. 질문은 점장 업무 목록에 등록되며, 답변은 ‘내 질문 내역’에서 확인할 수 있습니다.', cited: [], confidence: 'none' };
+    final = { ...checked, answer: '매장 위키에 해당 사례 없음. 점장에게 직접 연락. 질문은 점장 업무 목록에 등록, 답변은 ‘내 질문 내역’에서 확인.', cited: [], confidence: 'none' };
   }
   // 마지막 관문: 알바에게 가기 직전에 금지 표현 줄을 빼고, 이유도 다시 검사한다
   final = { ...final, answer: dropForbiddenLines(final.answer), why: forbidden(final.why).length || esc.why === 'safety' ? '' : final.why };
@@ -146,7 +146,7 @@ export async function feedback(storeId: string, questionId: string, solved: bool
   if (escalate) {
     q.status = 'escalated';
     q.nearCardId ??= q.cited[0];
-    q.answer = '미해결 질문을 점장 업무 목록에 등록했습니다. 긴급한 경우 점장에게 직접 연락하십시오.';
+    q.answer = '미해결 질문을 점장 업무 목록에 등록. 긴급 시 점장에게 직접 연락.';
   }
   await orchestrate(run, escalate ? '해결 안 됨 → 점장에게 넘김' : '해결됨 → 카드 도움 횟수 반영');
   run.wiki({ op: solved ? '해결 확인' : '점장에게 넘김', detail: `[${q.id}] ${solved ? '위키 답으로 해결' : '위키 답으로 해결 안 됨'}`, nodes: [questionNode(q)], edges: [] });
@@ -207,7 +207,7 @@ export async function submitCard(storeId: string, input: Omit<InterviewDraft, 'f
 /** 카드 고치기. 그 매장 점장이 고치면 승인 상태 그대로, 다른 사람이 고치면 승인 대기로 돌린다 */
 export async function cardEdit(storeId: string, id: string, edits: Partial<Card> | undefined, editorId: string): Promise<Card> {
   const c = ownCard(storeId, id);
-  if (c.scope === 'brand') throw httpError(403, '본사 카드는 매장에서 수정할 수 없습니다.');
+  if (c.scope === 'brand') throw httpError(403, '본사 카드는 매장에서 수정 불가');
   const mask = (v: unknown) => (typeof v === 'string' ? maskPii(v).text : undefined);
   const { actions, tags, topic } = edits ?? {};
   const next = {
@@ -230,7 +230,7 @@ export async function cardEdit(storeId: string, id: string, edits: Partial<Card>
 
 export async function cardAction(storeId: string, id: string, action: 'approve' | 'reject' | 'renew' | 'archive', edits?: Partial<Card>, reason?: string): Promise<Card> {
   const c = ownCard(storeId, id);
-  if (c.scope === 'brand') throw httpError(403, '본사 카드는 매장에서 수정할 수 없습니다.');
+  if (c.scope === 'brand') throw httpError(403, '본사 카드는 매장에서 수정 불가');
   const label = { approve: '승인', reject: '반려', renew: '갱신', archive: '보관' }[action];
   const run = new Run('approve', storeId, '점장', `[${id}] ${label}`);
   await orchestrate(run, label);

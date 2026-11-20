@@ -49,7 +49,7 @@ export function GatePanel({ h, run, names }: { h: HarnessConfig; run: RunView; n
             처리 결과 {run.ok ? '' : '(중단)'}
           </p>
           <p className="text-body text-text-subtle">{run.summary}</p>
-          {(run.flow === 'prescribe' || run.flow === 'record') && <p className="mt-1 text-caption text-text-muted">매장 반영에는 담당자 승인 또는 발송이 필요합니다.</p>}
+          {(run.flow === 'prescribe' || run.flow === 'record') && <p className="mt-1 text-caption text-text-muted">매장 반영 조건: 담당자 승인 또는 발송</p>}
         </div>
       )}
     </Panel>

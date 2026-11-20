@@ -42,7 +42,7 @@ export function TeamStructure({ h }: { h: HarnessConfig }) {
               </li>
             ))}
           </ul>
-        ) : <p className="ops-empty">검색 조건에 해당하는 에이전트가 없습니다.</p>}
+        ) : <p className="ops-empty">검색 조건에 해당하는 에이전트 없음</p>}
       </Panel>
       <p className="ops-identifier dev">{h.name} {h.version} · 구성 모델 {h.llm.model} · LLM 지원 {agents.filter((a) => a.llm).length}개</p>
       {agent && <StepDrawer h={h} a={agent} live="wait" run={null} onClose={() => setSelected(null)} />}

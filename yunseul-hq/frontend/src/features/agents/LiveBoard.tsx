@@ -57,7 +57,7 @@ export function LiveBoard({ h, storeName, targetId, targetName }: { h: HarnessCo
       <InlineError message={kick.error} />
       {!connected && <p role="status" className="ops-notice">실시간 연결 복구 중 · 새 실행 기록 반영 지연</p>}
       {!run ? (
-        <Panel title="실행 이력"><p className="text-body text-text-muted">조회 가능한 실행 기록이 없습니다.</p></Panel>
+        <Panel title="실행 이력"><p className="text-body text-text-muted">조회 가능한 실행 기록 없음</p></Panel>
       ) : (
         <>
           <section className="ops-overview" aria-labelledby="ops-current-run">

@@ -80,7 +80,7 @@ export function StandardsPage() {
                 )}
               </Panel>}
               {active === 'proposals' && <Panel title="개정 제안 심사" sub={`승인 대기 ${pending}건 · 위험 상위 20개 매장 중 5곳 이상에서 반복된 불만 대상`}>
-                {!v.proposals.length ? <Empty title="등록된 개정 제안 없음">‘개정 제안 생성’에서 매장 공통 문제를 조회할 수 있습니다.</Empty> : (
+                {!v.proposals.length ? <Empty title="등록된 개정 제안 없음">‘개정 제안 생성’ 실행 시 매장 공통 문제 조회</Empty> : (
                   <ul className="divide-y divide-line">{[...v.proposals].sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending')).map((p) => (
                     <li key={p.id} className="standard-proposal">
                       <div className="flex flex-wrap items-center gap-2 text-caption text-text-muted">

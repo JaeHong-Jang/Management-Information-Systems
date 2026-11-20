@@ -27,8 +27,8 @@ export function citationChecker(ans: Answer, approvedIds: Set<string>, retrieved
     if (citedIds(l).some((id) => !ok(id))) return false;
     return HAS_CITE.test(l);
   });
-  if (kept.length < lines.length) problems.push(`근거가 없거나 잘못된 줄 ${lines.length - kept.length}개를 뺐습니다`);
-  if (!valid.length) problems.push('유효한 근거 카드가 없습니다');
+  if (kept.length < lines.length) problems.push(`근거 누락·오류 문장 ${lines.length - kept.length}개 제외`);
+  if (!valid.length) problems.push('유효한 근거 카드 없음');
   const fixed: Answer = { ...ans, answer: kept.join('\n'), cited: valid };
   return { out: { answer: fixed, problems }, status: problems.length ? 'blocked' : 'ok', problems, summary: problems.length ? `인용 문제 ${problems.length}건` : `인용 ${valid.length}개 모두 실제 카드` };
 }
@@ -41,7 +41,7 @@ export function policyChecker(ans: Answer, cards: Card[]): StepOut<{ answer: Ans
   const top = [...mixed].sort((a, b) => SOURCE_RANK[b.source] - SOURCE_RANK[a.source])[0];
   if (new RegExp(`${top.source}[^\\n]*따르`).test(ans.answer)) return { out: { answer: ans, problems: [] }, summary: `${top.source} 우선 안내 있음` };
   const fixed = { ...ans, answer: `${ans.answer}\n매장 관행과 지침이 상충할 경우 ${top.source}을 따릅니다. [${top.id}]` };
-  return { out: { answer: fixed, problems: [`${top.source} 우선 안내 누락 → 덧붙임`] }, status: 'blocked', problems: [`${top.source} 우선 안내 누락`], summary: `${top.source} 우선 안내를 덧붙였습니다` };
+  return { out: { answer: fixed, problems: [`${top.source} 우선 안내 누락 → 덧붙임`] }, status: 'blocked', problems: [`${top.source} 우선 안내 누락`], summary: `${top.source} 우선 안내 추가` };
 }
 
 /** 금지 표현이 든 줄을 뺀 글 */

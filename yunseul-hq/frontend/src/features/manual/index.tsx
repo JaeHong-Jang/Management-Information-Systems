@@ -70,7 +70,7 @@ function ManualWorkspace({ store, role, staff, personId, onPersonChange }: {
       const updated = await setManualCheck(storeId, item.id, personId, data.date, !data.checkedIds.includes(item.id));
       manual.setData(() => updated);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : '점검 결과를 저장하지 못했습니다.');
+      setSaveError(error instanceof Error ? error.message : '점검 결과 저장 실패');
       if (error instanceof ApiError && error.status === 409) await reload();
     } finally {
       busy.current = false;
@@ -132,7 +132,7 @@ function ManualWorkspace({ store, role, staff, personId, onPersonChange }: {
                     </select>
                   </label>
                 </div>
-                {!personId && <p className="manual-note">{isEmployee ? '점검 기록 저장을 위해 담당자를 선택하십시오.' : '점검 기록 조회를 위해 직원을 선택하십시오.'}</p>}
+                {!personId && <p className="manual-note">{isEmployee ? '담당자 선택 후 점검 기록 저장 가능' : '직원 선택 후 점검 기록 조회 가능'}</p>}
                 {saveError && <p className="manual-error" role="alert">{saveError}</p>}
                 {manual.error && <p className="manual-error" role="alert">{manual.error} <button onClick={() => void reload()}>다시 불러오기</button></p>}
                 <table className="manual-table">
@@ -153,8 +153,8 @@ function ManualWorkspace({ store, role, staff, personId, onPersonChange }: {
                     </tr>
                   )}</tbody>
                 </table>
-                {!filtered.length && <p className="manual-empty"><ListChecks size={23} aria-hidden />{filter === '완료' ? '아직 완료한 점검이 없습니다.' : '남은 점검 항목이 없습니다.'}</p>}
-                {pending && <p role="status" className="sr-only">점검 결과를 저장하고 있습니다.</p>}
+                {!filtered.length && <p className="manual-empty"><ListChecks size={23} aria-hidden />{filter === '완료' ? '완료한 점검 없음' : '남은 점검 항목 없음'}</p>}
+                {pending && <p role="status" className="sr-only">점검 결과 저장 중</p>}
               </section>
               <aside id="manual-selected" ref={detailRef} tabIndex={-1} className="manual-detail" aria-label="선택한 매뉴얼 상세">
                 <div className="manual-detail-heading"><FileText size={18} aria-hidden /><h2>매뉴얼 상세</h2>
@@ -163,7 +163,7 @@ function ManualWorkspace({ store, role, staff, personId, onPersonChange }: {
                     listRef.current?.scrollIntoView({ block: 'start' });
                   }}><ArrowLeft size={14} aria-hidden />목록</button>
                 </div>
-                {selected ? <ManualDetail item={selected} store={store} role={role} /> : <p className="manual-detail-empty">목록의 항목을 선택하면 기준과 근거를 확인할 수 있습니다.</p>}
+                {selected ? <ManualDetail item={selected} store={store} role={role} /> : <p className="manual-detail-empty">목록에서 항목 선택 시 기준·근거 표시</p>}
               </aside>
             </div>
           </>
@@ -199,7 +199,7 @@ function ManualDetail({ item, store, role }: { item: ManualItem; store: StoreSta
   const cards = situation ? store.cards.filter(c => c.status === 'approved' && situation.cardIds.includes(c.id)) : [];
 
   const staffPath = `/store/${storeId}/staff`;
-  const askUrl = staffPath + '?' + new URLSearchParams({ ask: `‘${item.title}’ 항목은 우리 매장에서 어떻게 적용하면 될까요?` }) + '#ask';
+  const askUrl = staffPath + '?' + new URLSearchParams({ ask: `‘${item.title}’ 항목의 매장 적용 방법 문의` }) + '#ask';
   return (
     <div className="manual-detail-content">
       <div className="manual-detail-labels"><span>{item.category}</span><Basis basis={item.basis} /></div>

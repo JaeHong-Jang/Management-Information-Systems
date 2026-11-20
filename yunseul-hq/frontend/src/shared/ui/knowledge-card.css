@@ -1,25 +1,25 @@
-.knowledge-card { min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.knowledge-card { min-width: 0; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); }
 .knowledge-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: .65rem; padding: 1.05rem 1.15rem; border-bottom: 1px solid var(--line); }
 .knowledge-heading > div { min-width: 0; }
-.knowledge-record { color: var(--text-muted); font-size: .75rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.knowledge-heading :is(h2,h3) { font-size: 1.375rem; line-height: 1.43; letter-spacing: -.04em; font-weight: 750; margin: .2rem 0 .5rem; }
+.knowledge-record { color: var(--text-muted); font-size: var(--fs-caption); font-weight: 600; font-variant-numeric: tabular-nums; }
+.knowledge-heading :is(h2,h3) { font-size: var(--fs-title); line-height: 1.43; letter-spacing: -.04em; font-weight: 700; margin: .2rem 0 .5rem; }
 .knowledge-card > .knowledge-body { padding: .9rem 1.15rem; }
-.knowledge-body { display: grid; gap: 1rem; line-height: 1.65; font-size: .875rem; min-width: 0; }
-.knowledge-body h4 { font-size: 1rem; line-height: 1.4; font-weight: 700; letter-spacing: -.025em; margin-bottom: .4rem; }
+.knowledge-body { display: grid; gap: 1rem; line-height: 1.65; font-size: var(--fs-body); min-width: 0; }
+.knowledge-body h4 { font-size: var(--fs-subhead); line-height: 1.4; font-weight: 700; letter-spacing: -.025em; margin-bottom: .4rem; }
 .knowledge-field { display: grid; grid-template-columns: 5.5rem minmax(0,1fr); align-items: baseline; gap: .25rem .6rem; }
-.knowledge-field h4, .knowledge-notice h4, .knowledge-guidance h4 { font-size: .8125rem; font-weight: 700; color: var(--text-subtle); }
+.knowledge-field h4, .knowledge-notice h4, .knowledge-guidance h4 { font-size: var(--fs-body); font-weight: 700; color: var(--text-subtle); }
 .knowledge-field h4 { margin: 0; }
 .knowledge-steps ol { display: grid; gap: .35rem; }
 .knowledge-steps li { display: grid; grid-template-columns: 1.35rem minmax(0,1fr); gap: .5rem; align-items: baseline; }
-.knowledge-steps li > span { border-radius: 3px; background: var(--surface-sunken); border: 1px solid var(--line); line-height: 1.1rem; color: var(--text-subtle); text-align: center; font-size: .75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.knowledge-notice blockquote { border-left: 3px solid var(--brand-yellow); background: var(--yellow-weak); padding: .6rem .8rem; font-weight: 550; }
+.knowledge-steps li > span { border-radius: var(--r-badge); background: var(--surface-sunken); border: 1px solid var(--line); line-height: 1.1rem; color: var(--text-subtle); text-align: center; font-size: var(--fs-caption); font-weight: 700; font-variant-numeric: tabular-nums; }
+.knowledge-notice blockquote { border-left: 3px solid var(--brand-yellow); background: var(--yellow-weak); padding: .6rem .8rem; font-weight: 500; }
 .knowledge-guidance { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%,13rem),1fr)); gap: .5rem; }
-.knowledge-guidance section { border: 1px solid var(--line); border-radius: 4px; padding: .6rem .75rem; }
+.knowledge-guidance section { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: .6rem .75rem; }
 .knowledge-guidance h4 { margin-bottom: .2rem; }
-.knowledge-meta { display: flex; flex-wrap: wrap; gap: .3rem 1rem; padding-top: .7rem; border-top: 1px solid var(--line); font-size: .75rem; }
+.knowledge-meta { display: flex; flex-wrap: wrap; gap: .3rem 1rem; padding-top: .7rem; border-top: 1px solid var(--line); font-size: var(--fs-caption); }
 .knowledge-meta div { display: flex; gap: .3rem; align-items: baseline; }
 .knowledge-meta dt { color: var(--text-muted); }
-.knowledge-meta dd { font-variant-numeric: tabular-nums; font-weight: 550; }
+.knowledge-meta dd { font-variant-numeric: tabular-nums; font-weight: 500; }
 @media (max-width:600px) {
   .knowledge-field { display: block; }
   .knowledge-field h4 { margin-bottom: .2rem; }

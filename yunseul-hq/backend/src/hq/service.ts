@@ -53,8 +53,8 @@ const httpError = (status: number, message: string) => Object.assign(new Error(m
 /** 신입이 카드를 읽었다고 표시한다. 같은 사람·카드는 한 번만 저장한다 */
 export function markOnboardingRead(storeId: string, personId: string, cardId: string): Onboarding {
   const person = db.person(personId);
-  if (!person || person.storeId !== storeId) throw httpError(400, '해당 매장 소속 직원만 선택할 수 있습니다');
-  if (!storeOnboarding(storeId).items.some((it) => it.cardId === cardId)) throw httpError(400, '첫 근무 준비 목록에 없는 카드입니다');
+  if (!person || person.storeId !== storeId) throw httpError(400, '해당 매장 소속 직원만 선택 가능');
+  if (!storeOnboarding(storeId).items.some((it) => it.cardId === cardId)) throw httpError(400, '첫 근무 준비 목록에 없는 카드');
   if (addRead(db.get().onboardingReads, personId, cardId, db.now())) {
     db.addLog('첫 근무 준비', `${db.personLabel(personId)} · ${cardId} 열람 완료`, storeId);
     db.save();

@@ -35,7 +35,7 @@ export async function call<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(`/api${path}`, { headers: { 'content-type': 'application/json' }, ...init });
   } catch {
-    throw new ApiError('서버 연결 실패. 연결 상태를 확인한 뒤 다시 시도하십시오.', 0);
+    throw new ApiError('서버 연결 실패 · 연결 상태 확인 후 재시도', 0);
   }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError((body as { error?: string }).error ?? `요청 처리 실패 (${res.status})`, res.status);

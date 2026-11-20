@@ -159,7 +159,7 @@ describe('처방 효과(가상 리뷰)', () => {
     // 두 번 불러도 가상 리뷰를 다시 넣지 않는다
     await hq.simulate('S001');
     expect(db.reviewsOf('S001').filter((r) => r.virtual)).toHaveLength(4);
-    await expect(hq.simulate('S002')).rejects.toThrow(/가상 리뷰가 없습니다/);
+    await expect(hq.simulate('S002')).rejects.toThrow(/가상 리뷰 없음/);
   });
 });
 
@@ -215,7 +215,7 @@ describe('알바 질문', () => {
   it('안전 상황은 카드 없이 바로 점장에게', async () => {
     const r = await flows.ask('S001', '취한 손님이 다른 손님을 때리려고 해요', 'P003');
     expect(r.question.status).toBe('escalated');
-    expect(r.question.answer).toMatch(/안전과 관련된 상황/);
+    expect(r.question.answer).toMatch(/안전 관련 상황/);
   });
 
   it('위키가 모르는 질문 → 점장 답 → 새 카드 → 다음 질문은 위키가 답한다', async () => {
@@ -269,7 +269,7 @@ describe('v3.1 알바 질문 개선', () => {
     if (r.question.status === 'escalated') expect(r.question.nearCardId).toBeTruthy();
     const none = await flows.ask('S001', '손님이 강아지를 데리고 들어왔어요', 'P003');
     expect(none.question.status).toBe('escalated');
-    expect(none.question.answer).toMatch(/점장에게 직접 연락하십시오/);
+    expect(none.question.answer).toMatch(/점장에게 직접 연락/);
     expect(none.question.answer).not.toMatch(/바로 알렸|즉시 통보|알림을 (보냈|발송)/);
     const safe = await flows.ask('S001', '취한 손님이 다른 손님을 때리려고 해요', 'P003');
     expect(safe.question.nearCardId).toBeUndefined();
@@ -279,7 +279,7 @@ describe('v3.1 알바 질문 개선', () => {
     const r = await flows.ask('S001', '', 'P003', sitWithCards().id);
     const q = await flows.feedback('S001', r.question.id, false);
     expect(q.status).toBe('escalated');
-    expect(q.answer).toBe('미해결 질문을 점장 업무 목록에 등록했습니다. 긴급한 경우 점장에게 직접 연락하십시오.');
+    expect(q.answer).toBe('미해결 질문을 점장 업무 목록에 등록. 긴급 시 점장에게 직접 연락.');
     expect(q.nearCardId).toBe(r.question.cited[0]);
   });
 

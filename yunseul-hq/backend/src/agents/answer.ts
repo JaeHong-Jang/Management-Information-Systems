@@ -28,7 +28,7 @@ export function librarian(question: string, cards: Card[], excluded: { id: strin
 
 // ---------- 현장 코치 ----------
 
-const NO_ANSWER = '매장 위키에 해당 사례가 없습니다. 점장에게 이관한 질문은 답변 승인 후 위키 사례로 등록됩니다.';
+const NO_ANSWER = '매장 위키에 해당 사례 없음. 점장 이관 질문은 답변 승인 후 위키 사례로 등록.';
 
 /** 카드 한 장을 답 줄로 펼친다(제목·대응·하지 말 것·점장 호출). 줄마다 근거 카드 번호가 붙는다 */
 export function cardLines(c: Card): string[] {
@@ -52,7 +52,7 @@ export function answerByRules(hits: Hit[]): Answer {
   const cited = [c.id];
   if (other) {
     const [hi, lo] = SOURCE_RANK[c.source] >= SOURCE_RANK[other.card.source] ? [c, other.card] : [other.card, c];
-    lines.push(`관련 카드 [${lo.id}]의 출처는 ${lo.source}입니다. 지침이 상충하면 ${hi.source}을 따릅니다. [${hi.id}]`);
+    lines.push(`관련 카드 [${lo.id}]의 출처: ${lo.source}. 지침 상충 시 ${hi.source} 우선 적용. [${hi.id}]`);
     cited.push(other.card.id);
   }
   return { answer: lines.join('\n'), why: c.reason, cited, confidence: top.score > 6 ? 'high' : 'low', needsManager: false };

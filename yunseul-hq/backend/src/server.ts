@@ -26,7 +26,7 @@ const q = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
 app.get('/api/hq/overview', (_req, res) => res.json(overview()));
 app.get('/api/hq/stores/:id', (req, res) => {
   const d = storeDetail(sid(req));
-  return d ? res.json(d) : res.status(404).json({ error: '매장을 찾을 수 없습니다.' });
+  return d ? res.json(d) : res.status(404).json({ error: '해당 매장 없음' });
 });
 app.get('/api/hq/reviews', (req, res) =>
   res.json(reviewPage({ storeId: q(req.query.storeId), platform: q(req.query.platform), type: q(req.query.type), maxStar: q(req.query.maxStar), q: q(req.query.q), offset: q(req.query.offset), limit: q(req.query.limit) })),
@@ -88,29 +88,29 @@ app.get('/api/stores/:id/state', route((req, res) => {
 app.post('/api/stores/:id/onboarding/read', route((req, res) => {
   flows.requireStore(sid(req));
   const { personId, cardId } = req.body ?? {};
-  if (!personId || !cardId) return bad(res, '직원과 카드를 모두 지정하십시오.');
+  if (!personId || !cardId) return bad(res, '직원·카드 지정 필요');
   res.json(markOnboardingRead(sid(req), String(personId), String(cardId)));
 }));
 app.get('/api/stores/:id/briefing', route(async (req, res) => res.json(await flows.briefing(sid(req)))));
 app.post('/api/stores/:id/ask', route(async (req, res) => {
   const { text, askerId, situationId } = req.body ?? {};
-  if (!text?.trim() && !situationId) return bad(res, '질문을 입력하거나 상황을 선택하십시오.');
+  if (!text?.trim() && !situationId) return bad(res, '질문 입력 또는 상황 선택 필요');
   res.json(await flows.ask(sid(req), text ?? '', askerId || db.defaultPerson(sid(req), '신입'), situationId ? String(situationId) : undefined));
 }));
 app.post('/api/stores/:id/questions/:qid/feedback', route(async (req, res) => res.json(await flows.feedback(sid(req), String(req.params.qid), Boolean(req.body?.solved)))));
 app.post('/api/stores/:id/questions/:qid/resolve', route(async (req, res) => {
   const { answer, managerId } = req.body ?? {};
-  if (!answer?.trim()) return bad(res, '점장 답변을 입력하십시오.');
+  if (!answer?.trim()) return bad(res, '점장 답변 입력 필요');
   res.json((await flows.resolve(sid(req), String(req.params.qid), answer, managerId || db.defaultPerson(sid(req), '점장'))).question);
 }));
 app.post('/api/stores/:id/record/interview', route(async (req, res) => {
   const { raw, authorId, answers } = req.body ?? {};
-  if (!raw?.trim()) return bad(res, '사례 내용을 입력하십시오.');
+  if (!raw?.trim()) return bad(res, '사례 내용 입력 필요');
   res.json(await flows.interview(sid(req), raw, authorId || db.defaultPerson(sid(req), '숙련'), answers ?? []));
 }));
 app.post('/api/stores/:id/cards', route(async (req, res) => {
   const { draft, authorId } = req.body ?? {};
-  if (!draft?.title || !draft?.situation || !Array.isArray(draft?.actions)) return bad(res, '제목·상황·대응 절차는 필수 입력 항목입니다.');
+  if (!draft?.title || !draft?.situation || !Array.isArray(draft?.actions)) return bad(res, '필수 입력 항목: 제목·상황·대응 절차');
   res.json(await flows.submitCard(sid(req), draft, authorId || db.defaultPerson(sid(req), '숙련')));
 }));
 app.post('/api/stores/:id/cards/:cid/:action', route(async (req, res) => {
