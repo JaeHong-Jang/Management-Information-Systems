@@ -6,7 +6,7 @@ import { pct } from '@/shared/lib/format';
 
 export function ScoreBreakdown({ score }: { score: StoreScore }) {
   return (
-    <Panel title="점수 구성" en="SCORE" sub="공개 배점 규칙으로 계산했어요. 막대는 배점 대비 얻은 위험 점수" className="h-full" actions={<RuleBadge />}>
+    <Panel title="점수 구성" sub="공개 배점 기준. 항목별 배점 대비 산출 점수" className="h-full" actions={<RuleBadge />}>
       <ul className="space-y-3.5">
         {score.parts.map((p) => {
           const unknown = p.basis.includes('미확인');

@@ -111,14 +111,14 @@ describe('첫 근무 준비', () => {
     expect(ids).toContain('T10');
     const order = sits.map((s) => s.id);
     expect(ids).toEqual([...ids].sort((a, b) => order.indexOf(a) - order.indexOf(b)));
-    expect(items.find((i) => i.situationId === 'T06')!.why).toBe('법·안전 문제라 꼭 먼저 읽어요');
+    expect(items.find((i) => i.situationId === 'T06')!.why).toBe('선정 근거 · 법규 및 안전 관련 우선 교육');
   });
 
   it('why 문구 세 갈래', () => {
     const base = computeSituations({ storeId: 'S1', reviews: mine, cards: [card('B03', '최소주문', { tags: ['최소주문'] })], questions: [q('Q1', '최소주문?'), q('Q2', '최소주문 알려줘')], brand });
-    expect(whyText(sit(base, 'T01'))).toBe('이 매장 리뷰 3건에서 이 상황이 불만이 됐어요');
-    expect(whyText(sit(base, 'T03'))).toBe('직원들이 2번 물어본 상황이에요');
-    expect(whyText(sit(base, 'T10'))).toBe('본사 기본 응대예요');
+    expect(whyText(sit(base, 'T01'))).toBe('선정 근거 · 해당 유형의 매장 불만 리뷰 3건');
+    expect(whyText(sit(base, 'T03'))).toBe('선정 근거 · 관련 직원 질문 2건');
+    expect(whyText(sit(base, 'T10'))).toBe('선정 근거 · 본사 기본 응대 절차');
   });
 
   it('읽음 기록은 그대로 담는다', () => {

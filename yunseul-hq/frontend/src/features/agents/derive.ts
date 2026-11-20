@@ -3,14 +3,10 @@ import type { AgentDef, AgentStep, HarnessConfig } from '@shared/contracts';
 import type { RunView } from '@/shared/api/live';
 import type { LiveStatus } from '@/shared/ui';
 
-export type Phase = 'wait' | 'running' | 'done';
+export type Phase = 'wait' | 'running' | 'done' | 'issue' | 'skipped';
 
-/** 팀 순서: 하네스 선언 순서 그대로 */
-export const DEFAULT_RAIL = ['lead', 'monitor', 'diagnose', 'prescribe', 'verify'];
-
-/** 실행에 참여하는 팀(흐름 단계 순서). 실행이 없으면 지휘 → 관측 → 진단 → 처방 → 검증 */
-export function railTeams(h: HarnessConfig, run: RunView | null): string[] {
-  if (!run) return DEFAULT_RAIL;
+/** 실행에 참여하는 팀을 업무 선언 순서로 표시한다. */
+export function railTeams(h: HarnessConfig, run: RunView): string[] {
   const team = new Map(h.agents.map((a) => [a.id, a.team]));
   const steps = h.flows[run.flow]?.steps ?? [];
   const out = ['lead'];
@@ -33,11 +29,10 @@ export function stepsOf(run: RunView | null, id: string): AgentStep[] {
 
 export function agentStatus(a: AgentDef, run: RunView | null, inFlow: Set<string>): LiveStatus {
   if (!run) return 'wait';
-  if (a.id === 'orchestrator') return run.done ? (run.ok ? 'ok' : 'error') : 'running';
   if (!inFlow.has(a.id)) return 'idle';
   if (run.running === a.id) return 'running';
   const last = stepsOf(run, a.id).at(-1);
-  if (last) return last.status === 'ok' ? 'ok' : last.status;
+  if (last) return last.status;
   return run.done ? 'skipped' : 'wait';
 }
 
@@ -48,8 +43,10 @@ export function teamPhase(h: HarnessConfig, team: string, run: RunView | null): 
   if (ids.length === 0) return 'wait';
   const st = ids.map((a) => agentStatus(a, run, inFlow));
   if (st.includes('running')) return 'running';
-  if (st.every((s) => s !== 'wait')) return 'done';
-  return st.some((s) => s !== 'wait') ? 'running' : 'wait';
+  if (st.includes('error') || st.includes('blocked')) return 'issue';
+  if (st.every((s) => s === 'ok')) return 'done';
+  if (run.done && st.includes('skipped')) return 'skipped';
+  return st.includes('ok') ? 'running' : 'wait';
 }
 
 /** 이 에이전트가 맡은 게이트에서 막힌 수 + 단계가 남긴 문제 수 */

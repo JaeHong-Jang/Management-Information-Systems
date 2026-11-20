@@ -1,18 +1,21 @@
 // 라우트 (docs/PLAN.md §2). 모든 화면이 셸 하나(AppShell) 안에서 열린다.
+import { lazy } from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { PresentProvider } from '@/shared/lib/present';
 import { AppDataProvider, useApp } from './AppData';
 import { AppShell } from './AppShell';
-import { HqOverviewPage } from '@/features/hq-overview';
-import { StoreDetailPage } from '@/features/store-detail';
-import { ReviewsPage } from '@/features/reviews';
-import { StandardsPage } from '@/features/standards';
-import { AgentsPage } from '@/features/agents';
-import { ManagerPage } from '@/features/manager';
-import { StaffPage } from '@/features/staff';
-import { WikiPage } from '@/features/wiki';
-import { GraphPage } from '@/features/graph';
 import { Empty, ErrorState, Loading } from '@/shared/ui';
+
+const HqOverviewPage = lazy(() => import('@/features/hq-overview').then((m) => ({ default: m.HqOverviewPage })));
+const StoreDetailPage = lazy(() => import('@/features/store-detail').then((m) => ({ default: m.StoreDetailPage })));
+const ReviewsPage = lazy(() => import('@/features/reviews').then((m) => ({ default: m.ReviewsPage })));
+const StandardsPage = lazy(() => import('@/features/standards').then((m) => ({ default: m.StandardsPage })));
+const AgentsPage = lazy(() => import('@/features/agents').then((m) => ({ default: m.AgentsPage })));
+const ManagerPage = lazy(() => import('@/features/manager').then((m) => ({ default: m.ManagerPage })));
+const StaffPage = lazy(() => import('@/features/staff').then((m) => ({ default: m.StaffPage })));
+const ManualPage = lazy(() => import('@/features/manual').then((m) => ({ default: m.ManualPage })));
+const WikiPage = lazy(() => import('@/features/wiki').then((m) => ({ default: m.WikiPage })));
+const GraphPage = lazy(() => import('@/features/graph').then((m) => ({ default: m.GraphPage })));
 
 export function App() {
   return (
@@ -28,6 +31,7 @@ export function App() {
             <Route path="/hq/agents" element={<AgentsPage />} />
             <Route path="/store/:id/manager" element={<ManagerPage />} />
             <Route path="/store/:id/staff" element={<StaffPage />} />
+            <Route path="/store/:id/manual" element={<ManualPage />} />
             <Route path="/store/:id/wiki" element={<WikiPage />} />
             <Route path="/graph" element={<GraphPage />} />
             <Route path="/store/:id" element={<StoreHome />} />
@@ -43,23 +47,23 @@ export function App() {
 function RoleHome() {
   const { role, targetId, overview } = useApp();
   if (role === 'SV') return <Navigate to="/hq" replace />;
-  if (targetId) return <Navigate to={`/store/${targetId}/${role === '점장' ? 'manager' : 'staff'}`} replace />;
+  if (targetId) return <Navigate to={`/store/${targetId}/${role === '점장' ? 'manager' : 'manual'}`} replace />;
   return (
     <div className="p-[var(--gutter)]">
-      {overview.error ? <ErrorState message={overview.error} onRetry={overview.reload} /> : <Loading label="매장을 불러오는 중이에요" />}
+      {overview.error ? <ErrorState message={overview.error} onRetry={overview.reload} /> : <Loading label="매장 정보 조회 중" />}
     </div>
   );
 }
 
 function StoreHome() {
   const { role } = useApp();
-  return <Navigate to={role === '직원' ? 'staff' : 'manager'} replace />;
+  return <Navigate to={role === '직원' ? 'manual' : 'manager'} replace />;
 }
 
 function NotFound() {
   return (
-    <Empty title="없는 화면이에요">
-      <Link className="text-ink underline" to="/hq">전국 현황으로 가기</Link>
+    <Empty title="페이지를 찾을 수 없습니다">
+      <Link className="text-ink underline" to="/">업무 홈으로 이동</Link>
     </Empty>
   );
 }

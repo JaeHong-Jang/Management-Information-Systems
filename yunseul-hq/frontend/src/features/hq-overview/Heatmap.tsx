@@ -13,7 +13,7 @@ export function Heatmap({ rows, stores }: { rows: HqOverview['heatmap']; stores:
   const step = (n: number) => Math.min(4, Math.floor((n / max) * 5 - 1e-9));
 
   return (
-    <Panel title="매장 × 불만 유형" en="HEATMAP" sub="위험 상위 30곳의 저평점 리뷰 불만 건수. 진할수록 많아요" bodyClass="p-0">
+    <Panel title="매장 × 불만 유형" sub="위험 상위 30개 매장의 저평점 리뷰. 색이 진할수록 해당 불만 건수 증가" bodyClass="p-0">
       <div className="overflow-x-auto">
         <table className="border-collapse text-caption">
           <thead>

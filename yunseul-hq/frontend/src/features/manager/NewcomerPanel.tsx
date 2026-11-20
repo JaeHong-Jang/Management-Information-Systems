@@ -7,9 +7,9 @@ export function NewcomerPanel({ people, onboarding }: { people: Person[]; onboar
   const newcomers = people.filter((p) => p.role === '신입');
   const total = onboarding.items.length;
   return (
-    <Panel id="newcomers" title="새 알바 준비 상태" en="ONBOARDING" sub="첫 근무 준비 카드를 얼마나 읽었는지 보여 줘요. 읽기만 하고 점수는 없어요">
+    <Panel id="newcomers" title="신입 직원 교육" sub="직원별 첫 근무 준비 자료 열람 현황">
       {newcomers.length === 0 ? (
-        <Empty title="지금 준비 중인 신입이 없어요" />
+        <Empty title="등록된 신입 직원 없음" />
       ) : (
         <ul className="divide-y divide-line">
           {newcomers.map((p) => {
@@ -28,14 +28,14 @@ export function NewcomerPanel({ people, onboarding }: { people: Person[]; onboar
             return (
               <li key={p.id}>
                 {left.length === 0 ? (
-                  <p className="flex min-h-[48px] items-center gap-3">{line}<span className="sr-only">다 읽었어요</span></p>
+                  <p className="flex min-h-[48px] items-center gap-3">{line}<span className="sr-only">열람 완료</span></p>
                 ) : (
                   <details className="group">
                     <summary className="flex min-h-[48px] cursor-pointer list-none items-center gap-3">
                       {line}
-                      <ChevronDown size={16} className="shrink-0 text-text-muted transition-transform group-open:rotate-180" aria-label="안 읽은 상황 보기" />
+                      <ChevronDown size={16} className="shrink-0 text-text-muted transition-transform group-open:rotate-180" aria-label="미열람 자료 보기" />
                     </summary>
-                    <p className="text-caption text-text-muted">아직 안 읽은 상황 {left.length}개</p>
+                    <p className="text-caption text-text-muted">미열람 자료 {left.length}개</p>
                     <ul className="mb-2 mt-0.5 list-disc space-y-0.5 pl-4 text-body text-text-subtle">
                       {left.map((i) => <li key={i.cardId}>{i.situationTitle}</li>)}
                     </ul>

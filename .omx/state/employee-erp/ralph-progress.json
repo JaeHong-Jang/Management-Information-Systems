@@ -1,0 +1,30 @@
+{
+  "verdict": "pass",
+  "screenshots": "/tmp/yunseul-field-qa/{first-shift,manual,questions,record}-{390,1440}.png",
+  "reference": "user screenshots 1, 2, 5 and 9",
+  "widths": [
+    320,
+    390,
+    800,
+    1024,
+    1440
+  ],
+  "checks": [
+    "Single page title with scoped data controls; register on the left and detailed educational procedures to the right; stacked mobile picker, source excerpt on expansion.",
+    "20 route/viewport combinations without horizontal page overflow or JavaScript errors.",
+    "Isolated rules backend: onboarding read mutation, manual filter and check, question submission and case draft approval request.",
+    "Both stored and current direct-call phrases render with emphasis in staff questions, retaining links to the cited card."
+  ],
+  "finalTypography": {
+    "desktopHeadingPx": 32,
+    "mobileHeadingPx": 26.4,
+    "sectionTitlePx": 18,
+    "headingWeight": 700,
+    "noOverflowAt": [
+      1440,
+      800,
+      390,
+      320
+    ]
+  }
+}

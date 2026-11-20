@@ -6,7 +6,7 @@ import { api } from '@/shared/api/client';
 import { useAction } from '@/shared/lib/useAsync';
 import { Button, Empty, InlineError, KnowledgeCard, Panel, Tag } from '@/shared/ui';
 
-const CHECKS = ['우리 매장 사실이 맞아요', '금지 표현이 없어요', '신입이 읽고 바로 할 수 있어요'] as const;
+const CHECKS = ['매장 운영 사실과 일치', '금지 표현 검토 완료', '신입 직원이 수행 가능한 절차'] as const;
 
 export function PendingCards({ storeId, cards, people, onChanged }: { storeId: string; cards: Card[]; people: Person[]; onChanged: () => void }) {
   const act = useAction();
@@ -15,18 +15,18 @@ export function PendingCards({ storeId, cards, people, onChanged }: { storeId: s
     if (await act.run(`${c.id}:${a}`, () => api.card(storeId, c.id, a))) onChanged();
   };
   return (
-    <Panel id="pending" title="승인 대기 카드" en="APPROVE" sub={`${cards.length}장 · 아래 확인 3개를 모두 체크하면 승인할 수 있어요. 에이전트가 만든 것도 점장 승인 전에는 확정이 아니에요`} className="h-full">
+    <Panel id="pending" title="카드 승인 심사" sub={`${cards.length}건 대기 · 검토 항목 3개 확인 후 위키 등록`} className="h-full">
       <InlineError message={act.error} />
       {cards.length === 0 ? (
-        <Empty title="승인할 카드가 없어요" />
+        <Empty title="승인 대기 카드 없음" />
       ) : (
         <div className="space-y-4">
           {cards.map((c) => (
             <div key={c.id}>
               <p className="mb-1 flex flex-wrap items-center gap-1.5 text-caption text-text-muted">
-                <Tag>출처: {c.origin}</Tag>
+                <Tag>{c.origin}</Tag>
                 작성 {who.get(c.authorId)?.name ?? c.authorId}
-                {c.complaintTypes?.length ? <> · 막으려는 불만: {c.complaintTypes.join(', ')}</> : null}
+                {c.complaintTypes?.length ? <> · 관련 불만 · {c.complaintTypes.join(', ')}</> : null}
               </p>
               <KnowledgeCard card={c} />
               <Confirm busy={act.busy} card={c} onApprove={() => run(c, 'approve')} onReject={() => run(c, 'reject')} />
@@ -43,7 +43,7 @@ function Confirm({ card, busy, onApprove, onReject }: { card: Card; busy: string
   const all = checked.every(Boolean);
   return (
     <fieldset className="mt-2 rounded-card border border-line bg-surface-sunken p-3">
-      <legend className="px-1 text-caption font-bold text-text-subtle">승인 전에 확인해요</legend>
+      <legend className="px-1 text-caption font-bold text-text-subtle">승인 전 검토</legend>
       <ul>
         {CHECKS.map((t, i) => (
           <li key={t}>
@@ -60,8 +60,8 @@ function Confirm({ card, busy, onApprove, onReject }: { card: Card; busy: string
         ))}
       </ul>
       <div className="mt-2 flex flex-wrap justify-end gap-2">
-        <Button icon={X} busy={busy === `${card.id}:reject`} onClick={onReject}>거절</Button>
-        <Button variant="primary" icon={Check} busy={busy === `${card.id}:approve`} disabled={!all} onClick={onApprove}>승인</Button>
+        <Button icon={X} busy={busy === `${card.id}:reject`} disabled={!!busy} onClick={onReject}>반려</Button>
+        <Button variant="primary" icon={Check} busy={busy === `${card.id}:approve`} disabled={!all || !!busy} onClick={onApprove}>승인</Button>
       </div>
     </fieldset>
   );

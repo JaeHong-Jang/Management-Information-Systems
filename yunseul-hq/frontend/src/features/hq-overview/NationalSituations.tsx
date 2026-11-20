@@ -1,4 +1,4 @@
-// 전국에서 자주 터지는 상황: 본사가 가장 먼저 보는 표. 매장 직원이 겪는 상황 단위로 본다
+// 현장 상황별 불만: 본사가 가장 먼저 보는 표. 매장 직원이 겪는 상황 단위로 본다
 import type { BrandSituation } from '@shared/contracts';
 import { Empty, Panel, ShareBar } from '@/shared/ui';
 import { pct } from '@/shared/lib/format';
@@ -15,9 +15,9 @@ function Chips({ ids }: { ids: string[] }) {
 export function NationalSituations({ situations }: { situations: BrandSituation[] }) {
   const max = Math.max(0.01, ...situations.map((s) => s.brandShare));
   return (
-    <Panel title="전국에서 자주 터지는 상황" en="SITUATIONS" sub="리뷰 불만이 이 상황에서 나온 비율이에요. 직원이 막히는 순간이 매장마다 달라지는 서비스의 출발점이에요">
+    <Panel title="현장 상황별 불만" sub="전국 리뷰의 상황별 불만 비율과 매장 내 상위 3위 집계">
       {situations.length === 0 ? (
-        <Empty title="상황 데이터가 아직 없어요" />
+        <Empty title="등록된 상황 데이터 없음" />
       ) : (
         <>
           <div className="hidden overflow-x-auto md:block">
@@ -26,7 +26,7 @@ export function NationalSituations({ situations }: { situations: BrandSituation[
                 <tr className="border-b border-line">
                   <th scope="col" className="py-2 pr-3 font-medium">상황</th>
                   <th scope="col" className="py-2 pr-3 font-medium">브랜드 불만 비율</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">상위 3위에 든 매장</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">불만 상위 3위 매장 수</th>
                   <th scope="col" className="py-2 font-medium">브랜드 카드</th>
                 </tr>
               </thead>

@@ -83,9 +83,9 @@ export function computeSituations(inp: SituationInput): Situation[] {
 }
 
 export function whyText(s: Situation): string {
-  if (s.storeReviews > 0) return `이 매장 리뷰 ${s.storeReviews}건에서 이 상황이 불만이 됐어요`;
-  if (s.questions > 0) return `직원들이 ${s.questions}번 물어본 상황이에요`;
-  return '본사 기본 응대예요';
+  if (s.storeReviews > 0) return `선정 근거 · 해당 유형의 매장 불만 리뷰 ${s.storeReviews}건`;
+  if (s.questions > 0) return `선정 근거 · 관련 직원 질문 ${s.questions}건`;
+  return '선정 근거 · 본사 기본 응대 절차';
 }
 
 /** 카드가 있으면 순위와 관계없이 첫 근무 준비에 꼭 넣는 법·안전 상황: 신분증 확인, 취객·계산 분쟁 */
@@ -112,7 +112,7 @@ export function onboardingItems(situations: Situation[]): OnboardingItem[] {
       used.add(cardId);
       free--;
     }
-    items.push({ situationId: s.id, situationTitle: s.title, cardId, why: must && s.storeReviews < GAP_MIN_REVIEWS ? '법·안전 문제라 꼭 먼저 읽어요' : whyText(s) });
+    items.push({ situationId: s.id, situationTitle: s.title, cardId, why: must && s.storeReviews < GAP_MIN_REVIEWS ? '선정 근거 · 법규 및 안전 관련 우선 교육' : whyText(s) });
   }
   return items;
 }

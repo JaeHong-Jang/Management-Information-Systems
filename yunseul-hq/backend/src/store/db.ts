@@ -1,6 +1,6 @@
 // 원본은 JSON 하나(var/store.json). 처음 켜거나 초기화하면 data/seed/*.json을 불러온다.
 // 모든 지식 엔티티(사람·카드·질문·기록)에 storeId가 있다. 본사 카드(scope=brand)와 SV는 storeId=null.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   Brand, Card, CardOrigin, CardStatus, ComplaintType, Diagnosis, HqStandard, LogEntry, OnboardingRead, Person, Prescription, Question, Review, RuleDrift, Source, StandardProposal, Store,
@@ -36,6 +36,7 @@ export interface Db {
   drifts: RuleDrift[];
   prescriptions: Prescription[];
   proposals: StandardProposal[];
+  manualChecks: { storeId: string; personId: string; date: string; itemId: string }[];
   onboardingReads: OnboardingRead[]; // 신입이 첫 근무 준비 카드를 읽은 기록(사람·카드마다 1건)
 }
 
@@ -108,6 +109,7 @@ export function fromSeed(): Db {
     drifts: [],
     prescriptions: [],
     proposals: [],
+    manualChecks: [],
     onboardingReads: seedReads({ brand, stores, reviews, cards, questions, people }),
   };
 }
@@ -118,6 +120,7 @@ export function load(): { db: Db; fresh: boolean } {
     const d = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
     if (d.schema === SCHEMA) {
       d.onboardingReads ??= seedReads(d); // v3 이전에 저장한 파일에는 읽음 기록이 없다
+      d.manualChecks ??= [];
       db = d;
       touchReviews();
       return { db, fresh: false };
@@ -137,9 +140,11 @@ export function get(): Db {
   return db ?? load().db;
 }
 
-export function save() {
+export function save(snapshot = get()) {
   mkdirSync(STORE_DIR, { recursive: true });
-  writeFileSync(STORE_FILE, JSON.stringify(get()));
+  const temporary = STORE_FILE + '.' + process.pid + '.tmp';
+  writeFileSync(temporary, JSON.stringify(snapshot));
+  renameSync(temporary, STORE_FILE);
 }
 
 // ---------- 날짜·번호 ----------

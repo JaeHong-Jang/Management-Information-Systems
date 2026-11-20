@@ -19,16 +19,16 @@ export interface Answer {
 
 export function librarian(question: string, cards: Card[], excluded: { id: string; why: string }[] = []): StepOut<Hit[]> {
   const hits = search(question, cards);
-  const skip = excluded.length ? ` · 만료·상충 카드 ${excluded.length}개는 근거에서 뺐습니다(${excluded.map((e) => `${e.id} ${e.why}`).join(', ')})` : '';
+  const skip = excluded.length ? ` · 만료·상충 카드 ${excluded.length}개 제외(${excluded.map((e) => `${e.id} ${e.why}`).join(', ')})` : '';
   return {
     out: hits,
-    summary: (hits.length ? `가까운 사례 ${hits.length}개: ${hits.slice(0, 3).map((h) => `${h.card.id}(${h.score.toFixed(1)})`).join(', ')}` : '가까운 사례를 찾지 못했습니다') + skip,
+    summary: (hits.length ? `관련 사례 ${hits.length}개 · ${hits.slice(0, 3).map((h) => `${h.card.id}(${h.score.toFixed(1)})`).join(', ')}` : '관련 사례 없음') + skip,
   };
 }
 
 // ---------- 현장 코치 ----------
 
-const NO_ANSWER = '매장 위키에 이 상황에 맞는 사례가 아직 없어요. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가돼요.';
+const NO_ANSWER = '매장 위키에 해당 사례가 없습니다. 점장에게 이관한 질문은 답변 승인 후 위키 사례로 등록됩니다.';
 
 /** 카드 한 장을 답 줄로 펼친다(제목·대응·하지 말 것·점장 호출). 줄마다 근거 카드 번호가 붙는다 */
 export function cardLines(c: Card): string[] {
@@ -52,7 +52,7 @@ export function answerByRules(hits: Hit[]): Answer {
   const cited = [c.id];
   if (other) {
     const [hi, lo] = SOURCE_RANK[c.source] >= SOURCE_RANK[other.card.source] ? [c, other.card] : [other.card, c];
-    lines.push(`같은 토픽의 ${lo.source} 카드 [${lo.id}]도 있어요. 내용이 다르면 ${hi.source}을 따르세요. [${hi.id}]`);
+    lines.push(`관련 카드 [${lo.id}]의 출처는 ${lo.source}입니다. 지침이 상충하면 ${hi.source}을 따릅니다. [${hi.id}]`);
     cited.push(other.card.id);
   }
   return { answer: lines.join('\n'), why: c.reason, cited, confidence: top.score > 6 ? 'high' : 'low', needsManager: false };
@@ -82,7 +82,7 @@ export async function coach(question: string, hits: Hit[], ctx: { brand: string;
     () => answerByRules(hits),
     llmEnabled(),
   );
-  return { out: value, via, summary: value.needsManager ? '카드로 답할 수 없다고 판단' : `답변 작성 (근거 ${value.cited.join(', ')}, 확신 ${value.confidence})` };
+  return { out: value, via, summary: value.needsManager ? '답변 근거 부족' : `답변 작성 (근거 ${value.cited.join(', ')}, 확신 ${value.confidence})` };
 }
 
 // ---------- 점장 연결 (규칙) ----------
@@ -116,11 +116,11 @@ export interface Escalation { escalate: boolean; why: 'none' | 'no-evidence' | '
 /** 넘기는 조건: 근거 카드 없음 / 검증을 통과한 근거 줄이 남지 않음 / 카드의 점장 호출 기준에 질문이 해당 */
 export function escalator(question: string, ans: Answer, cards: Card[]): StepOut<Escalation> {
   const danger = safetyHit(question);
-  if (danger) return { out: { escalate: true, why: 'safety', safety: `${danger.why}("${danger.match}")` }, summary: `안전 어휘 "${danger.match}"(${danger.why}) → 위키 답 대신 점장에게 바로 넘겼습니다` };
-  if (ans.needsManager || ans.confidence === 'none') return { out: { escalate: true, why: 'no-evidence' }, summary: '점장에게 넘겼습니다 (근거 카드 없음)' };
+  if (danger) return { out: { escalate: true, why: 'safety', safety: `${danger.why}("${danger.match}")` }, summary: `안전 어휘 "${danger.match}"(${danger.why}) → 점장 즉시 이관` };
+  if (ans.needsManager || ans.confidence === 'none') return { out: { escalate: true, why: 'no-evidence' }, summary: '근거 카드 부재 · 점장 이관' };
   const hasEvidenceLine = ans.answer.split('\n').some((l) => /\[[A-Z][A-Z0-9-]*\d\]/.test(l));
-  if (!ans.cited.length || !hasEvidenceLine) return { out: { escalate: true, why: 'gate' }, summary: '점장에게 넘겼습니다 (검증을 통과한 근거 줄이 없음)' };
+  if (!ans.cited.length || !hasEvidenceLine) return { out: { escalate: true, why: 'gate' }, summary: '검증된 근거 문장 없음 · 점장 이관' };
   const hit = cards.find((c) => ans.cited.includes(c.id) && c.escalateWhen && matchesCondition(c.escalateWhen, question));
-  if (hit) return { out: { escalate: true, why: 'call', callCard: hit }, summary: `점장 호출 기준에 해당해 점장에게 넘겼습니다 ([${hit.id}] ${hit.escalateWhen})` };
-  return { out: { escalate: false, why: 'none' }, summary: '위키 답으로 충분합니다' };
+  if (hit) return { out: { escalate: true, why: 'call', callCard: hit }, summary: `점장 호출 기준 충족 · 이관 ([${hit.id}] ${hit.escalateWhen})` };
+  return { out: { escalate: false, why: 'none' }, summary: '위키 근거로 답변 가능' };
 }

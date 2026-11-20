@@ -1,16 +1,14 @@
-// /store/:id/staff 직원 첫 화면: 홈(상황 버튼 → 입력창 → 답 → 내 질문 → 첫 근무 준비 띠 → 오늘 브리핑) · 첫 근무 준비 · 기록하기(?tab=).
-// brief·ask는 홈으로 연다. '나'는 localStorage에 저장하고, 없으면 처음 한 번 '누구세요?'를 묻는다. 메뉴는 공통 셸이 맡는다.
-// 폭: 휴대폰·태블릿은 한 열 640px. 홈·준비는 1280px 이상에서 두 열(홈: 왼쪽 묻기·내 질문, 오른쪽 340px 첫 근무 준비·오늘 브리핑 / 준비: 왼쪽 지금 장, 오른쪽 전체 목록). 기록은 640px.
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CalendarDays, UserRound } from 'lucide-react';
 import type { Onboarding, Person, StoreState } from '@shared/contracts';
 import { useStoreData } from '@/app/StoreData';
-import { AsyncView } from '@/shared/ui';
+import { AsyncView, PageHeader } from '@/shared/ui';
 import { AskTab } from './AskTab';
 import { BriefingTab } from './BriefingTab';
 import { PrepTab, ProgressBar, readMap } from './PrepTab';
 import { RecordTab } from './RecordTab';
+import './staff.css';
 
 const TABS = ['home', 'prep', 'record'] as const;
 type TabId = (typeof TABS)[number];
@@ -21,12 +19,11 @@ export function StaffPage() {
   return <AsyncView state={state}>{(s) => <StaffBody storeId={storeId ?? s.store.id} s={s} />}</AsyncView>;
 }
 
-/** 처음 한 번: 누구세요? 이름 버튼(52px 이상) */
 function WhoPicker({ staff, onPick }: { staff: Person[]; onPick: (id: string) => void }) {
   return (
-    <section aria-labelledby="who">
-      <h1 id="who" className="font-display text-display text-ink">누구세요?</h1>
-      <p className="mb-4 mt-1 text-body text-text-subtle">이름을 한 번만 골라 주세요. 이 기기에 기억해 두고, 나중에 맨 위에서 바꿀 수 있어요.</p>
+    <section className="staff-picker" aria-labelledby="who">
+      <h1 id="who" className="font-display text-display text-ink">근무자 선택</h1>
+      <p className="mb-4 mt-1 text-body text-text-subtle">선택한 이름으로 이 매장의 근무 기록을 조회하고 작성합니다.</p>
       <ul className="space-y-2">
         {staff.map((p) => (
           <li key={p.id}>
@@ -55,25 +52,30 @@ function StaffBody({ storeId, s }: { storeId: string; s: StoreState }) {
   const situations = s.situations ?? [];
   const person = staff.find((p) => p.id === me);
 
-  if (!me || !person) return <div className="mx-auto max-w-[640px]"><WhoPicker staff={staff} onPick={setMe} /></div>;
+  if (!me || !person) return <WhoPicker staff={staff} onPick={setMe} />;
 
   return (
-    <div key={me} className={tab === 'record' ? 'mx-auto max-w-[640px]' : 'mx-auto max-w-[640px] xl:max-w-[1060px]'}>
-      <p className="mb-4 flex items-center gap-2 text-caption text-text-muted">
-        <label className="flex items-center gap-2">
-          나
-          <select value={me} onChange={(e) => setMe(e.target.value)} className="h-11 rounded-ctl border border-line-strong bg-surface px-2 text-body font-bold text-text">
-            {staff.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.role})</option>)}
-          </select>
-        </label>
-        <span className="num ml-auto">{s.today}</span>
-      </p>
-      {tab === 'home' && (
-        <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-10">
-          <div className="min-w-0">
-            <AskTab storeId={storeId} me={me} cards={s.cards} situations={situations} questions={s.questions} now={s.now ?? s.today} />
+    <div key={me} className="staff-page">
+      <PageHeader
+        title={{ home: '현장 질문·답변', prep: '첫 근무 준비', record: '근무 사례 기록' }[tab]}
+        sub={{ home: '현장 질문 접수 및 사례 카드·점장 답변 조회', prep: '매장별 주요 상황과 응대 절차 확인', record: '현장 대응 사례 작성 및 매장 위키 승인 요청' }[tab]}
+        actions={
+          <div className="staff-context">
+            <label><UserRound size={15} aria-hidden /><span>근무자</span>
+              <select value={me} onChange={(e) => setMe(e.target.value)}>
+                {staff.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.role}</option>)}
+              </select>
+            </label>
+            <time dateTime={s.today}><CalendarDays size={14} aria-hidden />{s.today.replaceAll('-', '. ')}</time>
           </div>
-          <aside className="min-w-0 space-y-8 xl:space-y-6" aria-label="근무 전에 볼 것">
+        }
+      />
+      {tab === 'home' && (
+        <div className="staff-home-grid">
+          <div className="min-w-0">
+            <AskTab key={sp.get('ask') ?? ''} initialText={sp.get('ask') ?? ''} storeId={storeId} me={me} cards={s.cards} situations={situations} questions={s.questions} now={s.now ?? s.today} />
+          </div>
+          <aside className="min-w-0 space-y-4" aria-label="근무 자료">
             <PrepStrip ob={ob} person={person} storeId={storeId} />
             <BriefingTab storeId={storeId} cards={s.cards} />
           </aside>
@@ -93,8 +95,8 @@ function PrepStrip({ ob, person, storeId }: { ob: Onboarding; person: Person | u
   return (
     <Link to={`/store/${storeId}/staff?tab=prep`} className="block rounded-card border border-amber-bar bg-yellow-weak px-4 py-3 hover:bg-yellow-hl">
       <p className="mb-2 flex flex-wrap items-center justify-between gap-2 text-mobile font-bold text-ink">
-        <span>첫 근무 준비 <span className="num">{done}/{ob.items.length}</span>장 읽었어요</span>
-        <span className="inline-flex items-center gap-1 text-body">이어서 보기<ArrowRight size={15} aria-hidden /></span>
+        <span>첫 근무 준비 <span className="num">{done}/{ob.items.length}</span>장 확인</span>
+        <span className="inline-flex items-center gap-1 text-body">교육 계속<ArrowRight size={15} aria-hidden /></span>
       </p>
       <ProgressBar done={done} total={ob.items.length} />
     </Link>

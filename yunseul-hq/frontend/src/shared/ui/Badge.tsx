@@ -76,7 +76,7 @@ export function CauseChip({ cause, size = 'sm' }: { cause: CauseClass; size?: 's
 
 export function AiDraftBadge({ label = 'AI 초안' }: { label?: string }) {
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-badge border border-dashed border-ink px-1.5 py-px text-caption text-text" title="LLM이 쓴 초안이에요. 사람이 승인하기 전에는 확정이 아니에요">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-badge border border-dashed border-ink px-1.5 py-px text-caption text-text" title="언어 모델 작성 초안 · 담당자 승인 필요">
       <PenLine size={12} aria-hidden />
       {label}
     </span>
@@ -85,7 +85,7 @@ export function AiDraftBadge({ label = 'AI 초안' }: { label?: string }) {
 
 export function RuleBadge({ label = '규칙 판정' }: { label?: string }) {
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-badge border border-ink px-1.5 py-px text-caption text-text" title="공개 규칙 코드가 계산·판정했어요">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-badge border border-ink px-1.5 py-px text-caption text-text" title="공개 규칙에 따른 산정 결과">
       <Ruler size={12} aria-hidden />
       {label}
     </span>

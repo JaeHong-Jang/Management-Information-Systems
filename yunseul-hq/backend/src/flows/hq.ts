@@ -55,7 +55,7 @@ function maskReviews(reviews: { text: string }[]): StepOut<number> {
       masked += m.masked;
     }
   }
-  return { out: masked, summary: masked ? `리뷰 속 전화번호·카드번호·고객 이름 ${masked}곳을 가렸어요` : '가릴 개인정보 없음(시드는 이미 익명화됨)' };
+  return { out: masked, summary: masked ? `리뷰 개인정보 ${masked}곳 비식별 처리 (전화번호·카드번호·고객 이름)` : '추가 비식별 처리 대상 없음' };
 }
 
 /** 처방 이후 가상 리뷰를 넣고 효과(처방 전·후)를 계산한다 */
@@ -64,7 +64,7 @@ export async function simulate(storeId: string): Promise<Outcome> {
   const d = db.get();
   if (!d.simulated.includes(storeId)) {
     const pool = d.virtualPool.filter((r) => r.storeId === storeId);
-    if (!pool.length) throw httpError(400, `${store.name}에는 처방 이후 가상 리뷰가 없어요`);
+    if (!pool.length) throw httpError(400, `${store.name}에는 처방 이후 가상 리뷰가 없습니다.`);
     const run = new Run('ingest', storeId, '관측팀', `${store.name} 처방 이후 가상 리뷰 ${pool.length}건`);
     await orchestrate(run, '가상 리뷰로 처방 효과 보기');
     await run.step('review-collector', () => reviewCollector(pool, '처방 이후(가상)'));
@@ -74,7 +74,7 @@ export async function simulate(storeId: string): Promise<Outcome> {
     d.virtualPool = d.virtualPool.filter((r) => r.storeId !== storeId);
     d.simulated.push(storeId);
     db.touchReviews();
-    await run.step('variance-scorer', () => ({ ...varianceScorer(d.stores), summary: '가상 리뷰는 점수·순위에 넣지 않고 처방 전·후 비교에만 써요' }));
+    await run.step('variance-scorer', () => ({ ...varianceScorer(d.stores), summary: '가상 리뷰는 처방 전후 비교에만 사용하며 위험 점수와 순위 산출에서 제외' }));
     const o = storeOutcome(storeId)!;
     run.end(true, `처방 전 평균 ${o.before.mean ?? '-'} → 처방 후(가상) ${o.after?.mean ?? '-'}`);
   }
@@ -114,7 +114,7 @@ async function computeDiagnosis(storeId: string, run: Run | null, rulesOnly: boo
   const checked = await exec('quote-checker', () => quoteChecker(drifted.findings, storeId, db.review));
   const words = await exec('wording-guard', () => wordingGuard([analysed.summary, ...checked.findings.map((f) => f.explanation)].join('\n')));
   run?.gate('diagnose-gate', [...checked.problems, ...words], config.gates.find((g) => g.id === 'diagnose-gate')!.onFail);
-  const findings: Finding[] = checked.findings.map((f) => (words.length ? { ...f, explanation: dropForbiddenLines(f.explanation) || '(표현 검증에서 설명을 뺐어요)' } : f));
+  const findings: Finding[] = checked.findings.map((f) => (words.length ? { ...f, explanation: dropForbiddenLines(f.explanation) || '표현 검증에 따라 설명 제외' } : f));
   const diag: Diagnosis = { id, storeId, created: db.today(), findings, summary: words.length ? dropForbiddenLines(analysed.summary) : analysed.summary, via, runId: run?.runId ?? 'warmup' };
   d.diagnoses = [...d.diagnoses.filter((x) => x.storeId !== storeId), diag];
   for (const dr of drifted.drifts) {
@@ -151,7 +151,7 @@ export function prescribe(storeId: string, opts: { rulesOnly?: boolean } = {}): 
   return launch(run, async () => {
     const d = db.get();
     let diag = latestDiagnosis(storeId);
-    await orchestrate(run, diag ? `진단 ${diag.id} 기준` : '진단이 없어 규칙 진단을 먼저 만들었어요');
+    await orchestrate(run, diag ? `진단 ${diag.id} 기준` : '기존 진단 없음 · 규칙 기반 진단 선행');
     diag ??= await computeDiagnosis(storeId, null, true);
     // 아직 보내지 않은 지난 초안과 그 카드는 새 초안으로 바꾼다
     const stale = new Set(d.prescriptions.filter((p) => p.storeId === storeId && p.status === 'draft').map((p) => p.id));
@@ -170,7 +170,7 @@ export function prescribe(storeId: string, opts: { rulesOnly?: boolean } = {}): 
       const extra: PrescriptionDraft[] = common.map((c) => ({
         kind: '표준 개정 제안',
         title: `표준 개정 제안: ${c.complaint}`,
-        body: `'${c.complaint}'이 위험 상위 20개 매장 중 ${c.storeIds.length}곳의 상위 불만이에요. 본사 표준 개정 제안(승격 흐름)으로 올려 주세요.`,
+        body: `위험 상위 20개 매장 중 ${c.storeIds.length}곳에서 ‘${c.complaint}’ 항목이 주요 불만으로 확인됨. 본사 표준 개정 제안 등록 필요.`,
         findingIds: findings.filter((f) => f.complaint === c.complaint).map((f) => f.id),
         checklist: [],
       }));
@@ -222,9 +222,13 @@ export function prescribe(storeId: string, opts: { rulesOnly?: boolean } = {}): 
 
 export function prescriptionAction(id: string, action: 'send' | 'done' | 'reject'): Prescription {
   const p = db.prescription(id);
-  if (!p) throw httpError(404, '처방을 찾을 수 없어요');
+  if (!p) throw httpError(404, '처방을 찾을 수 없습니다.');
+  const actionName = { send: '발송', done: '완료', reject: '반려' }[action];
   const allowed = { send: ['draft'], done: ['draft', 'sent'], reject: ['draft', 'sent'] }[action];
-  if (!allowed.includes(p.status)) throw httpError(400, `${p.status} 상태의 처방은 ${action}할 수 없어요`);
+  if (!allowed.includes(p.status)) {
+    const stateName = { draft: '초안', sent: '발송', done: '완료', rejected: '반려' }[p.status];
+    throw httpError(400, `처방 ${actionName} 불가 · 현재 상태 ${stateName}`);
+  }
   if (action === 'send') {
     p.status = 'sent';
     p.sentAt = db.today();
@@ -235,7 +239,7 @@ export function prescriptionAction(id: string, action: 'send' | 'done' | 'reject
     p.status = 'rejected';
     for (const c of db.get().cards) if (c.prescriptionId === p.id && c.status === 'pending') c.status = 'rejected';
   }
-  db.addLog(`처방 ${{ send: '발송', done: '완료', reject: '반려' }[action]}`, `[${p.id}] ${p.title}`, p.storeId);
+  db.addLog(`처방 ${actionName}`, `[${p.id}] ${p.title}`, p.storeId);
   db.save();
   return p;
 }
@@ -253,15 +257,15 @@ export function promote(minStores = 5): { runId: string; done: Promise<StandardP
     const created: StandardProposal[] = drafts.map((p) => ({ ...p, id: next(), created: db.today() }));
     if (!words.length) d.proposals.push(...created);
     run.wiki({ op: '표준 개정 제안', detail: created.length ? created.map((p) => `${p.id} ${p.title}`).join(', ') : '새 제안 없음', nodes: created.flatMap((p) => (p.standardId && db.standard(p.standardId) ? [standardNode(db.standard(p.standardId)!)] : [])), edges: [] });
-    run.end(true, words.length ? `금지 표현 ${words.length}건으로 제안을 저장하지 않았어요` : `개정 제안 ${created.length}건`);
+    run.end(true, words.length ? `금지 표현 ${words.length}건 검출 · 제안 저장 중단` : `개정 제안 ${created.length}건`);
     return words.length ? [] : created;
   });
 }
 
 export function proposalAction(id: string, action: 'approve' | 'reject'): StandardProposal {
   const p = db.get().proposals.find((x) => x.id === id);
-  if (!p) throw httpError(404, '개정 제안을 찾을 수 없어요');
-  if (p.status !== 'pending') throw httpError(400, '이미 처리한 제안이에요');
+  if (!p) throw httpError(404, '개정 제안을 찾을 수 없습니다.');
+  if (p.status !== 'pending') throw httpError(400, '이미 처리된 제안입니다.');
   p.status = action === 'approve' ? 'approved' : 'rejected';
   db.addLog(`개정 제안 ${action === 'approve' ? '승인' : '반려'}`, `[${p.id}] ${p.title}`, null);
   db.save();
@@ -270,7 +274,7 @@ export function proposalAction(id: string, action: 'approve' | 'reject'): Standa
 
 export function driftAction(id: string, action: 'accept' | 'fix'): RuleDrift {
   const dr = db.get().drifts.find((x) => x.id === id);
-  if (!dr) throw httpError(404, '규칙 차이 기록을 찾을 수 없어요');
+  if (!dr) throw httpError(404, '규칙 차이 기록을 찾을 수 없습니다.');
   dr.status = action === 'accept' ? 'accepted' : 'fixed';
   db.addLog(action === 'accept' ? '규칙 차이 예외 인정' : '규칙 차이 수정 확인', `[${dr.id}] ${dr.observed}`, dr.storeId);
   db.save();

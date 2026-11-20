@@ -13,7 +13,7 @@ function inBucket(bucket: string, v: number | null) {
 
 export function DistributionChart({ data, target }: { data: HqOverview['distribution']; target?: { name: string; rating: number | null } }) {
   return (
-    <Panel title="평점 분포" en="RATING" sub={`평점 구간별 매장 수. 네이버는 첫 페이지 별점 평균이라 표본이 작아요${target ? ` · 노랑 = ${target.name}이 든 구간` : ''}`} className="h-full">
+    <Panel title="평점 분포" sub={`평점 구간별 매장 수. 네이버는 첫 페이지 표본 평균 기준${target ? ` · 노랑은 ${target.name}의 평점 구간` : ''}`} className="h-full">
       <div className="h-64" role="img" aria-label="카카오와 네이버 평점 구간별 매장 수 막대 그래프">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }} barGap={2}>

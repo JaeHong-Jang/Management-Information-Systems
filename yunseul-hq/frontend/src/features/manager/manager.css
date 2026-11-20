@@ -1,0 +1,34 @@
+.manager-wiki-link { display: inline-flex; align-items: center; gap: .45rem; min-height: 38px; border: 1px solid var(--line-strong); border-radius: 5px; padding: .4rem .8rem; background: var(--surface); font-weight: 600; }
+.manager-wiki-link:hover { background: var(--surface-sunken); }
+.manager-queues { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; margin: 0 0 1rem; overflow: hidden; }
+.manager-queues a { min-width: 0; display: grid; gap: .4rem; padding: .8rem 1rem; border-inline-end: 1px solid var(--line); }
+.manager-queues a:last-child { border-inline-end: 0; }
+.manager-queues a:hover { background: var(--surface-sunken); }
+.manager-queues a:focus-visible { outline-offset: -3px; }
+.manager-queues a[aria-current] { background: var(--yellow-weak); box-shadow: inset 0 -3px var(--brand-yellow); }
+.manager-queues a > span { color: var(--text-subtle); font-size: .8125rem; font-weight: 600; }
+.manager-queues strong { color: var(--text); font: 700 1.5rem/1.1 var(--portal-font); }
+.manager-queues small { margin-inline-start: .25rem; color: var(--text-muted); font-size: .75rem; font-weight: 500; }
+.manager-columns { display: grid; align-items: start; gap: 1rem; }
+.manager-hq { margin-block-start: 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.manager-hq > summary { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem; font-size: 1rem; font-weight: 700; cursor: pointer; list-style: none; }
+.manager-hq > summary::-webkit-details-marker { display:none; }
+.manager-hq[open] > summary svg { transform: rotate(180deg); }
+@media(min-width: 1180px) {
+  .manager-columns { grid-template-columns: minmax(0,1.38fr) minmax(0,1fr); }
+  .manager-audit-shortcut { display:none; }
+}
+@media(max-width: 600px) {
+  .manager-queues { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .manager-queues a { padding: .65rem .75rem; }
+  .manager-queues a:nth-child(2) { border-inline-end: 0; }
+  .manager-queues a:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+}
+.manager-list-tools { display: flex; justify-content: flex-end; align-items: center; border-bottom: 1px solid var(--line); background: var(--surface-sunken); padding: .25rem 1rem; }
+.manager-list-tools label { display: inline-flex; align-items:center; gap: .4rem; min-height: 30px; cursor:pointer; font-size: .8125rem; }
+.manager-list-tools input { accent-color: var(--ink); }
+.manager-situation { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:.6rem; padding:.85rem 1rem; }
+.manager-situation > div:first-child { flex: 1 1 12rem; }
+.manager-situation h3 { margin-bottom: .3rem; font-size: .9375rem; font-weight:700; color: var(--text); }
+.manager-card-refs { display:flex; flex-wrap:wrap; align-items:center; gap:.3rem .5rem; margin-top:.3rem; font-size:.75rem; color:var(--text-muted); }
+.manager-card-refs a { text-decoration: underline; text-underline-offset: 3px; color:var(--ink); }

@@ -40,7 +40,7 @@ export function policyChecker(ans: Answer, cards: Card[]): StepOut<{ answer: Ans
   if (!mixed.length) return { out: { answer: ans, problems: [] }, summary: '출처가 다른 카드가 섞이지 않음' };
   const top = [...mixed].sort((a, b) => SOURCE_RANK[b.source] - SOURCE_RANK[a.source])[0];
   if (new RegExp(`${top.source}[^\\n]*따르`).test(ans.answer)) return { out: { answer: ans, problems: [] }, summary: `${top.source} 우선 안내 있음` };
-  const fixed = { ...ans, answer: `${ans.answer}\n${top.source} [${top.id}]과 다른 매장 관행이 있어요. ${top.source}을 따르세요. [${top.id}]` };
+  const fixed = { ...ans, answer: `${ans.answer}\n매장 관행과 지침이 상충할 경우 ${top.source}을 따릅니다. [${top.id}]` };
   return { out: { answer: fixed, problems: [`${top.source} 우선 안내 누락 → 덧붙임`] }, status: 'blocked', problems: [`${top.source} 우선 안내 누락`], summary: `${top.source} 우선 안내를 덧붙였습니다` };
 }
 

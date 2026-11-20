@@ -80,8 +80,7 @@ export function StoreMap({ rows, shapes, metric, selected, onMetric, onSelect }:
     <Panel
       id="map"
       title="전국 매장 지도"
-      en="MAP"
-      sub="시군구 경계는 통계청 2018 행정구역이에요. 2018년 뒤 바뀐 구는 옛 경계에 칠해요. 누르면 아래 순위 표를 그 시군구로 걸러요"
+      sub="통계청 2018년 행정구역 기준. 지역 선택 시 매장 현황 및 위험 순위 필터 적용"
       actions={
         <div role="radiogroup" aria-label="지도에 칠할 값" className="flex rounded-ctl border border-line-strong p-0.5">
           {METRICS.map((m) => (
@@ -149,8 +148,8 @@ export function StoreMap({ rows, shapes, metric, selected, onMetric, onSelect }:
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-sm border border-line" style={{ background: HEAT[0] }} aria-hidden />매장 있음</span>
               </>
             )}
-            {metric === 'rating' && <span>· 평점이 낮을수록 진해요(카카오 평균)</span>}
-            {unmatched > 0 && <span>· 경계를 못 찾은 매장 {unmatched}곳은 지도에서 빠져요</span>}
+            {metric === 'rating' && <span>· 진한 색은 낮은 카카오 평균 평점</span>}
+            {unmatched > 0 && <span>· 행정구역 경계 미확인 {unmatched}곳 제외</span>}
           </div>
         </div>
 
@@ -170,17 +169,17 @@ export function StoreMap({ rows, shapes, metric, selected, onMetric, onSelect }:
                 {selected && focus.shape.code === selected && (
                   <button type="button" onClick={() => onSelect(null)} className="mt-2 inline-flex h-8 items-center gap-1 rounded-ctl border border-line-strong bg-surface px-2.5 text-caption text-ink hover:bg-ink-weak">
                     <X size={13} aria-hidden />
-                    시군구 선택 풀기
+                    지역 선택 해제
                   </button>
                 )}
               </>
             ) : (
-              <p className="text-caption text-text-muted">지도에 올리거나 눌러 보세요. 매장이 있는 시군구 {aggs.size}곳이에요.</p>
+              <p className="text-caption text-text-muted">매장 소재 시군구 {aggs.size}곳. 지역 선택 시 세부 지표 표시</p>
             )}
           </div>
 
           <label className="block">
-            <span className="mb-1 block text-caption text-text-muted">시군구로 거르기</span>
+            <span className="mb-1 block text-caption text-text-muted">시군구 선택</span>
             <select value={selected} onChange={(e) => onSelect(e.target.value || null)} className="h-10 w-full rounded-ctl border border-line-strong bg-surface px-2 text-body">
               <option value="">전체 시군구</option>
               {options.map((a) => (

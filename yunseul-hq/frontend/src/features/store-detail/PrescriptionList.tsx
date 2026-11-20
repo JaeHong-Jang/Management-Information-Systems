@@ -22,9 +22,9 @@ export function PrescriptionList({ storeId, prescriptions, findings, hasDiagnosi
   const list = [...prescriptions].sort((a, b) => PRESCRIPTION_ORDER[a.status] - PRESCRIPTION_ORDER[b.status] || b.created.localeCompare(a.created));
 
   return (
-    <Panel id="prescriptions" title="처방" en="PRESCRIPTION" sub="지식 공백은 매장(사례 카드·브리핑)으로, 나머지 원인은 SV 방문 과제로 가요. 보내기는 본사 SV가 직접 눌러요">
+    <Panel id="prescriptions" title="처방" sub="지식 공백은 매장 카드·브리핑 대상으로 분류. 운영·위생·규칙 문제는 SV 방문 과제로 분류">
       {list.length === 0 ? (
-        <Empty title="아직 처방이 없어요">{hasDiagnosis ? "결정 패널의 '처방 만들기'를 누르면 처방팀이 초안을 써요." : '진단을 먼저 실행해 주세요.'}</Empty>
+        <Empty title="등록된 처방 없음">{hasDiagnosis ? "업무 처리에서 처방 초안 작성 가능" : '원인 진단 후 작성 가능'}</Empty>
       ) : (
         <ul className="space-y-3">
           {list.map((p) => (
@@ -56,7 +56,7 @@ function PrescriptionItem({ p, storeId, fx, busy, onAction }: {
             <Tag icon={KindIcon}>{p.kind}</Tag>
             <Tag tone={st.tone} icon={st.icon}>{st.label}</Tag>
             <Provenance via={p.via} approved={sent} approver="본사 SV" pendingLabel={p.status === 'rejected' ? '거절됨' : '본사 SV 승인 전'} />
-            <span className="text-caption text-text-muted">받는 곳: {k.to}</span>
+            <span className="text-caption text-text-muted">담당 {k.to}</span>
           </div>
           <h3 className="mt-1.5 font-bold">{p.title}</h3>
         </div>
@@ -91,11 +91,11 @@ function PrescriptionItem({ p, storeId, fx, busy, onAction }: {
       )}
       {p.kind === '사례 카드' && p.cardIds.length > 0 && (
         <p className="mt-2 flex flex-wrap items-center gap-1.5 text-caption">
-          <span className="text-text-muted">내려간 카드</span>
+          <span className="text-text-muted">배포 카드</span>
           {p.cardIds.map((c) => (
             <Link key={c} to={`/store/${storeId}/wiki#${c}`} className="num rounded-badge border border-line-strong px-1.5 text-ink hover:bg-ink-weak">{c}</Link>
           ))}
-          <span className="text-text-muted">· {p.status === 'draft' ? '보내면 점장 승인 대기로 가요' : '완료여도 카드는 점장이 승인해야 위키에 올라가요'}</span>
+          <span className="text-text-muted">· {p.status === 'draft' ? '발송 후 점장 승인 대기' : '점장 승인 후 위키 게시'}</span>
         </p>
       )}
       {p.kind === '표준 개정 제안' && (

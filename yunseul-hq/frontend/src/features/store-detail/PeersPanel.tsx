@@ -5,9 +5,9 @@ import { rating } from '@/shared/lib/format';
 
 export function PeersPanel({ peers }: { peers: StoreDetail['peers'] }) {
   return (
-    <Panel title="비교 매장" en="PEERS" sub="같은 상권 유형, 비슷한 리뷰 수" className="h-full" bodyClass="p-0">
+    <Panel title="비교 매장" sub="같은 상권 유형, 비슷한 리뷰 수" className="h-full" bodyClass="p-0">
       {peers.length === 0 ? (
-        <div className="p-4"><Empty title="비교할 매장이 없어요" /></div>
+        <div className="p-4"><Empty title="비교 대상 매장 없음" /></div>
       ) : (
         <table className="w-full text-body">
           <thead className="bg-surface-sunken text-left text-caption text-text-muted">

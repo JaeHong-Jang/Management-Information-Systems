@@ -26,8 +26,8 @@ export function Button({ variant = 'secondary', icon: Icon, busy, size = 'md', c
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cx(
-        'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-ctl font-medium disabled:cursor-not-allowed disabled:opacity-50',
-        size === 'sm' ? 'h-8 px-2.5 text-caption' : size === 'lg' ? 'h-[52px] px-5 text-mobile font-bold' : 'h-10 px-3.5 text-body',
+        'inline-flex items-center justify-center gap-1.5 max-w-full rounded-ctl font-medium disabled:cursor-not-allowed disabled:opacity-50',
+        size === 'sm' ? 'min-h-8 px-2.5 py-1 text-caption' : size === 'lg' ? 'min-h-11 px-4 py-2 text-body font-bold' : 'min-h-10 px-3.5 py-1.5 text-body',
         V[variant],
         className,
       )}

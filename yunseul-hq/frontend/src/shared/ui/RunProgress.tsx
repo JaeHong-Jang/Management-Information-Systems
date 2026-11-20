@@ -1,6 +1,6 @@
 // 실행 하나의 진행(관광공사 agent-work-line + 금융 LiveExecutionPanel).
 // 진행 중: 지금 일하는 에이전트와 'N초 경과'(실제 agent-start 시각 기준) + 지나간 단계.
-// 끝나면 한 줄 요약으로 접힌다. 펼치면 단계·게이트 기록이 그대로 있다. 이벤트 없이 움직이는 표시는 없다.
+// 끝나면 한 줄 요약으로 접힌다. 펼치면 단계·검증 기록이 그대로 있다. 이벤트 없이 움직이는 표시는 없다.
 import { CircleCheck, CircleX, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useApp } from '@/app/AppData';
 import type { RunView } from '../api/live';
@@ -25,7 +25,7 @@ function StepList({ run, n }: { run: RunView; n: (id: string) => string }) {
       {run.gates.map((g, i) => (
         <li key={`g${i}`} className={cx('flex flex-wrap items-center gap-1.5 text-caption', g.passed ? 'text-done' : 'text-amber-text')}>
           {g.passed ? <ShieldCheck size={13} aria-hidden /> : <ShieldAlert size={13} aria-hidden />}
-          게이트 <span className="num">{g.gateId}</span> {g.passed ? '통과' : `막힘: ${g.problems.join(', ')}`}
+          검증 <span className="num">{g.gateId}</span> {g.passed ? '통과' : `보류 · ${g.problems.join(', ')}`}
           {!g.passed && g.action && <span className="text-text-muted">→ {g.action}</span>}
         </li>
       ))}
@@ -41,7 +41,7 @@ export function RunProgress({ run, names, compact }: { run: RunView | null; name
     return (
       <p className="flex items-center gap-2 text-caption text-text-muted" role="status">
         <Loader2 size={13} className="animate-spin" aria-hidden />
-        실행을 시작했어요. 첫 기록을 기다리고 있어요
+        실행 기록 수신 대기
       </p>
     );
   const n = (id: string) => names?.[id] ?? id;
@@ -54,7 +54,7 @@ export function RunProgress({ run, names, compact }: { run: RunView | null; name
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 text-caption text-text-subtle">
           {run.ok ? <CircleCheck size={14} className="text-done" aria-hidden /> : <CircleX size={14} className="text-amber-text" aria-hidden />}
           <b className="text-text">{run.flowName}</b>
-          <span>{run.ok ? '끝났어요' : '멈췄어요'} · 에이전트 {run.steps.length}명{run.gates.length > 0 && ` · 게이트 ${run.gates.length - blocked}/${run.gates.length} 통과`}</span>
+          <span>{run.ok ? '완료' : '중단'} · 에이전트 {run.steps.length}명{run.gates.length > 0 && ` · 검증 ${run.gates.length - blocked}/${run.gates.length} 통과`}</span>
           <span className="num dev text-text-muted">{run.runId}</span>
           <span className="text-ink underline-offset-2 group-open:hidden hover:underline">기록 펼치기</span>
           <span className="hidden text-ink underline-offset-2 group-open:inline hover:underline">접기</span>
@@ -69,7 +69,7 @@ export function RunProgress({ run, names, compact }: { run: RunView | null; name
       <div className="flex flex-wrap items-center gap-2 text-caption text-text-subtle">
         <Loader2 size={14} className="animate-spin text-ink" aria-hidden />
         <b className="text-text">{run.flowName}</b>
-        <span>{run.running ? `${n(run.running)} 일하는 중` : '다음 단계로 넘기는 중'}</span>
+        <span>{run.running ? `${n(run.running)} 실행 중` : '다음 단계 대기'}</span>
         {sec != null && <span className="num text-text-muted">{sec}초 경과</span>}
         <span className="num dev text-text-muted">{run.runId}</span>
       </div>

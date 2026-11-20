@@ -1,12 +1,10 @@
-// 첫 근무 준비: 이 매장에서 실제로 자주 터진 상황 카드를 읽고 '읽었어요'만 누른다. 퀴즈·점수 없음
-// 한 장씩(진행 막대는 카드 머리에) + 전체 목록(≥1280 오른쪽 340px, 그 아래는 카드 밑). 목록을 누르면 그 장으로 간다
-import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, CircleCheck } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, ChevronRight, CircleCheck } from 'lucide-react';
 import type { Card, Onboarding, OnboardingItem, Situation } from '@shared/contracts';
 import { api } from '@/shared/api/client';
 import { useAction } from '@/shared/lib/useAsync';
-import { Button, CardBadges, CardBody, Empty, InlineError, PageHeader } from '@/shared/ui';
-import { cx, dateTime } from '@/shared/lib/format';
+import { Button, CardBadges, CardBody, Empty, InlineError } from '@/shared/ui';
+import { dateTime } from '@/shared/lib/format';
 
 /** 이 사람이 읽은 카드 id → 읽은 시각 */
 export function readMap(ob: Onboarding, personId: string) {
@@ -25,46 +23,27 @@ export function ProgressBar({ done, total, compact = false }: { done: number; to
   );
 }
 
-/** 인용은 단어 경계에서 자른다(백엔드가 120자 + …로 준다) */
-const trimQuote = (t: string) => (t.endsWith('…') ? `${t.slice(0, -1).replace(/\s*\S*$/, '')}…` : t);
-
-/** 지금 읽는 장: 진행(n/전체 + 막대) → 상황 제목 → 왜 이 매장에서 중요한지 + 실제 리뷰 한 줄 → 카드 본문(모든 화면 공통 순서) → 카드 표지 */
-function PrepCard({ item, card, situation, number, total, done }: {
-  item: OnboardingItem;
-  card: Card | undefined;
-  situation: Situation | undefined;
-  number: number;
-  total: number;
-  done: number;
-}) {
+function PrepCard({ item, card, situation }: { item: OnboardingItem; card?: Card; situation?: Situation }) {
   const quote = situation?.quotes[0];
   return (
-    <article className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
-      <header className="border-b border-line px-4 py-3 sm:px-5">
-        <p className="mb-2 flex items-baseline justify-between text-caption text-text-muted">
-          <span><b className="num text-body text-ink">{number}</b> / <span className="num">{total}</span>장째</span>
-          <span>읽음 <span className="num">{done}</span>장</span>
-        </p>
-        <ProgressBar done={done} total={total} compact />
+    <>
+      <header className="prep-detail-head">
+        <div className="flex flex-wrap items-center gap-2 text-caption text-text-muted">
+          <span>{item.cardId}</span>{card && <CardBadges card={card} />}
+        </div>
+        <h2>{item.situationTitle}</h2>
+        <p>{item.why}</p>
       </header>
-      <div className="px-4 pb-4 pt-4 sm:px-5">
-        <h2 className="font-display text-title text-ink">{item.situationTitle}</h2>
-        <p className="mt-1 text-body text-text-subtle">{item.why}</p>
+      <div className="prep-detail-body">
+        {card ? <CardBody card={card} meta={false} /> : <p className="text-body text-text-muted">등록된 카드 본문 없음</p>}
         {quote && (
-          <figure className="mt-3 rounded-ctl border-l-2 border-line-strong bg-surface-sunken px-3 py-2">
-            <figcaption className="text-caption text-text-muted">실제 리뷰</figcaption>
-            <blockquote className="text-body text-text-subtle">“{trimQuote(quote.text)}”</blockquote>
-          </figure>
-        )}
-        <div className="mt-5">{card ? <CardBody card={card} meta={false} /> : <p className="text-body text-text-muted">카드를 불러오지 못했어요.</p>}</div>
-        {card && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3 text-caption text-text-muted">
-            <span className="num">{card.id}</span>
-            <CardBadges card={card} />
-          </div>
+          <details className="prep-evidence">
+            <summary>관련 매장 리뷰 <span>{quote.reviewId} · {quote.date}</span></summary>
+            <blockquote>{quote.text}</blockquote>
+          </details>
         )}
       </div>
-    </article>
+    </>
   );
 }
 
@@ -77,6 +56,7 @@ export function PrepTab({ storeId, me, cards, situations, onboarding, onUpdate }
   onUpdate: (ob: Onboarding) => void;
 }) {
   const act = useAction();
+  const detail = useRef<HTMLElement>(null);
   const reads = readMap(onboarding, me);
   const items = onboarding.items;
   const total = items.length;
@@ -99,65 +79,69 @@ export function PrepTab({ storeId, me, cards, situations, onboarding, onUpdate }
       if (!ob) return;
       onUpdate(ob);
     }
-    go(Math.min(at + 1, total - 1));
+    if (at < total - 1) go(at + 1);
   };
   const go = (i: number) => {
     setIdx(i);
-    window.scrollTo({ top: 0 });
+    requestAnimationFrame(() => {
+      const node = detail.current;
+      if (node && node.getBoundingClientRect().top < 76) node.scrollIntoView({ block: 'start' });
+      node?.focus({ preventScroll: true });
+    });
   };
+
+  if (!item) return <Empty title="등록된 교육 카드 없음" />;
   return (
-    <section>
-      <PageHeader title="첫 근무 준비" en="FIRST SHIFT" sub="이 매장에서 실제로 자주 터진 상황부터 한 장씩 읽어요. 읽고 '읽었어요'만 누르면 돼요." />
-      <InlineError message={act.error} />
-      {total === 0 || !item ? (
-        <Empty title="읽을 카드가 아직 없어요" />
-      ) : (
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-10">
-          <div className="min-w-0">
-            {done === total && <p className="bubble mb-4 px-5 py-4 text-mobile font-medium text-ink">첫 근무 준비를 마쳤어요. 막히면 홈에서 바로 물어보세요.</p>}
-            <PrepCard key={item.cardId} item={item} card={cardMap.get(item.cardId)} situation={sitMap.get(item.situationId)} number={at + 1} total={total} done={done} />
-            <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
-              <Button size="lg" icon={ArrowLeft} disabled={at === 0} onClick={() => go(at - 1)}>이전</Button>
-              {isRead && at === total - 1 ? (
-                <p className="flex items-center justify-center gap-1.5 text-mobile font-bold text-done"><CircleCheck size={18} aria-hidden />마지막 장까지 읽었어요</p>
-              ) : (
-                <Button variant="primary" size="lg" icon={isRead ? ArrowRight : Check} busy={act.busy === item.cardId} onClick={() => void markRead()}>
-                  {isRead ? '다음 장' : '읽었어요'}
-                </Button>
-              )}
-            </div>
-          </div>
-          <aside className="min-w-0 xl:sticky xl:top-[72px]" aria-label="전체 카드">
-            <h2 className="mb-2 font-display text-section text-ink">전체 <span className="num">{total}</span>장</h2>
-            <ol className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
-              {items.map((it, i) => {
-                const read = reads.has(it.cardId);
-                const on = i === at;
-                return (
-                  <li key={it.cardId} className="border-b border-line last:border-b-0">
-                    <button
-                      type="button"
-                      onClick={() => go(i)}
-                      aria-current={on ? 'step' : undefined}
-                      className={cx('flex min-h-[52px] w-full items-center gap-3 px-4 py-2 text-left', on ? 'bg-ink text-white' : 'hover:bg-ink-weak')}
-                    >
-                      {read ? (
-                        <CircleCheck size={18} className={cx('shrink-0', on ? 'text-white' : 'text-done')} aria-label="읽음" />
-                      ) : (
-                        <span className={cx('num grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border text-[0.6875rem]', on ? 'border-white' : 'border-line-strong text-text-muted')}>{i + 1}</span>
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className={cx('block text-body', on && 'font-bold')}>{it.situationTitle}</span>
-                        {read && <span className={cx('num block text-caption', on ? 'text-white/70' : 'text-text-muted')}>{dateTime(reads.get(it.cardId))} 읽음</span>}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </aside>
+    <section className="prep-workspace" aria-label="첫 근무 교육">
+      <aside className="prep-register" aria-labelledby="prep-list-title">
+        <div className="prep-register-head">
+          <h2 id="prep-list-title">교육 목록</h2>
+          <span>{total}건</span>
         </div>
-      )}
+        <div className="prep-progress">
+          <p><span>학습 진도</span><strong>{done} / {total}건 확인</strong></p>
+          <ProgressBar done={done} total={total} compact />
+        </div>
+        <label className="prep-mobile-select">
+          <span>교육 항목</span>
+          <select value={at} onChange={e => go(Number(e.target.value))} disabled={!!act.busy}>
+            {items.map((it, i) => <option key={it.cardId} value={i}>{i + 1}. {it.situationTitle}{reads.has(it.cardId) ? ' · 확인 완료' : ''}</option>)}
+          </select>
+        </label>
+        <ol className="prep-list">
+          {items.map((it, i) => {
+            const readAt = reads.get(it.cardId);
+            return (
+              <li key={it.cardId}>
+                <button type="button" aria-current={i === at ? 'step' : undefined} onClick={() => go(i)} disabled={!!act.busy}>
+                  <span className="prep-index">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="prep-list-entry"><strong>{it.situationTitle}</strong><small>
+                    {readAt ? <><CircleCheck size={12} aria-hidden />확인 완료 · {dateTime(readAt)}</> : '미확인'}
+                  </small></span>
+                  {i === at && <ChevronRight size={15} aria-hidden />}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </aside>
+      <article className="prep-detail" ref={detail} tabIndex={-1} aria-label="선택한 교육 항목">
+        <PrepCard key={item.cardId} item={item} card={cardMap.get(item.cardId)} situation={sitMap.get(item.situationId)} />
+        <footer className="prep-actions">
+          <span role="status" className="text-caption text-text-muted">{done === total ? '전체 교육 확인 완료' : `교육 항목 ${at + 1} / ${total}`}</span>
+          <div>
+            <Button icon={ArrowLeft} disabled={at === 0 || !!act.busy} onClick={() => go(at - 1)}>이전</Button>
+            {isRead && at === total - 1 ? (
+              <span className="inline-flex items-center gap-1 text-body font-bold text-done"><CircleCheck size={16} aria-hidden />확인 완료</span>
+            ) : (
+              <Button variant="primary" icon={isRead ? ArrowRight : Check} busy={!!act.busy} onClick={() => void markRead()}>
+                {isRead ? '다음 항목' : '확인 완료'}
+              </Button>
+            )}
+          </div>
+        </footer>
+        <InlineError message={act.error} />
+      </article>
     </section>
   );
 }

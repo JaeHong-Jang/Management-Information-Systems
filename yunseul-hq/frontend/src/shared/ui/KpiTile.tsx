@@ -18,14 +18,13 @@ export function KpiTile({ icon: Icon, label, value, unit, note, loading, danger 
     <div className="relative min-w-0 overflow-hidden rounded-card border border-line bg-surface p-4 shadow-card">
       <div className="flex items-center gap-1.5 text-caption text-text-muted">
         <Icon size={14} aria-hidden className={red ? 'text-red' : undefined} />
-        <span className="truncate">{label}</span>
+        <span>{label}</span>
       </div>
       <div className="mt-2 flex items-baseline gap-1">
         <span className={cx('num text-kpi tracking-tight', red ? 'text-red' : 'text-ink')}>{loading ? '…' : value == null ? '—' : value.toLocaleString('ko-KR')}</span>
         {unit && <span className="text-caption text-text-muted">{unit}</span>}
       </div>
-      <p className="mt-1 truncate text-caption text-text-muted" title={note}>{note}</p>
-      <div className="absolute inset-x-0 bottom-0 h-0.5 bg-yellow" aria-hidden />
+      <p className="mt-1 text-caption text-text-muted" title={note}>{note}</p>
     </div>
   );
 }

@@ -9,7 +9,7 @@ export function CauseTotals({ totals }: { totals: HqOverview['complaintTotals'] 
   const byCause = CAUSES.map((c) => ({ cause: c, n: totals.filter((t) => t.cause === c).reduce((s, t) => s + t.count, 0) }));
   const sum = Math.max(1, byCause.reduce((s, x) => s + x.n, 0));
   return (
-    <Panel title="원인별 불만 집계" en="CAUSE" sub="브랜드 전체 저평점(2점 이하) 리뷰 기준. 원인은 규칙 기본값이에요" className="h-full">
+    <Panel title="원인별 불만 집계" sub="2점 이하 리뷰 기준 · 유형별 기본 규칙으로 분류" className="h-full">
       <div className="mb-4">
         <div className="flex h-3 overflow-hidden rounded-full" role="img" aria-label={byCause.map((x) => `${x.cause} ${Math.round((x.n / sum) * 100)}%`).join(', ')}>
           {byCause.map((x) => (

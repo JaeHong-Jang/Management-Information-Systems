@@ -24,8 +24,8 @@ export function cardByRules(f: Finding, standards: HqStandard[]): CardFields {
   return {
     title: `'${f.complaint}' 불만 막는 안내`,
     topic,
-    situation: `저평점 리뷰 ${f.count}건에 '${f.complaint}' 불만이 있어요.${q ? ` 예: "${q.text}" [${q.reviewId}]` : ''}`,
-    reason: [st?.reason, `손님이 미리 듣지 못하면 '${f.complaint}' 불만으로 낮은 별점을 남겨요.`].filter(Boolean).join(' '),
+    situation: `저평점 리뷰 ${f.count}건에서 ‘${f.complaint}’ 불만 확인.${q ? ` 예: "${q.text}" [${q.reviewId}]` : ''}`,
+    reason: [st?.reason, `‘${f.complaint}’ 관련 불만 예방을 위한 사전 안내.`].filter(Boolean).join(' '),
     actions: p?.actions ?? ['주문 받기 전에 관련 매장 기준을 손님께 먼저 안내한다', '안내한 내용은 근무자끼리 같은 문장으로 말한다'],
     avoid: p?.avoid ?? '손님이 물은 뒤에야 기준을 꺼내지 않는다.',
     escalateWhen: p?.escalateWhen ?? '안내 뒤에도 손님이 항의할 때',
@@ -38,7 +38,7 @@ export function cardByRules(f: Finding, standards: HqStandard[]): CardFields {
 /** 지식 공백 원인을 매장 사례 카드 초안으로. AI가 켜져 있으면 문장을 매장 상황에 맞게 다듬는다(인용·표준 밖의 사실은 쓰지 않는다) */
 export async function playbookWriter(ctx: { brand: string; store: Store }, findings: Finding[], standards: HqStandard[], rulesOnly = false): Promise<StepOut<CardDraft[]>> {
   const targets = findings.filter((f) => f.cause === '지식 공백').slice(0, MAX_CARDS);
-  if (!targets.length) return { out: [], summary: '지식 공백 원인이 없어 사례 카드를 만들지 않아요', status: 'skipped' };
+  if (!targets.length) return { out: [], summary: '사례 카드 작성 대상 없음', status: 'skipped' };
   const base = targets.map((f) => ({ findingId: f.id, complaint: f.complaint, standardId: standardFor(f.complaint, standards)?.id, fields: cardByRules(f, standards) }));
   const schema = z.object({
     cards: z.array(z.object({
@@ -105,7 +105,7 @@ export function svPlanner(findings: Finding[], drifts: RuleDrift[], standards: H
     const what = fs.length ? fs.map((f) => f.complaint).join('·') : ds.map((d) => d.standardId).join('·');
     out.push({ kind: 'SV 방문 과제', title: `${SV_TITLE[cause]} (${what})`, body, findingIds: fs.map((f) => f.id), checklist: SV_CHECKLIST[cause](detail) });
   }
-  return { out, summary: out.length ? `SV 방문 과제 ${out.length}건: ${out.map((p) => p.title).join(' · ')}` : 'SV 방문이 필요한 원인이 없어요', ...(out.length ? {} : { status: 'skipped' as const }) };
+  return { out, summary: out.length ? `SV 방문 과제 ${out.length}건: ${out.map((p) => p.title).join(' · ')}` : 'SV 방문 과제 없음', ...(out.length ? {} : { status: 'skipped' as const }) };
 }
 
 // ---------- 브리핑 작성자 ----------
@@ -125,9 +125,9 @@ export function briefingDraft(cards: CardDraft[], findings: Finding[], standards
     if (notice) lines.push(`- ${f.complaint}: "${notice}"`);
     used.add(f.complaint);
   }
-  if (!lines.length) return { out: null, summary: '손님께 미리 알릴 문장이 없어 브리핑 처방을 만들지 않아요', status: 'skipped' };
+  if (!lines.length) return { out: null, summary: '브리핑에 사용할 고객 안내 문구 없음', status: 'skipped' };
   return {
-    out: { kind: '근무 전 브리핑', title: `근무 전 브리핑: ${[...used].slice(0, 3).join('·')}`, body: ['근무 시작 전에 손님께 미리 알릴 문장이에요. 점장이 사례 카드를 승인하면 매장 브리핑에 들어가요.', ...lines].join('\n'), findingIds: findings.filter((f) => used.has(f.complaint)).map((f) => f.id), checklist: [] },
+    out: { kind: '근무 전 브리핑', title: `근무 전 브리핑: ${[...used].slice(0, 3).join('·')}`, body: ['근무 전 고객 안내 사항. 점장 승인 후 매장 브리핑에 반영.', ...lines].join('\n'), findingIds: findings.filter((f) => used.has(f.complaint)).map((f) => f.id), checklist: [] },
     summary: `브리핑 항목 ${lines.length}개 초안`,
   };
 }
@@ -151,13 +151,13 @@ export function briefingItems(cards: Card[], top: StoreScore['topComplaints'], t
     .slice(0, max)
     .map(({ c, r }) => {
       const t = r < 99 ? top[Math.floor(r)] : undefined;
-      return { cardId: c.id, title: c.title, say: c.customerNotice!.trim(), why: t ? `우리 매장 저평점 불만 '${t.type}'(${t.count}건)을 줄이려는 안내예요.` : firstSentence(c.reason) || `${c.scope === 'brand' ? '본사' : '매장'} 카드의 안내예요.` };
+      return { cardId: c.id, title: c.title, say: c.customerNotice!.trim(), why: t ? `매장 저평점 리뷰 중 ‘${t.type}’ ${t.count}건.` : firstSentence(c.reason) || `${c.scope === 'brand' ? '본사' : '매장'} 사례 카드 기준.` };
     });
 }
 
 /** 브리핑 작성자: 항목은 규칙으로 고르고, AI가 켜져 있으면 '왜' 문장만 짧게 다듬는다(손님 안내 문장은 표준 그대로 둔다) */
 export async function briefingWriter(ctx: { brand: string; store: string }, items: Briefing['items'], cards: Card[]): Promise<StepOut<Briefing['items']>> {
-  if (!items.length) return { out: items, summary: '손님 안내 문장이 있는 승인 카드가 없어요', status: 'skipped' };
+  if (!items.length) return { out: items, summary: '고객 안내 문구가 포함된 승인 카드 없음', status: 'skipped' };
   const { value, via } = await llmOr(
     async () => {
       const res = await ask('briefing-writer', {

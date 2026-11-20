@@ -1,12 +1,9 @@
 import type { ReactNode } from 'react';
 import { cx } from '../lib/format';
 
-/** 카드: 흰 바탕 + 1px 선, 아주 옅은 그림자 하나 */
-export function Panel({ title, sub, en, actions, children, className, bodyClass, id }: {
+export function Panel({ title, sub, actions, children, className, bodyClass, id }: {
   title?: ReactNode;
   sub?: ReactNode;
-  /** 제목 옆 작은 영문 보조 문구 */
-  en?: string;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -19,12 +16,11 @@ export function Panel({ title, sub, en, actions, children, className, bodyClass,
         <header className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3">
           <div className="min-w-0">
             {title && (
-              <h2 className="font-display text-section">
+              <h2 className="text-section tracking-tight text-ink">
                 {title}
-                {en && <span className="ml-2 align-middle font-mono text-[0.6875rem] font-medium tracking-[0.12em] text-text-muted">{en}</span>}
               </h2>
             )}
-            {sub && <p className="mt-0.5 text-caption text-text-muted">{sub}</p>}
+            {sub && <p className="mt-1 text-body text-text-muted">{sub}</p>}
           </div>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
@@ -34,20 +30,18 @@ export function Panel({ title, sub, en, actions, children, className, bodyClass,
   );
 }
 
-/** 페이지 머리: Gmarket Sans 제목 + 작은 영문 보조 문구(「전국 현황 · OVERVIEW」) */
-export function PageHeader({ title, en, sub, actions, children }: { title: ReactNode; en?: string; sub?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
+export function PageHeader({ title, sub, actions, children }: { title: ReactNode; sub?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <header className="workspace-heading mb-5 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="font-display text-display text-ink">
+        <h1 className="font-display text-display tracking-tight text-ink">
           {title}
-          {en && <span className="ml-2 align-middle font-mono text-[0.75rem] font-medium tracking-[0.14em] text-text-muted">· {en}</span>}
         </h1>
-        {sub && <p className="mt-1 max-w-[80ch] text-body text-text-subtle">{sub}</p>}
+        {sub && <p className="mt-1.5 max-w-[66ch] text-base font-medium leading-6 text-text-subtle">{sub}</p>}
         {children}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-    </div>
+      {actions && <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>}
+    </header>
   );
 }
 

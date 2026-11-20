@@ -411,6 +411,24 @@ export interface BrandSituation extends SituationDef {
   brandCardIds: string[]; // 이 상황을 다루는 브랜드 카드
 }
 
+export type ManualBasis = '본사 공개 기준' | '윤슬 실무 제안';
+export interface ManualItem {
+  id: string;
+  category: '품질' | '위생' | '서비스' | '인사';
+  title: string;
+  description: string;
+  basis: ManualBasis;
+  situationId?: string; // 연결할 수 있는 매장 리뷰 상황(상황별 카드·질문)
+  source?: { label: string; url: string };
+}
+export interface ManualChecklist {
+  storeId: string;
+  personId: string | null;
+  date: string; // 체크한 근무일(한국 날짜). 리뷰 시연 기준일과 별개
+  items: ManualItem[];
+  checkedIds: string[];
+}
+
 export interface StoreState {
   store: Store;
   today: string;
@@ -446,6 +464,6 @@ export interface InterviewDraft {
   via?: string;
 }
 
-export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기' | '표준 불일치'; ids: string[]; detail: string }
+export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기' | '표준 불일치'; ids: string[]; subject?: string; standardId?: string; detail: string }
 
 export interface RunAccepted { runId: string } // 긴 흐름은 runId를 먼저 돌려주고 결과는 SSE와 GET으로 받는다

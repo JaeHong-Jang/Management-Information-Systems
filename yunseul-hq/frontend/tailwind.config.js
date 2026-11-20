@@ -1,5 +1,5 @@
-// 디자인 규칙은 docs/DESIGN.md(v2). 값은 src/index.css의 CSS 변수가 원본이고 여기서는 이름만 묶는다.
-// 빨강(red)은 '고위험'과 워드마크에만 쓴다. 노랑(amber/yellow)은 주의·강조·말풍선. 주 버튼·활성 메뉴는 ink.
+// 색과 글꼴은 src/index.css의 포털 변수를 공유한다.
+// 빨강은 고위험, 노랑은 주의, ink는 일반 조작에 쓴다.
 // 글자 크기는 rem: 심사 모드(html.present)에서 루트 크기만 바꿔 전체를 키운다.
 /** @type {import('tailwindcss').Config} */
 const v = (name) => `var(--${name})`;
@@ -8,9 +8,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Noto Sans KR"', '-apple-system', '"Apple SD Gothic Neo"', '"Malgun Gothic"', 'system-ui', 'sans-serif'],
-        display: ['GmarketSans', '"Noto Sans KR"', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        sans: ['var(--portal-font)'],
+        display: ['var(--portal-display)'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
         bg: v('bg'),
@@ -29,16 +29,17 @@ export default {
         rule: { DEFAULT: v('cause-rule'), weak: v('cause-rule-weak') },
         hyg: { DEFAULT: v('cause-hyg'), weak: v('cause-hyg-weak') },
       },
-      borderRadius: { badge: '4px', ctl: '6px', card: '10px' },
-      boxShadow: { pop: '0 12px 32px rgba(35, 24, 21, 0.18)', card: '0 1px 2px rgba(35, 24, 21, 0.05)' },
+      borderRadius: { badge: '4px', ctl: '6px', card: '6px' },
+      boxShadow: { pop: '0 12px 32px rgba(35, 24, 21, 0.16)', card: '0 1px 2px rgba(35, 24, 21, 0.035)' },
       maxWidth: { content: '1280px', staff: '640px' },
       width: { sidebar: '240px', panel: '360px' },
       fontSize: {
-        display: ['1.5rem', { lineHeight: '2rem', fontWeight: '700' }],
+        display: ['clamp(1.65rem, 2.25vw, 2rem)', { lineHeight: '1.25', fontWeight: '700' }],
         title: ['1.375rem', { lineHeight: '1.875rem', fontWeight: '700' }],
-        section: ['1rem', { lineHeight: '1.5rem', fontWeight: '700' }],
-        body: ['0.875rem', { lineHeight: '1.375rem' }],
-        caption: ['0.78125rem', { lineHeight: '1.125rem', fontWeight: '500' }],
+        section: ['1.125rem', { lineHeight: '1.5', fontWeight: '700' }],
+        body: ['0.875rem', { lineHeight: '1.5rem' }],
+        subhead: ['1rem', { lineHeight: '1.5', fontWeight: '650' }],
+        caption: ['0.75rem', { lineHeight: '1.125rem', fontWeight: '500' }],
         kpi: ['1.75rem', { lineHeight: '2.125rem', fontWeight: '700' }],
         mobile: ['1rem', { lineHeight: '1.5rem' }],
       },

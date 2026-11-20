@@ -14,13 +14,12 @@ export function StoreHeader({ store: s, score, ranked }: { store: Store; score: 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-display text-display text-ink">{s.name}</h1>
-            <span className="font-mono text-[0.75rem] tracking-[0.14em] text-text-muted">· STORE</span>
-            {s.isTarget && <Tag tone="ink">시연 타깃</Tag>}
-            <RiskBadge risk={score.risk} />
+            {s.isTarget && <Tag tone="ink">시연 매장</Tag>}
+            {score.rank != null && <RiskBadge risk={score.risk} />}
             {s.excluded && <Tag title={s.excluded}>분석 제외: {s.excluded}</Tag>}
           </div>
           <p className="mt-1 text-body text-text-subtle">
-            {s.region} {s.district} · {s.area} · {score.rank != null ? `전국 ${score.rank}위${ranked ? ` / ${ranked}곳` : ''}` : '순위 대상 아님(표본 부족 또는 분석 제외)'}
+            {s.region} {s.district} · {s.area} · {score.rank != null ? `전국 ${score.rank}위${ranked ? ` / ${ranked}곳` : ''}` : '순위 미산정'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -30,21 +29,21 @@ export function StoreHeader({ store: s, score, ranked }: { store: Store; score: 
         </div>
       </div>
 
-      {score.risk >= HIGH_RISK && (
+      {score.rank != null && score.risk >= HIGH_RISK && (
         <p className="mt-3 flex items-center gap-2 border-l-4 border-red bg-surface px-3 py-1.5 text-body font-medium text-red">
           <Siren size={14} aria-hidden />
-          고위험: 위험 점수 {Math.round(score.risk)}점으로 기준(60점)을 넘었어요.
+          위험 점수 {Math.round(score.risk)}점 · 고위험 기준 60점 이상
         </p>
       )}
 
-      <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-5">
+      <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4 border-t border-line pt-3 sm:grid-cols-3 xl:grid-cols-5">
         <div>
           <dt className="text-caption text-text-muted">위험 점수</dt>
-          <dd className="mt-1"><RiskBar risk={score.risk} width="w-28" /></dd>
+          <dd className="mt-1"><RiskBar risk={score.risk} muted={score.rank == null} width="w-16 sm:w-24" /></dd>
         </div>
         <div>
           <dt className="text-caption text-text-muted">카카오 평점</dt>
-          <dd className="num mt-1 inline-flex items-center gap-1 font-bold">
+          <dd className="num mt-1 flex flex-wrap items-center gap-1 font-bold">
             <Star size={13} className="text-text-muted" aria-hidden />
             {rating(s.kakao.rating)} <span className="font-normal text-text-muted">({s.kakao.count.toLocaleString()}건 · 2점 이하 {pct(s.kakao.lowShare)})</span>
           </dd>

@@ -22,17 +22,17 @@ export interface DiagnoseInput {
 }
 
 function explain(type: ComplaintType, cause: CauseClass, count: number, drift: DetectedDrift | undefined, st: HqStandard | undefined): string {
-  const base = `저평점 리뷰 ${count}건에 '${type}' 불만이 있어요.`;
+  const base = `저평점 리뷰 ${count}건에서 ‘${type}’ 불만 확인.`;
   if (cause === '지식 공백')
     return type === '직원 태도'
-      ? `${base} 같은 리뷰에 규칙 관련 불만이 함께 있어 태도보다 규칙 안내가 부족해서 생긴 갈등으로 봤어요.`
-      : `${base} ${st ? `본사 표준 '${st.title}'대로 미리 안내했다면` : '안내 기준을 알고 미리 말했다면'} 줄일 수 있는 불만이라 지식 공백으로 봤어요.`;
+      ? `${base} 같은 리뷰에 매장 규칙 관련 불만이 함께 나타나 안내 부족 가능성으로 분류.`
+      : `${base} ${st ? `본사 표준 ‘${st.title}’에 따른 사전 안내` : '운영 기준의 사전 안내'}로 예방할 수 있는 유형으로 분류.`;
   if (cause === '매장 자체 규칙')
     return type === '최소주문' && !drift
-      ? `${base} ${st ? `본사 표준 '${st.title}'과 달리` : '본사 표준과 달리'} 매장이 자체로 정한 주문 조건으로 보여요.`
-      : `${base} 리뷰에 '${drift?.observed ?? '본사 표준과 다른 운영'}'이 드러나 매장 자체 규칙으로 봤어요.`;
-  if (cause === '운영·인력') return `${base} 규칙 안내와 관계없는 응대·인력 문제로 보여 운영·인력으로 봤어요.`;
-  return `${base} 위생·품질 문제라 QSC 점검이 필요한 원인으로 봤어요.`;
+      ? `${base} ${st ? `본사 표준 ‘${st.title}’과 다른` : '본사 표준과 다른'} 주문 조건이 언급되어 매장 자체 규칙으로 추정.`
+      : `${base} 리뷰에서 확인된 운영 차이 ‘${drift?.observed ?? '본사 표준과 다른 운영'}’. 매장 자체 규칙으로 분류.`;
+  if (cause === '운영·인력') return `${base} 응대 또는 인력 운영 관련 유형으로 분류.`;
+  return `${base} 위생·품질 관련 유형으로 분류. 품질·서비스·청결 점검 대상.`;
 }
 
 const DRIFT_TYPE: Partial<Record<ComplaintType, DetectedDrift['key']>> = { 이용시간제한: 'time', '좌석·인원': 'seat', 최소주문: 'minorder' };
@@ -68,10 +68,10 @@ export function findingsByRules(inp: DiagnoseInput): { findings: Finding[]; summ
       ...(inp.brandRates[type] !== undefined ? { brandRate: inp.brandRates[type] } : {}),
     }];
   });
-  if (!findings.length) return { findings, summary: `${inp.store.name}은 원인을 붙일 저평점 불만이 없어요.` };
+  if (!findings.length) return { findings, summary: `${inp.store.name} · 분석 대상 저평점 불만 없음.` };
   const byCause = CAUSES.map((c) => [c, findings.filter((f) => f.cause === c).reduce((s, f) => s + f.count, 0)] as const).filter(([, n]) => n);
   const ks = inp.stats.score.knowledgeShare;
-  const summary = `${inp.store.name}의 저평점 리뷰 ${tally.lowTotal}건에서 상위 불만은 ${findings.slice(0, 3).map((f) => `${f.complaint}(${f.count}건)`).join(', ')}이에요. 원인별로는 ${byCause.map(([c, n]) => `${c} ${n}건`).join(', ')}이고, 지식 공백 비중은 ${ks === null ? '미확인' : pct(ks)}예요.${drifts.length ? ` 본사 표준과 다른 운영 ${drifts.length}건이 리뷰에 보여요.` : ''}`;
+  const summary = `${inp.store.name} 저평점 리뷰 ${tally.lowTotal}건. 주요 불만은 ${findings.slice(0, 3).map((f) => `${f.complaint}(${f.count}건)`).join(', ')}. 원인별 분류는 ${byCause.map(([c, n]) => `${c} ${n}건`).join(', ')}. 지식 공백 비중 ${ks === null ? '미확인' : pct(ks)}.${drifts.length ? ` 본사 표준과 다른 운영 ${drifts.length}건 확인.` : ''}`;
   return { findings, summary };
 }
 
@@ -141,6 +141,6 @@ export function driftDetector(store: Store, reviews: Review[], standards: HqStan
   const known = new Set(standards.map((s) => s.id));
   return {
     out: { drifts, findings: out },
-    summary: drifts.length ? `본사 표준과 다른 운영 ${drifts.length}건: ${drifts.map((d) => `${d.standardId}${known.has(d.standardId) ? '' : '(표준 없음)'} ${d.observed}`).join(' / ')}` : '본사 표준과 다른 운영이 리뷰에 보이지 않아요',
+    summary: drifts.length ? `본사 표준과 다른 운영 ${drifts.length}건: ${drifts.map((d) => `${d.standardId}${known.has(d.standardId) ? '' : '(표준 없음)'} ${d.observed}`).join(' / ')}` : '리뷰에서 확인된 표준 차이 없음',
   };
 }

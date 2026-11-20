@@ -1,5 +1,5 @@
 // 맨 위 한 줄 경보 띠(금융 UrgentCallout + FallGuard 관제실 '확인 / 모두 확인').
-// 새로 고위험이 된 매장 / 열린 표준 차이 / 승인 대기 개정 제안. '확인'은 본 것 표시로 이 브라우저에만 남는다.
+// 미확인 고위험 매장 / 미처리 표준 차이 / 승인 대기 개정 제안. '확인'은 본 것 표시로 이 브라우저에만 남는다.
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, CheckCheck, GitPullRequestArrow, ScrollText, Siren } from 'lucide-react';
@@ -47,12 +47,12 @@ export function AlertStrip({ o }: { o: HqOverview }) {
       danger: true,
       text: (
         <>
-          새로 고위험이 된 매장 <b className="num text-red">{newHigh.length}</b>곳 · {newHigh.slice(0, 2).map((r) => r.store.name).join(', ')}
+          미확인 고위험 매장 <b className="num text-red">{newHigh.length}</b>곳 · {newHigh.slice(0, 2).map((r) => r.store.name).join(', ')}
           {newHigh.length > 2 && ' 외'}
         </>
       ),
       to: newHigh.length === 1 ? `/hq/stores/${newHigh[0].store.id}` : '/hq?high=1#ranking',
-      go: newHigh.length === 1 ? '매장 보기' : '고위험만 보기',
+      go: newHigh.length === 1 ? '매장 보기' : '고위험 매장 조회',
       onAck: () => update({ high: high.map((r) => r.store.id) }),
     },
     drifts > 0 && drifts !== ack.drifts && {
@@ -61,7 +61,7 @@ export function AlertStrip({ o }: { o: HqOverview }) {
       danger: false,
       text: (
         <>
-          열린 표준 차이 <b className="num">{drifts}</b>건
+          미처리 표준 차이 <b className="num">{drifts}</b>건
         </>
       ),
       to: '/hq/standards#drifts',
@@ -87,15 +87,15 @@ export function AlertStrip({ o }: { o: HqOverview }) {
     return (
       <p className="mb-5 flex flex-wrap items-center gap-2 rounded-card border border-line bg-surface px-4 py-2.5 text-caption text-text-muted" role="status">
         <CheckCheck size={15} className="text-done" aria-hidden />
-        새로 확인할 것이 없어요 · 고위험 <span className="num">{high.length}</span>곳 · 열린 표준 차이 <span className="num">{drifts}</span>건 · 승인 대기 제안 <span className="num">{proposals}</span>건
+        모든 운영 알림 확인 완료 · 고위험 <span className="num">{high.length}</span>곳 · 미처리 표준 차이 <span className="num">{drifts}</span>건 · 승인 대기 제안 <span className="num">{proposals}</span>건
       </p>
     );
 
   return (
-    <aside aria-label="확인할 것" className="mb-5 overflow-hidden rounded-card border border-line bg-surface shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-ink px-4 py-2 text-white">
-        <span className="font-display text-body">확인할 것 <span className="ml-1 font-mono text-[0.6875rem] tracking-[0.14em] text-white/60">ALERTS</span></span>
-        <button type="button" onClick={() => items.forEach((i) => i.onAck())} className="on-ink inline-flex h-8 items-center gap-1 rounded-ctl border border-white/40 px-2.5 text-caption hover:bg-white/10">
+    <aside aria-label="운영 알림" className="mb-5 overflow-hidden rounded-card border border-line bg-surface shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-sunken px-4 py-2 text-ink">
+        <h2 className="text-section font-bold">운영 알림</h2>
+        <button type="button" onClick={() => update({ high: high.map((r) => r.store.id), drifts, proposals })} className="inline-flex h-8 items-center gap-1 rounded-ctl border border-line-strong bg-surface px-2.5 text-caption hover:bg-ink-weak">
           <CheckCheck size={13} aria-hidden />
           모두 확인
         </button>
@@ -104,11 +104,11 @@ export function AlertStrip({ o }: { o: HqOverview }) {
         {items.map((it) => {
           const Icon = it.icon;
           return (
-            <li key={it.key} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
+            <li key={it.key} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 px-4 py-2.5 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
               <Icon size={16} aria-hidden className={cx('shrink-0', it.danger ? 'text-red' : 'text-amber-text')} />
               <span className="min-w-0 flex-1 text-body">{it.text}</span>
-              <span className="flex shrink-0 items-center gap-1.5">
-                <Link to={it.to} className="inline-flex h-9 items-center gap-1 rounded-ctl bg-ink px-3 text-caption font-bold text-white hover:bg-ink-hover">
+              <span className="col-start-2 flex flex-wrap items-center gap-1.5 sm:col-start-auto">
+                <Link to={it.to} className="inline-flex h-9 items-center gap-1 rounded-ctl px-2 text-caption font-bold text-ink hover:bg-ink-weak">
                   {it.go}
                   <ArrowRight size={13} aria-hidden />
                 </Link>

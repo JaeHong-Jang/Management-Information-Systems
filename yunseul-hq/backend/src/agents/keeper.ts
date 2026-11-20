@@ -46,7 +46,7 @@ function conflictsByRules(cards: Card[]) {
       const ta = a.actions.join(' ') + a.avoid + a.reason;
       const tb = b.actions.join(' ') + b.avoid + b.reason;
       if ((no.test(ta) && yes.test(tb)) || (yes.test(ta) && no.test(tb)))
-        out.push({ ids: [a.id, b.id], issue: `${a.source} [${a.id}]와 ${b.source} [${b.id}]의 지시가 서로 달라요. 점장이 하나로 정리해야 해요.` });
+        out.push({ ids: [a.id, b.id], issue: `${a.source} [${a.id}] 및 ${b.source} [${b.id}]의 대응 지침이 상충함.` });
     }
   return out;
 }
@@ -62,16 +62,16 @@ export async function linter(storeId: string, ctx: StoreCtx): Promise<StepOut<Li
   const links: db.Link[] = [];
 
   for (const c of approved) {
-    if (c.expires < today) issues.push({ kind: '만료', ids: [c.id], detail: `만료일(${c.expires})이 지났어요. 지금도 맞는지 확인하고 갱신하세요.` });
-    else if (c.expires <= soon) issues.push({ kind: '만료 임박', ids: [c.id], detail: `${c.expires} 만료 예정이에요.` });
-    if (c.notHelpful > c.helpful && c.uses >= 3) issues.push({ kind: '효과 낮음', ids: [c.id], detail: `'도움 안 됨'(${c.notHelpful})이 '도움 됨'(${c.helpful})보다 많아요.` });
-    if (!c.reason.trim()) issues.push({ kind: '이유 없음', ids: [c.id], detail: '판단 이유가 비어 있어 알바가 응용하기 어려워요.' });
+    if (c.expires < today) issues.push({ kind: '만료', ids: [c.id], subject: c.title, detail: `유효기간 ${c.expires} 종료` });
+    else if (c.expires <= soon) issues.push({ kind: '만료 임박', ids: [c.id], subject: c.title, detail: `유효기간 ${c.expires} 종료 예정` });
+    if (c.notHelpful > c.helpful && c.uses >= 3) issues.push({ kind: '효과 낮음', ids: [c.id], subject: c.title, detail: `도움 안 됨 ${c.notHelpful}건 · 도움 됨 ${c.helpful}건 · 사용 ${c.uses}회` });
+    if (!c.reason.trim()) issues.push({ kind: '이유 없음', ids: [c.id], subject: c.title, detail: '카드의 판단 근거 미등록' });
   }
   for (let i = 0; i < approved.length; i++)
     for (let j = i + 1; j < approved.length; j++) {
       const [a, b] = [approved[i], approved[j]];
       if (a.topic === b.topic && similarity(a.title + a.situation, b.title + b.situation) > 0.3) {
-        issues.push({ kind: '중복', ids: [a.id, b.id], detail: '비슷한 상황을 다루는 카드예요. 하나로 합치면 검색이 정확해져요.' });
+        issues.push({ kind: '중복', ids: [a.id, b.id], subject: a.topic, detail: '동일 주제에서 적용 상황과 제목이 유사한 카드 2건 확인' });
         links.push({ source: a.id, target: b.id, kind: 'duplicates' });
       }
     }
@@ -86,7 +86,7 @@ export async function linter(storeId: string, ctx: StoreCtx): Promise<StepOut<Li
           async () =>
             (await ask('linter', {
               system: storeSystem(ctx),
-              user: `같은 토픽의 카드들이다. 서로 모순되는 지시(한쪽은 하라, 한쪽은 하지 말라)만 찾아라. 단순 중복은 제외.\n\n${approved.map((c) => `[${c.id}] (${c.topic}, ${c.source}) ${c.title} / 대응: ${c.actions.join(' / ')} / 금지: ${c.avoid}`).join('\n')}`,
+              user: `같은 토픽의 카드들이다. 서로 모순되는 지시(한쪽은 하라, 한쪽은 하지 말라)만 찾아라. issue에는 근거와 상충 내용을 한 문장의 간결한 보고서 문체로 작성하고 후속 조치는 생략한다. 단순 중복은 제외.\n\n${approved.map((c) => `[${c.id}] (${c.topic}, ${c.source}) ${c.title} / 대응: ${c.actions.join(' / ')} / 금지: ${c.avoid}`).join('\n')}`,
               schema: z.object({ conflicts: z.array(z.object({ ids: z.array(z.string()), issue: z.string() })) }),
             }))?.conflicts ?? null,
           () => conflictsByRules(approved),
@@ -96,24 +96,24 @@ export async function linter(storeId: string, ctx: StoreCtx): Promise<StepOut<Li
           return result;
         });
   for (const c of conflicts) {
-    issues.push({ kind: '상충', ids: c.ids, detail: c.issue });
+    issues.push({ kind: '상충', ids: c.ids, subject: approved.find((card) => c.ids.includes(card.id))?.topic, detail: c.issue });
     if (c.ids.length >= 2) links.push({ source: c.ids[0], target: c.ids[1], kind: 'conflicts' });
   }
 
   // 본사 표준과 다른 운영(RuleDrift)과, 본사 표준 카드와 다른 토픽 지시를 가진 매장 카드
   for (const dr of d.drifts.filter((x) => x.storeId === storeId && x.status === 'open')) {
     const st = db.standard(dr.standardId);
-    issues.push({ kind: '표준 불일치', ids: [dr.id], detail: `리뷰에서 본사 표준 ${st ? `'${st.title}'` : dr.standardId}과 다른 운영이 보여요: ${dr.observed}` });
+    issues.push({ kind: '표준 불일치', ids: [dr.id], standardId: dr.standardId, subject: st?.title ?? dr.standardId, detail: dr.observed });
   }
 
   const waiting = d.questions.filter((q) => q.storeId === storeId && q.status === 'escalated');
-  if (waiting.length) issues.push({ kind: '공백', ids: waiting.map((q) => q.id), detail: `위키가 답하지 못한 질문 ${waiting.length}건이 점장 답을 기다려요. 답하면 사례로 쌓여요.` });
+  if (waiting.length) issues.push({ kind: '공백', ids: waiting.map((q) => q.id), subject: '미답변 현장 질문', detail: `기존 카드로 답변하지 못한 질문 ${waiting.length}건` });
   for (const topic of d.topics.filter((t) => t !== '기타')) {
     const n = approved.filter((c) => c.topic === topic).length;
-    if (n < 1) issues.push({ kind: '공백', ids: [], detail: `'${topic}' 토픽에 사례가 없어요. 숙련 직원에게 회고를 요청하세요.` });
+    if (n < 1) issues.push({ kind: '공백', ids: [], subject: topic, detail: '해당 주제의 승인 사례 카드 0건' });
   }
   const pending = db.storeCards(storeId).filter((c) => c.status === 'pending' && c.storeId === storeId);
-  if (pending.length) issues.push({ kind: '승인 대기', ids: pending.map((c) => c.id), detail: `승인 대기 사례 ${pending.length}건` });
+  if (pending.length) issues.push({ kind: '승인 대기', ids: pending.map((c) => c.id), subject: '매장 사례 카드', detail: `점장 승인 대기 ${pending.length}건` });
 
   const order: LintIssue['kind'][] = ['상충', '표준 불일치', '만료', '효과 낮음', '공백', '중복', '만료 임박', '이유 없음', '승인 대기'];
   issues.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
@@ -153,7 +153,7 @@ export function promoter(stores: Store[], scores: Map<string, StoreScore>, stand
       standardId: st?.id ?? null,
       title,
       change: CHANGE[c.complaint] ?? `${c.complaint} 불만을 줄이는 안내 기준을 표준에 넣는다`,
-      why: `위험 상위 20개 매장 중 ${c.storeIds.length}곳(${c.storeIds.slice(0, 6).map(name).join(', ')}${c.storeIds.length > 6 ? ' 외' : ''})에서 '${c.complaint}'이 저평점 상위 불만이에요. 해당 저평점 리뷰 ${c.lowCount}건.`,
+      why: `위험 상위 20개 매장 중 ${c.storeIds.length}곳(${c.storeIds.slice(0, 6).map(name).join(', ')}${c.storeIds.length > 6 ? ' 외' : ''})에서 ‘${c.complaint}’ 유형이 주요 불만으로 확인됨. 해당 저평점 리뷰 ${c.lowCount}건.`,
       storeIds: c.storeIds,
       status: 'pending',
       via: 'rules',
@@ -161,6 +161,6 @@ export function promoter(stores: Store[], scores: Map<string, StoreScore>, stand
   }
   return {
     out,
-    summary: out.length ? `개정 제안 ${out.length}건: ${out.map((p) => p.title).join(' · ')}` : `위험 상위 20개 매장 중 ${minStores}곳 이상에서 반복되는 새 불만이 없어요${skipped ? `(이미 제안된 ${skipped}건 제외)` : ''}`,
+    summary: out.length ? `개정 제안 ${out.length}건: ${out.map((p) => p.title).join(' · ')}` : `위험 상위 20개 매장 중 ${minStores}곳 이상에서 반복된 신규 불만 없음${skipped ? `(이미 제안된 ${skipped}건 제외)` : ''}`,
   };
 }

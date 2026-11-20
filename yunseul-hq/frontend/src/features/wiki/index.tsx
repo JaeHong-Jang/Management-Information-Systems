@@ -1,169 +1,154 @@
-// /store/:id/wiki 매장 위키: 목록 + 상세.
-// ≥1024: 왼쪽 340px 목록(토픽별 묶음, 따로 스크롤) · 오른쪽 고른 카드 전체(토픽 요약 + 카드). <1024: 목록에서 고른 줄 바로 아래에 카드를 펼친다.
-// 주소 #C001이면 그 카드를 고르고 승인 대기·보관 카드도 보이게 한다.
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
-import { Archive, Building2, ChevronRight, Search, Store as StoreIcon } from 'lucide-react';
-import type { Card, CardScope, StoreState } from '@shared/contracts';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { Archive, ArrowLeft, ChevronRight, Network, Search } from 'lucide-react';
+import type { Card, CardScope } from '@shared/contracts';
 import { useApp } from '@/app/AppData';
+import { useStoreData } from '@/app/StoreData';
 import { api } from '@/shared/api/client';
-import { useAction, useAsync } from '@/shared/lib/useAsync';
+import { useAction } from '@/shared/lib/useAsync';
 import { AsyncView, Button, Empty, InlineError, KnowledgeCard, PageHeader } from '@/shared/ui';
 import { CARD_STATUS } from '@/shared/theme/semantics';
-import { cx } from '@/shared/lib/format';
-
-const sel = 'h-10 min-w-0 rounded-ctl border border-line-strong bg-surface px-2 text-body';
+import './wiki.css';
 
 export function WikiPage() {
   const { id = '' } = useParams();
   const { hash } = useLocation();
-  const state = useAsync(() => api.state(id), [id]);
+  const { role } = useApp();
+  const { state } = useStoreData();
   const [scope, setScope] = useState<CardScope | ''>('');
   const [showAll, setShowAll] = useState(false);
   const [q, setQ] = useState('');
   const [topic, setTopic] = useState('');
-  const [picked, setPicked] = useState<string | null>(null);
-
-  // #C001: 그 카드를 고르고, 승인 대기·보관이어도 보이게
+  const [picked, setPicked] = useState('');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const detail = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLElement>(null);
+  const incoming = state.data?.cards.find((c) => c.id === hash.slice(1));
   useEffect(() => {
-    const cid = hash.slice(1);
-    if (!cid || !state.data?.cards.some((c) => c.id === cid)) return;
-    setShowAll(true);
-    setPicked(cid);
-  }, [hash, state.data]);
+    if (!incoming) return;
+    setQ('');
+    setTopic('');
+    setScope('');
+    setShowAll(incoming.status !== 'approved');
+    setPicked(incoming.id);
+    setDetailOpen(true);
+  }, [id, hash, incoming?.id, incoming?.status]);
+  useEffect(() => {
+    if (detailOpen && window.matchMedia('(max-width: 1023px)').matches) {
+      detail.current?.focus({ preventScroll: true });
+      detail.current?.scrollIntoView({ block: 'start' });
+    }
+  }, [detailOpen, picked]);
 
-  const grouped = useMemo(() => {
-    const cards = (state.data?.cards ?? []).filter(
-      (c) =>
-        (showAll || c.status === 'approved') &&
-        (!scope || c.scope === scope) &&
-        (!topic || c.topic === topic) &&
-        (!q.trim() || `${c.title} ${c.situation} ${c.reason} ${c.tags.join(' ')}`.includes(q.trim())),
-    );
-    const m = new Map<string, Card[]>();
-    cards.forEach((c) => m.set(c.topic, [...(m.get(c.topic) ?? []), c]));
-    return [...m.entries()];
-  }, [state.data, scope, topic, q, showAll]);
+  const query = q.trim().toLocaleLowerCase();
+  const grouped = new Map<string, Card[]>();
+  for (const c of state.data?.cards ?? []) {
+    if ((!showAll && c.status !== 'approved') || (scope && c.scope !== scope) || (topic && c.topic !== topic)) continue;
+    if (query && ![c.id, c.title, c.topic, c.situation, c.reason, ...c.tags].some((v) => v.toLocaleLowerCase().includes(query))) continue;
+    const group = grouped.get(c.topic);
+    if (group) group.push(c);
+    else grouped.set(c.topic, [c]);
+  }
+  const cards = Array.from(grouped.values()).flat();
+  const current = cards.find((c) => c.id === picked) ?? cards[0];
+  const filtered = Boolean(query || scope || topic || showAll);
+  useEffect(() => {
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
+    const scrollArea = list.current?.querySelector<HTMLElement>('.wiki-register-body');
+    const row = scrollArea?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!row || !scrollArea) return;
+    const area = scrollArea.getBoundingClientRect();
+    const bounds = row.getBoundingClientRect();
+    if (bounds.top < area.top) scrollArea.scrollTop += bounds.top - area.top;
+    else if (bounds.bottom > area.bottom) scrollArea.scrollTop += bounds.bottom - area.bottom;
+  }, [current?.id]);
 
-  const flat = grouped.flatMap(([, cs]) => cs);
-  const current = flat.find((c) => c.id === picked) ?? flat[0] ?? null;
+  function selectCard(card: Card) {
+    setPicked(card.id);
+    setDetailOpen(true);
+    if (detail.current && window.matchMedia('(min-width: 1024px)').matches && detail.current.getBoundingClientRect().top < 65) {
+      detail.current.scrollIntoView({ block: 'start' });
+    }
+  }
+  function backToList() {
+    setDetailOpen(false);
+    requestAnimationFrame(() => list.current?.querySelector<HTMLElement>('[aria-current="true"]')?.focus());
+  }
+  function resetFilters() {
+    setQ('');
+    setTopic('');
+    setScope('');
+    setShowAll(false);
+    setDetailOpen(false);
+  }
 
   return (
     <AsyncView state={state}>
       {(s) => (
-        <>
-          <PageHeader title="매장 위키" en="WIKI" sub={`${s.store.name} · 본사 카드는 전 매장 공통, 매장 카드는 이 매장에서 쌓인 노하우예요. 본사 표준 카드는 가상 표준을 따라요`} />
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <label className="relative min-w-0 flex-1 sm:max-w-[260px]">
-              <span className="sr-only">카드 검색</span>
-              <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" aria-hidden />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="카드 검색" className={cx(sel, 'w-full pl-7')} />
+        <div className="wiki-page" data-detail={detailOpen && Boolean(current)}>
+          <PageHeader title="매장 위키" sub={`${s.store.name} · 본사 공통 지침 및 매장별 업무 사례`}
+            actions={role === '점장' && <Link className="wiki-graph-link" to={`/graph?storeId=${id}`}><Network size={15} aria-hidden />지식 그래프</Link>} />
+          <div className="wiki-filters" role="search" aria-label="카드 조회 조건">
+            <label className="wiki-filter-search"><span>검색어</span>
+              <span className="wiki-input-wrap"><Search size={15} aria-hidden /><input type="search" placeholder="카드명·번호·키워드" value={q} onChange={(e) => { setQ(e.target.value); setDetailOpen(false); }} /></span>
             </label>
-            <select aria-label="토픽" className={sel} value={topic} onChange={(e) => setTopic(e.target.value)}>
-              <option value="">전체 토픽</option>
-              {s.topics.map((t) => <option key={t}>{t}</option>)}
-            </select>
-            <select aria-label="범위" className={sel} value={scope} onChange={(e) => setScope(e.target.value as CardScope | '')}>
-              <option value="">본사 + 매장</option>
-              <option value="brand">본사 카드만</option>
-              <option value="store">매장 카드만</option>
-            </select>
-            <label className="inline-flex min-h-[44px] items-center gap-1.5 text-body">
-              <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-              승인 대기·보관 카드도 보기
+            <label><span>업무 주제</span>
+              <select value={topic} onChange={(e) => { setTopic(e.target.value); setDetailOpen(false); }}>
+                <option value="">전체 주제</option>{s.topics.map((t) => <option key={t}>{t}</option>)}
+              </select>
             </label>
+            <label><span>적용 범위</span>
+              <select value={scope} onChange={(e) => { setScope(e.target.value as CardScope | ''); setDetailOpen(false); }}>
+                <option value="">전체 범위</option><option value="brand">본사 공통</option><option value="store">매장 전용</option>
+              </select>
+            </label>
+            <label className="wiki-status"><input type="checkbox" checked={showAll} onChange={(e) => { setShowAll(e.target.checked); setDetailOpen(false); }} />승인 대기·보관 포함</label>
+            {filtered && <button type="button" className="wiki-reset" onClick={resetFilters}>초기화</button>}
           </div>
-          {grouped.length === 0 || !current ? (
-            <Empty title="조건에 맞는 카드가 없어요" />
-          ) : (
-            <div className="grid items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
-              <nav aria-label="카드 목록" className="min-w-0 rounded-card border border-line bg-surface shadow-card lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-88px)] lg:overflow-y-auto">
-                <p className="border-b border-line px-4 py-2.5 text-caption text-text-muted">
-                  카드 <b className="num text-ink">{flat.length}</b>장 · 토픽 <b className="num text-ink">{grouped.length}</b>개
-                </p>
-                {grouped.map(([t, cards]) => (
-                  <section key={t} className="border-b border-line last:border-b-0">
-                    <h2 className="flex items-center justify-between bg-surface-sunken px-4 py-1.5 text-caption font-bold text-text-subtle">
-                      {t}
-                      <span className="num font-normal text-text-muted">{cards.length}</span>
-                    </h2>
-                    <ul>
-                      {cards.map((c) => (
-                        <li key={c.id} id={c.id} className="scroll-mt-24">
-                          <ListRow card={c} on={c.id === current.id} onPick={() => setPicked(c.id)} />
-                          {c.id === current.id && (
-                            <div className="border-t border-line bg-bg p-2 lg:hidden">
-                              <Detail s={s} card={c} storeId={id} onChanged={(r) => state.setData((x) => (x ? { ...x, cards: x.cards.map((y) => (y.id === r.id ? r : y)) } : x))} />
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ))}
+          {!current ? <Empty title="조회 결과 없음"><button type="button" className="wiki-reset" onClick={resetFilters}>전체 카드 조회</button></Empty> : (
+            <div className="wiki-workspace">
+              <nav className="wiki-register" aria-label="카드 목록" ref={list}>
+                <div className="wiki-register-header"><h2>카드 목록</h2><span role="status">{cards.length}건 · {grouped.size}개 주제</span></div>
+                <div className="wiki-register-body">
+                  {Array.from(grouped, ([name, entries]) => <section key={name}>
+                    <h3>{name}<span>{entries.length}</span></h3>
+                    <ul>{entries.map((c) => (
+                      <li key={c.id}><button type="button" aria-current={c.id === current.id ? 'true' : undefined} className="wiki-row" onClick={() => selectCard(c)}>
+                        <span><span className="wiki-row-title">{c.title}</span><small>{c.id} · {c.scope === 'brand' ? '본사 공통' : '매장 전용'}{c.status === 'approved' ? '' : ` · ${CARD_STATUS[c.status].label}`}</small></span>
+                        <ChevronRight size={15} aria-hidden />
+                      </button></li>
+                    ))}</ul>
+                  </section>)}
+                </div>
               </nav>
-              <div className="hidden min-w-0 lg:sticky lg:top-[72px] lg:block lg:max-h-[calc(100vh-88px)] lg:overflow-y-auto">
-                <Detail s={s} card={current} storeId={id} onChanged={(r) => state.setData((x) => (x ? { ...x, cards: x.cards.map((y) => (y.id === r.id ? r : y)) } : x))} />
+              <div className="wiki-detail" id={current.id} tabIndex={-1} ref={detail}>
+                <button type="button" className="wiki-back" onClick={backToList}><ArrowLeft size={15} aria-hidden />카드 목록</button>
+                <Detail key={current.id} card={current} storeId={id} summary={s.topicSummaries[current.topic]} onChanged={(updated) => state.setData((prev) => prev && ({ ...prev, cards: prev.cards.map((c) => c.id === updated.id ? updated : c) }))} />
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </AsyncView>
   );
 }
 
-/** 목록 한 줄: 범위 아이콘 · 제목 · (승인 전이면 상태) · 번호 */
-function ListRow({ card, on, onPick }: { card: Card; on: boolean; onPick: () => void }) {
-  const Icon = card.scope === 'brand' ? Building2 : StoreIcon;
-  const st = card.status !== 'approved' ? CARD_STATUS[card.status] : null;
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      aria-current={on ? 'true' : undefined}
-      className={cx('flex min-h-[52px] w-full items-center gap-2.5 px-4 py-2 text-left', on ? 'bg-ink text-white' : 'hover:bg-ink-weak')}
-    >
-      <Icon size={15} aria-label={card.scope === 'brand' ? '본사 카드' : '매장 카드'} className={cx('shrink-0', on ? 'text-white/80' : 'text-text-muted')} />
-      <span className="min-w-0 flex-1">
-        <span className={cx('block text-body', on ? 'font-bold' : 'text-text')}>{card.title}</span>
-        <span className={cx('block text-caption', on ? 'text-white/70' : 'text-text-muted')}>
-          <span className="num">{card.id}</span> · {card.scope === 'brand' ? '본사' : '매장'}
-          {st && ` · ${st.label}`}
-        </span>
-      </span>
-      <ChevronRight size={15} aria-hidden className={cx('shrink-0', on ? 'text-white/80' : 'text-text-muted')} />
-    </button>
-  );
-}
-
-/** 상세: 토픽 요약 한 줄 + 카드 전체. 점장은 매장 카드를 보관할 수 있다 */
-function Detail({ s, card, storeId, onChanged }: { s: StoreState; card: Card; storeId: string; onChanged: (c: Card) => void }) {
+function Detail({ card, storeId, summary, onChanged }: { card: Card; storeId: string; summary?: string; onChanged: (card: Card) => void }) {
   const { role } = useApp();
   const act = useAction();
-  const archive = async () => {
-    const r = await act.run(card.id, () => api.card(storeId, card.id, 'archive', '점장이 보관'));
-    if (r) onChanged(r);
-  };
-  const summary = s.topicSummaries[card.topic];
+  async function archive() {
+    const result = await act.run(card.id, () => api.card(storeId, card.id, 'archive', '점장이 보관'));
+    if (result) onChanged(result);
+  }
   return (
-    <div className="space-y-3">
-      {summary && (
-        <p className="rounded-ctl border border-line bg-surface-sunken px-3 py-2 text-caption text-text-subtle">
-          <b className="mr-1 text-text">{card.topic}</b>
-          {summary}
-        </p>
-      )}
-      <KnowledgeCard
-        key={card.id}
-        card={card}
-        actions={
-          role === '점장' && card.scope === 'store' && card.status === 'approved' ? (
-            <Button size="sm" variant="ghost" icon={Archive} busy={act.busy === card.id} onClick={() => void archive()}>보관</Button>
-          ) : undefined
-        }
-      />
+    <>
+      <KnowledgeCard card={card} headingLevel={2} actions={role === '점장' && card.scope === 'store' && card.status === 'approved'
+        ? <Button size="sm" variant="ghost" icon={Archive} busy={act.busy === card.id} onClick={() => void archive()}>카드 보관</Button> : undefined} />
       <InlineError message={act.error} />
-    </div>
+      {summary && <details className="wiki-topic-note">
+        <summary>{card.topic} · 주제별 편집 메모</summary>
+        <p>{summary}</p>
+      </details>}
+    </>
   );
 }

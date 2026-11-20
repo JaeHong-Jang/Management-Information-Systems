@@ -79,9 +79,8 @@ export function RankingTable({ rows, shapes }: { rows: StoreRow[]; shapes: Map<s
   return (
     <Panel
       id="ranking"
-      title="위험 순위"
-      en="RANKING"
-      sub={`위험 점수는 규칙 배점(R1~R5) 합계예요. ${list.length.toLocaleString()}곳 표시`}
+      title="매장 위험 순위"
+      sub={`조회 결과 ${list.length.toLocaleString()}곳 · 카카오 별점 10건 이상 매장 순위 · 위험 점수는 R1~R5 배점의 합계`}
       bodyClass="p-0"
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
@@ -123,7 +122,7 @@ export function RankingTable({ rows, shapes }: { rows: StoreRow[]; shapes: Map<s
         )}
         {anyFilter && (
           <button type="button" className="text-caption text-ink underline-offset-2 hover:underline" onClick={() => { setText(''); change({ q: null, region: null, area: null, cross: null, high: null, gu: null }); }}>
-            필터 모두 풀기
+            필터 초기화
           </button>
         )}
         {/* 카드 목록(md 미만)에서는 머리글이 없으므로 정렬을 상자로 고른다 */}
@@ -139,7 +138,7 @@ export function RankingTable({ rows, shapes }: { rows: StoreRow[]; shapes: Map<s
       {/* md 이상: 표 */}
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[980px] border-collapse text-body">
-          <caption className="sr-only">매장 위험 순위. 머리글 버튼으로 정렬해요</caption>
+          <caption className="sr-only">매장별 위험 순위. 열 제목 선택 시 정렬</caption>
           <thead className="bg-surface-sunken text-left text-caption text-text-muted">
             <tr>
               <th scope="col" className="whitespace-nowrap px-3 py-2 text-right font-medium">순위</th>
@@ -160,16 +159,14 @@ export function RankingTable({ rows, shapes }: { rows: StoreRow[]; shapes: Map<s
               return (
                 <tr
                   key={s.id}
-                  tabIndex={0}
                   onClick={() => nav(`/hq/stores/${s.id}`)}
-                  onKeyDown={(e) => e.key === 'Enter' && nav(`/hq/stores/${s.id}`)}
                   className={cx('cursor-pointer border-t border-line hover:bg-ink-weak focus:bg-ink-weak', s.isTarget && 'bg-yellow-weak')}
                 >
                   <td className={cx('num px-3 py-2 text-right text-text-subtle', high && 'shadow-[inset_4px_0_0_var(--brand-red)]')}>{score.rank ?? '—'}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Link to={`/hq/stores/${s.id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-ink hover:underline" tabIndex={-1}>{s.name}</Link>
-                      {s.isTarget && <Tag tone="ink">시연 타깃</Tag>}
+                      <Link to={`/hq/stores/${s.id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-ink hover:underline">{s.name}</Link>
+                      {s.isTarget && <Tag tone="ink">시연 매장</Tag>}
                       {s.excluded && <Tag title={s.excluded}>분석 제외</Tag>}
                       {!s.excluded && score.rank == null && <Tag>표본 부족</Tag>}
                     </div>
@@ -230,7 +227,7 @@ export function RankingTable({ rows, shapes }: { rows: StoreRow[]; shapes: Map<s
                     <p className="flex flex-wrap items-center gap-1.5">
                       <span className="num text-caption text-text-muted">{score.rank != null ? `${score.rank}위` : '—'}</span>
                       <b className="text-ink">{s.name}</b>
-                      {s.isTarget && <Tag tone="ink">시연 타깃</Tag>}
+                      {s.isTarget && <Tag tone="ink">시연 매장</Tag>}
                       {high && <RiskBadge risk={score.risk} />}
                     </p>
                     <p className="text-caption text-text-muted">{s.region} {s.district} · {s.area}</p>
@@ -249,7 +246,7 @@ export function RankingTable({ rows, shapes }: { rows: StoreRow[]; shapes: Map<s
         })}
       </ul>
 
-      {list.length === 0 && <p className="px-4 py-6 text-body text-text-muted">조건에 맞는 매장이 없어요. 필터를 바꿔 보세요.</p>}
+      {list.length === 0 && <p className="px-4 py-6 text-body text-text-muted">조회 조건에 해당하는 매장 없음</p>}
       {list.length > shown && (
         <div className="border-t border-line px-4 py-3">
           <Button size="sm" onClick={() => setShown((n) => n + PAGE)}>

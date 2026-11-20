@@ -1,5 +1,6 @@
 // 원인 진단: 원인 4분류별 진단 결과, 브랜드 평균 대비 비중, 리뷰 인용.
 // 인용 속 근거어는 형광펜(<mark>), 인용을 누르면 리뷰 원문 서랍을 연다. 실행 버튼은 오른쪽 결정 패널에 있다.
+import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import type { Diagnosis, Finding, Quote } from '@shared/contracts';
 import { CauseChip, Empty, Highlighted, Panel, Provenance, ShareBar, Tag, VirtualBadge, keywordRanges } from '@/shared/ui';
@@ -11,23 +12,25 @@ export function DiagnosisPanel({ diagnosis: dx, onQuote }: { diagnosis: Diagnosi
     <Panel
       id="diagnosis"
       title="원인 진단"
-      en="DIAGNOSIS"
-      sub="숫자는 규칙 계산, 설명은 리뷰 인용과 함께 써요. 인용은 검증팀이 원문과 대조했어요"
+      sub="저평점 리뷰의 불만 유형별 원인과 원문 근거"
       actions={
         dx && (
           <>
-            <Provenance via={dx.via} approved={false} pendingLabel="진단은 참고용 · 처방을 보낼 때 사람이 판단" />
+            <Provenance via={dx.via} approved={false} pendingLabel="참고용 진단 · 처방은 SV 승인 후 발송" />
             <span className="num text-caption text-text-muted">{dateTime(dx.created)}</span>
           </>
         )
       }
     >
       {!dx ? (
-        <Empty title="아직 진단이 없어요">결정 패널의 '진단 실행'을 누르면 진단팀이 저평점 리뷰의 원인을 나눠요.</Empty>
+        <Empty title="등록된 진단 없음"><Link to="#actions" className="text-ink underline">처방·후속 조치에서 원인 진단 실행</Link></Empty>
       ) : (
         <>
-          <p className="mb-5 max-w-[72ch] text-body">{dx.summary}</p>
-          {dx.findings.length === 0 && <Empty title="근거가 확인된 진단 결과가 없어요" />}
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b border-line pb-3">
+            <p className="text-body">진단 불만 <strong className="num">{dx.findings.length}개 유형</strong> · 원인 <strong className="num">{new Set(dx.findings.map((f) => f.cause)).size}개 분류</strong></p>
+            <details className="text-body text-text-subtle"><summary className="cursor-pointer font-medium">진단 요약 원문</summary><p className="mt-2 max-w-[64ch]">{dx.summary}</p></details>
+          </div>
+          {dx.findings.length === 0 && <Empty title="근거가 확인된 진단 없음" />}
           <div className="space-y-6">
             {CAUSES.map((cause) => {
               const fs = dx.findings.filter((f) => f.cause === cause);
@@ -36,7 +39,7 @@ export function DiagnosisPanel({ diagnosis: dx, onQuote }: { diagnosis: Diagnosi
                 <section key={cause}>
                   <header className="mb-2 flex flex-wrap items-center gap-2">
                     <CauseChip cause={cause} size="md" />
-                    <span className="text-caption text-text-muted">처방 받는 곳: {CAUSE[cause].to}</span>
+                    <span className="text-caption text-text-muted">담당 {CAUSE[cause].to}</span>
                   </header>
                   <ul className="space-y-3">
                     {fs.map((f) => <FindingItem key={f.id} f={f} onQuote={onQuote} />)}
@@ -54,17 +57,17 @@ export function DiagnosisPanel({ diagnosis: dx, onQuote }: { diagnosis: Diagnosi
 function FindingItem({ f, onQuote }: { f: Finding; onQuote: (f: Finding, q: Quote) => void }) {
   const c = CAUSE[f.cause];
   return (
-    <li className="rounded-card border border-line p-3">
-      <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
+    <li className="border-t border-line py-3 first:border-t-0">
+      <div className="grid gap-3 lg:grid-cols-[minmax(140px,.55fr)_minmax(0,1.45fr)]">
         <div>
-          <p className="font-bold">{f.complaint}</p>
+          <h3 className="text-section">{f.complaint}</h3>
           <p className="num text-caption text-text-subtle">
             저평점 {f.count}건 · 매장 {pct(f.share)}
             {f.brandRate != null && <> · 브랜드 평균 {pct(f.brandRate)}</>}
           </p>
           <div className="mt-2">
             <ShareBar value={f.share} compare={f.brandRate} color={c.bar} />
-            {f.brandRate != null && <p className="mt-1 text-caption text-text-muted">세로선 = 브랜드 평균</p>}
+            {f.brandRate != null && <p className="mt-1 text-caption text-text-muted">세로선은 브랜드 평균</p>}
           </div>
           {f.standardId && (
             <p className="mt-2 flex flex-wrap items-center gap-1 text-caption">
@@ -74,9 +77,9 @@ function FindingItem({ f, onQuote }: { f: Finding; onQuote: (f: Finding, q: Quot
           )}
         </div>
         <div className="min-w-0">
-          <p className="text-body">{f.explanation}</p>
+          <details className="mb-2 text-body"><summary className="cursor-pointer font-medium text-text-subtle">분류 사유</summary><p className="mt-1">{f.explanation}</p></details>
           {f.quotes.length === 0 ? (
-            <p className="mt-2 text-caption text-amber-text">인용이 검증되지 않아 보류된 결과예요</p>
+            <p className="mt-2 text-caption text-amber-text">인용 검증 보류</p>
           ) : (
             <ul className="mt-2 space-y-2">
               {f.quotes.map((q) => (

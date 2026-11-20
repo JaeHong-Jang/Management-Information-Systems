@@ -1,182 +1,150 @@
-// /graph 지식 그래프: 매장 → 불만 → 원인 → 처방 → 카드. 층을 나눈 SVG(왼쪽에서 오른쪽으로 읽는다)
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import type { CauseClass, Graph, GraphNode, NodeType } from '@shared/contracts';
+import { ChevronDown, ChevronRight, ExternalLink, Search, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import type { Graph, NodeType } from '@shared/contracts';
 import { useApp } from '@/app/AppData';
 import { api } from '@/shared/api/client';
 import { useLive } from '@/shared/api/live';
 import { useAsync } from '@/shared/lib/useAsync';
-import { AsyncView, CauseChip, Empty, PageHeader, Panel } from '@/shared/ui';
-import { CAUSE, CAUSES } from '@/shared/theme/semantics';
-
-const MAIN: NodeType[] = ['store', 'complaint', 'cause', 'prescription', 'card'];
-const TYPE_LABEL: Record<NodeType, string> = {
-  store: '매장', complaint: '불만 유형', cause: '원인', prescription: '처방', card: '사례 카드', standard: '본사 표준(가상)', question: '질문', person: '사람',
-};
-const COL_W = 210;
-const ROW_H = 30;
-const PAD_X = 16;
-const PAD_Y = 40;
+import { AsyncView, Empty, PageHeader } from '@/shared/ui';
+import { NetworkCanvas } from './NetworkCanvas';
+import { GROUPS, RELATIONS } from './network';
+import './graph.css';
 
 export function GraphPage() {
-  const [sp] = useSearchParams();
+  const [params] = useSearchParams();
   const { targetId } = useApp();
-  const storeId = sp.get('storeId') ?? targetId ?? undefined;
+  const storeId = params.get('storeId') ?? targetId ?? undefined;
+  return <GraphSource key={storeId ?? 'all'} storeId={storeId} />;
+}
+
+function GraphSource({ storeId }: { storeId?: string }) {
   const graph = useAsync(() => api.graph(storeId), [storeId]);
   const { endCount } = useLive();
-  const first = useRef(true);
+  const lastCount = useRef(endCount);
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (endCount === lastCount.current) return;
+    lastCount.current = endCount;
     void graph.reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endCount]);
-
-  return (
-    <>
-      <PageHeader title="지식 그래프" en="GRAPH" sub="리뷰 불만이 어떤 원인으로 분류되고, 어떤 처방과 카드로 이어졌는지 보여 줘요. 노드를 누르면 연결이 강조돼요" />
-      <AsyncView state={graph}>{(g) => (g.nodes.length === 0 ? <Empty title="아직 그래프가 비어 있어요">진단과 처방을 실행하면 노드가 생겨요.</Empty> : <LayeredGraph g={g} />)}</AsyncView>
-    </>
-  );
+  }, [endCount, graph.reload]);
+  return <>
+    <PageHeader title="지식 그래프" sub="매장별 불만, 진단 원인, 운영 표준과 사례 카드의 연결 관계" />
+    <AsyncView state={graph}>{g => g.nodes.length ? <GraphExplorer graph={g} storeId={storeId} /> : <Empty title="등록된 지식 항목 없음">매장 진단 또는 처방 등록 후 조회 가능</Empty>}</AsyncView>
+  </>;
 }
 
-function causeOf(n: GraphNode): CauseClass | null {
-  return (CAUSES as string[]).includes(n.label) ? (n.label as CauseClass) : null;
-}
+const TYPES = Object.keys(GROUPS) as NodeType[];
 
-function LayeredGraph({ g }: { g: Graph }) {
-  const [extra, setExtra] = useState(false);
-  const [sel, setSel] = useState<string | null>(null);
-  const cols = extra ? [...MAIN, 'extra' as const] : MAIN;
-
-  const layout = useMemo(() => {
-    const colOf = (t: NodeType) => (MAIN.includes(t) ? MAIN.indexOf(t) : extra ? MAIN.length : -1);
-    const nodes = g.nodes.filter((n) => colOf(n.type) >= 0);
-    const buckets = new Map<number, GraphNode[]>();
-    nodes.forEach((n) => buckets.set(colOf(n.type), [...(buckets.get(colOf(n.type)) ?? []), n]));
-    const pos = new Map<string, { x: number; y: number; n: GraphNode }>();
-    let maxRows = 0;
-    buckets.forEach((list, c) => {
-      const sorted = [...list].sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || a.label.localeCompare(b.label, 'ko'));
-      maxRows = Math.max(maxRows, sorted.length);
-      sorted.forEach((n, i) => pos.set(n.id, { x: PAD_X + c * COL_W, y: PAD_Y + i * ROW_H, n }));
+function GraphExplorer({ graph, storeId }: { graph: Graph; storeId?: string }) {
+  const [selectedId, setSelectedId] = useState('');
+  const [local, setLocal] = useState(false);
+  const [hidden, setHidden] = useState<Set<NodeType>>(new Set());
+  const [query, setQuery] = useState('');
+  const [openSearch, setOpenSearch] = useState(false);
+  const searchBox = useRef<HTMLDivElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const inspectorTitle = useRef<HTMLHeadingElement>(null);
+  const byId = useMemo(() => new Map(graph.nodes.map(n => [n.id, n])), [graph.nodes]);
+  const types = TYPES.filter(t => graph.nodes.some(n => n.type === t));
+  const visible = useMemo(() => {
+    const nodes = graph.nodes.filter(n => !hidden.has(n.type));
+    const ids = new Set(nodes.map(n => n.id));
+    return { nodes, edges: graph.edges.filter(e => ids.has(e.source) && ids.has(e.target)) };
+  }, [graph, hidden]);
+  const selected = visible.nodes.find(n => n.id === selectedId) ?? visible.nodes.find(n => n.type === 'store') ?? visible.nodes[0];
+  const relations = useMemo(() => {
+    if (!selected) return [];
+    return graph.edges.flatMap(e => {
+      const outgoing = e.source === selected.id;
+      if (!outgoing && e.target !== selected.id) return [];
+      const node = byId.get(outgoing ? e.target : e.source);
+      return node ? [{ id: e.id, label: RELATIONS[e.type][outgoing ? 0 : 1], node }] : [];
     });
-    const edges = g.edges.filter((e) => pos.has(e.source) && pos.has(e.target));
-    return { pos, edges, height: PAD_Y + maxRows * ROW_H + 8, width: PAD_X * 2 + cols.length * COL_W };
-  }, [g, extra, cols.length]);
-
-  const neighbors = useMemo(() => {
-    if (!sel) return null;
-    const s = new Set([sel]);
-    layout.edges.forEach((e) => {
-      if (e.source === sel) s.add(e.target);
-      if (e.target === sel) s.add(e.source);
+  }, [graph.edges, byId, selected]);
+  const direct = useMemo(() => new Set([selected?.id ?? '', ...relations.map(r => r.node.id)]), [selected, relations]);
+  const display = useMemo(() => local ? {
+    nodes: visible.nodes.filter(n => direct.has(n.id)),
+    edges: visible.edges.filter(e => direct.has(e.source) && direct.has(e.target)),
+  } : visible, [visible, direct, local]);
+  const results = useMemo(() => {
+    const terms = query.trim().toLocaleLowerCase().split(/\s+/);
+    return graph.nodes.filter(n => {
+      const field = `${n.label} ${GROUPS[n.type].name} ${n.id}`.toLocaleLowerCase();
+      return terms.every(t => field.includes(t));
     });
-    return s;
-  }, [sel, layout.edges]);
+  }, [graph.nodes, query]);
 
-  const selected = sel ? layout.pos.get(sel)?.n ?? null : null;
-
-  return (
-    <div className="grid grid-cols-12 gap-6">
-      <div className="col-span-12">
-        <Panel
-          bodyClass="p-0"
-          title="연결 지도"
-          actions={
-            <label className="inline-flex items-center gap-1.5 text-body">
-              <input type="checkbox" checked={extra} onChange={(e) => setExtra(e.target.checked)} />
-              본사 표준·질문·사람도 보기
-            </label>
-          }
-        >
-          <div className="max-h-[70vh] overflow-auto">
-            <svg width={layout.width} height={layout.height} role="img" aria-label="지식 그래프" className="block">
-              {cols.map((c, i) => (
-                <text key={c} x={PAD_X + i * COL_W} y={20} fontSize={12} fontWeight={700} fill="var(--text-muted)">
-                  {c === 'extra' ? '표준·질문·사람' : TYPE_LABEL[c]}
-                </text>
-              ))}
-              {layout.edges.map((e) => {
-                const a = layout.pos.get(e.source)!;
-                const b = layout.pos.get(e.target)!;
-                const on = !neighbors || (neighbors.has(e.source) && neighbors.has(e.target) && (e.source === sel || e.target === sel));
-                const x1 = a.x + 8;
-                const x2 = b.x;
-                const mx = (x1 + x2) / 2;
-                return (
-                  <path
-                    key={e.id}
-                    d={`M${x1},${a.y} C${mx},${a.y} ${mx},${b.y} ${x2},${b.y}`}
-                    fill="none"
-                    stroke={on && sel ? 'var(--ink)' : 'var(--line)'}
-                    strokeWidth={on && sel ? 1.6 : 1}
-                    opacity={on ? 1 : 0.25}
-                  />
-                );
-              })}
-              {[...layout.pos.values()].map(({ x, y, n }) => {
-                const cause = n.type === 'cause' ? causeOf(n) : null;
-                const color = cause ? CAUSE[cause].hex : n.type === 'store' ? 'var(--ink)' : 'var(--text-muted)';
-                const dim = neighbors && !neighbors.has(n.id);
-                return (
-                  <g key={n.id} transform={`translate(${x},${y})`} opacity={dim ? 0.3 : 1} className="cursor-pointer" onClick={() => setSel(sel === n.id ? null : n.id)}>
-                    <title>{`${TYPE_LABEL[n.type]} · ${n.label}${n.sub ? ` · ${n.sub}` : ''}`}</title>
-                    {n.type === 'card' || n.type === 'prescription' ? (
-                      <rect x={0} y={-6} width={12} height={12} rx={n.type === 'card' ? 2 : 0} fill={sel === n.id ? color : 'var(--surface)'} stroke={color} strokeWidth={2} />
-                    ) : (
-                      <circle cx={6} cy={0} r={6} fill={sel === n.id || n.type === 'store' || cause ? color : 'var(--surface)'} stroke={color} strokeWidth={2} />
-                    )}
-                    <text x={18} y={4} fontSize={12.5} fill="var(--text)" fontWeight={sel === n.id ? 700 : 400}>
-                      {n.label.length > 14 ? `${n.label.slice(0, 14)}…` : n.label}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        </Panel>
+  function pick(id: string) {
+    const node = byId.get(id);
+    if (!node) return;
+    if (hidden.has(node.type)) setHidden(old => { const next = new Set(old); next.delete(node.type); return next; });
+    setSelectedId(id);
+    setQuery('');
+    setOpenSearch(false);
+  }
+  function toggle(type: NodeType) {
+    setHidden(old => {
+      const next = new Set(old);
+      if (next.has(type)) next.delete(type);
+      else if (types.some(t => t !== type && !next.has(t))) next.add(type);
+      return next;
+    });
+  }
+  return <section className="kg-workspace" aria-label="지식 관계 탐색">
+    <div className="kg-toolbar">
+      <div className="kg-search" ref={searchBox} onBlur={e => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOpenSearch(false);
+      }} onKeyDown={e => {
+        if (e.key === 'Escape') { searchInput.current?.focus(); setOpenSearch(false); }
+      }}>
+        <Search size={16} aria-hidden="true" />
+        <input type="search" placeholder="항목명·번호 검색" ref={searchInput} aria-label="지식 항목 검색" aria-controls="kg-results" aria-expanded={openSearch}
+          onFocus={() => setOpenSearch(true)} value={query} onChange={e => { setQuery(e.target.value); setOpenSearch(true); }}
+          onKeyDown={e => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); setOpenSearch(true); requestAnimationFrame(() => searchBox.current?.querySelector<HTMLButtonElement>('.kg-results button')?.focus()); }
+            if (e.key === 'Enter' && results[0]) pick(results[0].id);
+          }} />
+        {query && <button type="button" aria-label="검색어 삭제" onMouseDown={e => e.preventDefault()} onClick={() => { setQuery(''); searchInput.current?.focus(); }}><X size={14} /></button>}
+        {openSearch && <div id="kg-results" className="kg-results">
+          {results.length ? <ul aria-label="검색 결과">{results.map(n => <li key={n.id}><button type="button" onClick={() => pick(n.id)}>
+            <span>{GROUPS[n.type].name}</span>{n.label}
+          </button></li>)}</ul> : <p>일치하는 항목 없음</p>}
+        </div>}
       </div>
-      <div className="col-span-12 grid gap-6 md:grid-cols-2">
-        <Panel title="선택한 노드">
-          {!selected ? (
-            <p className="text-body text-text-muted">노드를 눌러 보세요.</p>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-caption text-text-muted">{TYPE_LABEL[selected.type]} · {selected.id}</p>
-              <p className="font-bold">{selected.label}</p>
-              {selected.type === 'cause' && causeOf(selected) && <CauseChip cause={causeOf(selected)!} />}
-              {selected.sub && <p className="text-body text-text-subtle">{selected.sub}</p>}
-              <p className="text-caption text-text-muted">연결 {(neighbors?.size ?? 1) - 1}개</p>
-              <ul className="space-y-0.5 text-body">
-                {[...(neighbors ?? [])].filter((id) => id !== sel).map((id) => {
-                  const n = layout.pos.get(id)?.n;
-                  return n ? (
-                    <li key={id}>
-                      <button type="button" className="text-left text-ink hover:underline" onClick={() => setSel(id)}>
-                        {TYPE_LABEL[n.type]} · {n.label}
-                      </button>
-                    </li>
-                  ) : null;
-                })}
-              </ul>
-            </div>
-          )}
-        </Panel>
-        <Panel title="범례">
-          <ul className="space-y-1.5 text-body">
-            <li className="flex items-center gap-2"><svg width="14" height="14" aria-hidden><circle cx="7" cy="7" r="6" fill="var(--ink)" /></svg>매장</li>
-            <li className="flex items-center gap-2"><svg width="14" height="14" aria-hidden><circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--text-muted)" strokeWidth="2" /></svg>불만 유형·표준·질문·사람</li>
-            <li className="flex items-center gap-2"><svg width="14" height="14" aria-hidden><rect x="1" y="1" width="12" height="12" fill="none" stroke="var(--text-muted)" strokeWidth="2" /></svg>처방</li>
-            <li className="flex items-center gap-2"><svg width="14" height="14" aria-hidden><rect x="1" y="1" width="12" height="12" rx="2" fill="none" stroke="var(--text-muted)" strokeWidth="2" /></svg>사례 카드</li>
-          </ul>
-          <div className="mt-3 flex flex-wrap gap-1">
-            {CAUSES.map((c) => <CauseChip key={c} cause={c} />)}
-          </div>
-        </Panel>
+      <div className="kg-modes" role="group" aria-label="관계 표시 범위">
+        <button type="button" aria-pressed={!local} onClick={() => setLocal(false)}>전체 관계</button>
+        <button type="button" aria-pressed={local} onClick={() => setLocal(true)}>직접 연결</button>
       </div>
     </div>
-  );
+    <div className="kg-grid">
+      <section className="kg-map" aria-label="관계 지도">
+        <header className="kg-map-title"><h2>연결 지도</h2>
+          <span aria-live="polite">항목 <b>{display.nodes.length}</b> · 연결 <b>{display.edges.length}</b></span>
+          <button type="button" className="kg-mobile-inspect" onClick={() => {
+            inspectorTitle.current?.focus({ preventScroll: true });
+            inspectorTitle.current?.scrollIntoView({ block: 'start' });
+          }}>상세 보기 <ChevronDown size={13} /></button>
+        </header>
+        {selected && <NetworkCanvas key={(local ? selected.id : 'all') + ':' + [...hidden].sort().join(',')} graph={display} selected={selected} direct={direct} local={local} onPick={pick} />}
+        <div className="kg-legend" role="group" aria-label="표시할 항목 유형">
+          <span>표시 유형</span>{types.map(type => <button key={type} type="button" aria-pressed={!hidden.has(type)} onClick={() => toggle(type)} disabled={!hidden.has(type) && types.filter(t => !hidden.has(t)).length === 1}>
+            <i style={{ backgroundColor: GROUPS[type].color }} />{GROUPS[type].name}
+          </button>)}
+        </div>
+      </section>
+      {selected && <aside className="kg-inspector" aria-label="선택 항목 상세">
+        <h2 ref={inspectorTitle} tabIndex={-1}>항목 상세</h2>
+        <div className="kg-item" aria-live="polite">
+          <div className="kg-tag"><i style={{ backgroundColor: GROUPS[selected.type].color }} />{GROUPS[selected.type].name}</div>
+          <h3>{selected.label}</h3>
+          <p>{selected.id}{selected.sub ? ` · ${selected.sub}` : ''}</p>
+          {selected.type === 'card' && storeId && <Link to={`/store/${storeId}/wiki#${selected.id}`}>위키 카드 열기 <ExternalLink size={13} /></Link>}
+        </div>
+        <div className="kg-rel-title"><h3>직접 연결 항목</h3><span>{new Set(relations.map(r => r.node.id)).size}개</span></div>
+        {relations.length ? <ul className="kg-relations">{relations.map(r => <li key={r.id}><button type="button" onClick={() => pick(r.node.id)}>
+          <span><small>{r.label}</small><strong>{r.node.label}</strong></span><ChevronRight size={15} aria-hidden="true" />
+        </button></li>)}</ul> : <p className="kg-empty">등록된 연결 없음</p>}
+      </aside>}
+    </div>
+  </section>;
 }

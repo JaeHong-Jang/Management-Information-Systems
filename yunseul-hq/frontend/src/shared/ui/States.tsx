@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { CircleAlert, Inbox, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from './Button';
 
-export function Loading({ label = '불러오는 중이에요' }: { label?: string }) {
+export function Loading({ label = '자료 조회 중' }: { label?: string }) {
   return (
     <div className="flex items-center gap-2 py-8 text-body text-text-muted" role="status">
       <Loader2 size={16} className="animate-spin" aria-hidden />
@@ -13,8 +13,7 @@ export function Loading({ label = '불러오는 중이에요' }: { label?: strin
 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    // 빈 상태 안내는 말풍선 모양(사이트 border-radius 33px 0 33px 33px)
-    <div className="flex flex-col items-start gap-1 rounded-[20px_0_20px_20px] bg-surface-sunken px-5 py-5 text-body text-text-muted">
+    <div className="flex flex-col items-start gap-1 rounded-ctl border border-line bg-surface-sunken px-5 py-5 text-body text-text-muted">
       <span className="inline-flex items-center gap-2 font-medium text-text-subtle">
         <Inbox size={16} aria-hidden />
         {title}
@@ -30,7 +29,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
     <div className="flex flex-col items-start gap-2 rounded-card border border-amber-bar bg-amber-weak px-4 py-4 text-body text-amber-text" role="alert">
       <span className="inline-flex items-center gap-2 font-bold">
         <CircleAlert size={16} aria-hidden />
-        오류 · 불러오지 못했어요
+        자료 조회 실패
       </span>
       <span>{message}</span>
       {onRetry && (

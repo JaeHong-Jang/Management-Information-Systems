@@ -7,9 +7,9 @@ import { AXIS, AXIS_LINE, GRID } from '@/shared/theme/chart';
 export function MonthlyTrend({ monthly }: { monthly: StoreDetail['monthly'] }) {
   const data = monthly.map((m) => ({ ...m, rest: m.n - m.low }));
   return (
-    <Panel title="월별 추이" en="TREND" sub="카카오 리뷰. 선은 평균 별점, 막대는 리뷰 수(진한 부분이 2점 이하)" className="h-full">
+    <Panel title="월별 추이" sub="카카오 리뷰. 선은 평균 별점, 막대는 리뷰 수(진한 부분이 2점 이하)" className="h-full">
       {monthly.length === 0 ? (
-        <Empty title="월별 리뷰가 아직 없어요" />
+        <Empty title="월별 리뷰 없음" />
       ) : (
         <div className="h-72" role="img" aria-label="월별 평균 별점과 리뷰 수">
           <ResponsiveContainer width="100%" height="100%">

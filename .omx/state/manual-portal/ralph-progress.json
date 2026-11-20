@@ -1,0 +1,13 @@
+{
+  "score": 95,
+  "verdict": "pass",
+  "category_match": "Responsive public-portal style ERP, with per-employee daily checks",
+  "differences": [],
+  "suggestions": [],
+  "reasoning": "Desktop shows navigation, official sources, daily checklist and related review type and approved card together. Mobile preserves store context and stacks the detail panel below the register. Scoped source labels and separate role actions remain visible.",
+  "viewports": [
+    1440,
+    800,
+    390
+  ]
+}

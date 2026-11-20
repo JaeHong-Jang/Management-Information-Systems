@@ -1,0 +1,18 @@
+{
+  "verdict": "pass",
+  "score": 97,
+  "reference": "https://yeokjeonfnc.com/",
+  "screenshots": "/tmp/yunseul-brand-qa/portal-{width}.png",
+  "viewports": [
+    1440,
+    800,
+    390,
+    320
+  ],
+  "observations": [
+    "Official header PNG matches by SHA-256. Both font files load locally.",
+    "Dark sidebar, yellow current menu and KPI, white checklist distinguish navigation, progress and source material.",
+    "320px manager role switcher and presentation mode now fit; role links, item selection and home link pass at 320px and 1440px."
+  ],
+  "previous_verdict": "revise"
+}

@@ -1,0 +1,18 @@
+/* Noto Sans KR from google/fonts, subset to Hangul, Latin and symbols for the portal.
+   Gmarket Sans Bold is the original webfont served by yeokjeonfnc.com/font/.
+   The accompanying font licenses are served from /licenses/. */
+@font-face {
+  font-family: 'Noto Sans KR';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./assets/fonts/NotoSansKR.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Gmarket Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/GmarketSansBold.woff') format('woff');
+}

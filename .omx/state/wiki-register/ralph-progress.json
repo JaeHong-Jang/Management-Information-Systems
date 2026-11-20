@@ -1,0 +1,17 @@
+{
+  "score": 96,
+  "verdict": "pass",
+  "reference": "User images 2, 6 and 9",
+  "viewports": [
+    1440,
+    1024,
+    800,
+    390,
+    320
+  ],
+  "evidence": "/tmp/yunseul-wiki-qa",
+  "observations": [
+    "All viewport sizes fit. Keyboard focus returns to the list on mobile. A deep-linked selected row scrolls into the desktop register.",
+    "Audits expose source, evidence, action and real card links, including matching simulated standard cards. All 25 flow tests pass."
+  ]
+}

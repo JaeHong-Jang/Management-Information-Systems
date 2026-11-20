@@ -6,7 +6,7 @@ import { dateTime, pct } from '@/shared/lib/format';
 
 export function DiagnosisSummary({ detail }: { detail: AsyncState<StoreDetail> }) {
   return (
-    <Panel title="우리 매장 진단" en="DIAGNOSIS" sub="본사가 리뷰로 진단한 결과예요" className="h-full">
+    <Panel title="매장 진단" sub="본사의 저평점 리뷰 분석 결과" className="h-full">
       <AsyncView state={detail}>
         {(d) => (
           <>
@@ -16,7 +16,7 @@ export function DiagnosisSummary({ detail }: { detail: AsyncState<StoreDetail> }
               {d.score.rank != null && <span className="text-caption text-text-muted">전국 위험 {d.score.rank}위</span>}
             </div>
             {!d.diagnosis ? (
-              <div className="mt-3"><Empty title="아직 본사 진단이 없어요" /></div>
+              <div className="mt-3"><Empty title="등록된 진단 없음" /></div>
             ) : (
               <>
                 <p className="mt-3 text-body">{d.diagnosis.summary}</p>

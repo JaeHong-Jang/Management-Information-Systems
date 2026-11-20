@@ -67,8 +67,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 /** 역할 전용 화면에 들어오면 역할을 맞춘다 */
 export function useRoleSync(r: AppRole | null) {
-  const { role, setRole } = useApp();
+  const { setRole } = useApp();
+  // 역할 전환 중에 직전 경로가 새 역할을 되돌리지 않도록 경로 진입 때만 동기화한다.
   useEffect(() => {
-    if (r && r !== role) setRole(r);
-  }, [r, role, setRole]);
+    if (r) setRole(r);
+  }, [r, setRole]);
 }

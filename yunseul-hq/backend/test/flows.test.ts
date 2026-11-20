@@ -159,7 +159,7 @@ describe('처방 효과(가상 리뷰)', () => {
     // 두 번 불러도 가상 리뷰를 다시 넣지 않는다
     await hq.simulate('S001');
     expect(db.reviewsOf('S001').filter((r) => r.virtual)).toHaveLength(4);
-    await expect(hq.simulate('S002')).rejects.toThrow(/가상 리뷰가 없어요/);
+    await expect(hq.simulate('S002')).rejects.toThrow(/가상 리뷰가 없습니다/);
   });
 });
 
@@ -186,12 +186,12 @@ describe('알바 질문', () => {
     expect(r.question.storeId).toBe('S001');
     expect(r.question.cited[0]).toBe('C001');
     expect(r.question.cited).toContain('C002');
-    expect(r.question.answer).toMatch(/본사 표준을 따르세요/);
+    expect(r.question.answer).toMatch(/본사 표준을 따릅니다/);
     // 매장 노하우가 검색 1위여도 같은 토픽의 본사 표준 카드를 앞세운다
     const r2 = await flows.ask('S001', '바쁜 날 2시간 지나면 퇴장 안내해도 돼요?', 'P003');
     expect(r2.question.cited[0]).toBe('C001');
     expect(r2.question.answer.split('\n')[0]).toMatch(/\[C001\]/);
-    expect(r2.question.answer).toMatch(/본사 표준을 따르세요/);
+    expect(r2.question.answer).toMatch(/본사 표준을 따릅니다/);
   });
 
   it('근거가 없으면 점장에게 넘긴다', async () => {
@@ -269,8 +269,8 @@ describe('v3.1 알바 질문 개선', () => {
     if (r.question.status === 'escalated') expect(r.question.nearCardId).toBeTruthy();
     const none = await flows.ask('S001', '손님이 강아지를 데리고 들어왔어요', 'P003');
     expect(none.question.status).toBe('escalated');
-    expect(none.question.answer).toMatch(/점장님을 직접 불러 주세요/);
-    expect(none.question.answer).not.toMatch(/바로 알렸어요/);
+    expect(none.question.answer).toMatch(/점장에게 직접 연락하십시오/);
+    expect(none.question.answer).not.toMatch(/바로 알렸|즉시 통보|알림을 (보냈|발송)/);
     const safe = await flows.ask('S001', '취한 손님이 다른 손님을 때리려고 해요', 'P003');
     expect(safe.question.nearCardId).toBeUndefined();
   });
@@ -279,7 +279,7 @@ describe('v3.1 알바 질문 개선', () => {
     const r = await flows.ask('S001', '', 'P003', sitWithCards().id);
     const q = await flows.feedback('S001', r.question.id, false);
     expect(q.status).toBe('escalated');
-    expect(q.answer).toBe('해결이 안 돼서 점장님께 넘겼어요. 급하면 직접 불러 주세요.');
+    expect(q.answer).toBe('미해결 질문을 점장 업무 목록에 등록했습니다. 긴급한 경우 점장에게 직접 연락하십시오.');
     expect(q.nearCardId).toBe(r.question.cited[0]);
   });
 

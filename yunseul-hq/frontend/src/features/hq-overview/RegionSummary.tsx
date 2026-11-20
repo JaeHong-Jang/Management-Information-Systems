@@ -5,7 +5,7 @@ import { rating } from '@/shared/lib/format';
 export function RegionSummary({ regions }: { regions: HqOverview['regions'] }) {
   const sorted = [...regions].sort((a, b) => b.stores - a.stores);
   return (
-    <Panel title="지역별 요약" en="REGION" sub="시도 단위. 평균 평점은 카카오 기준" bodyClass="p-0">
+    <Panel title="지역별 요약" sub="시도 단위. 평균 평점은 카카오 기준" bodyClass="p-0">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[480px] text-body">
           <thead className="bg-surface-sunken text-left text-caption text-text-muted">
