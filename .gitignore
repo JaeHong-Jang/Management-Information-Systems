@@ -8,3 +8,10 @@ backend/var/
 *.zip
 2026_fall_*/
 research/.omc/
+
+# API 키·비밀값(절대 커밋하지 않음)
+클로드 api 키.txt
+*api 키*.txt
+*api_key*.txt
+.env
+.env.*
