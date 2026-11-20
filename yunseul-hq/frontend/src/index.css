@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: #f8f6f2;
+  --surface: #fff;
+  --surface-sunken: #f5f2ed;
+  --line: #e3dcd3;
+  --line-strong: #94877c;
+  --text: #231815;
+  --text-subtle: #4c423d;
+  --text-muted: #695f58;
+  --ink: #231815;
+  --ink-hover: #49362e;
+  --ink-weak: #f1ebe4;
+  --brand-red: #e60012;
+  --brand-yellow: #fcc800;
+  --brand-highlight: #fdd84c;
+  --yellow-weak: #fff7d8;
+  --amber-text: #70500d;
+  --brand-maroon: #752d26;
+  --low-bar: #897b70;
+  --done: #08665c; --done-weak: #e0f2ef;
+  --cause-know: #745128; --cause-know-weak: #f5ead9;
+  --cause-ops: #883d2e; --cause-ops-weak: #f9eeea;
+  --cause-rule: #665c14; --cause-rule-weak: #f3f1df;
+  --cause-hyg: #0b6e78; --cause-hyg-weak: #e3f2f3;
+  --kakao: #473229; --naver: #9e8d80;
+  --heat-1: #f7f1e5; --heat-2: #eedcae; --heat-3: #dcbb75; --heat-4: #a4773c; --heat-5: #68462d;
+  /* 글자 위계: 제목 28 > 상세 제목 22 > 영역 제목 18 > 소제목 16 > 본문 14 > 보조 12. 화면의 모든 글자는 이 여섯 단계만 쓴다. */
+  --fs-display: 1.75rem;
+  --fs-title: 1.375rem;
+  --fs-section: 1.125rem;
+  --fs-subhead: 1rem;
+  --fs-body: 0.875rem;
+  --fs-caption: 0.75rem;
+  --fs-kpi: 1.75rem;
+  --r-badge: 5px;
+  --r-ctl: 8px;
+  --r-card: 12px;
+  --ease: cubic-bezier(.32, .72, 0, 1);
+  --shadow-card: 0 1px 2px rgb(35 24 21 / 4%), 0 4px 16px rgb(35 24 21 / 3%);
+  --content-max: 1456px;
+  --sidebar-w: 240px;
+  --gutter: clamp(20px, 1.85vw, 36px);
+  --topbar-h: 58px;
+  --portal-display: 'Gmarket Sans', 'Noto Sans KR', sans-serif;
+  --portal-font: 'Noto Sans KR', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+}
+@media (max-width: 1023px) { :root { --gutter: 20px; } }
+@media (max-width: 767px) { :root { --gutter: 16px; } }
+
+html { -webkit-text-size-adjust: 100%; }
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--portal-font);
+  font-size: var(--fs-body);
+  line-height: 1.5714;
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.bg-ink :focus-visible, .on-ink:focus-visible { outline-color: var(--brand-highlight); }
+.num { font-variant-numeric: tabular-nums; }
+.workspace-heading > div { min-width: 0; }
+:where(button, a, select, input, textarea, summary) { accent-color: var(--ink); }
+:where(button, a, summary) { -webkit-tap-highlight-color: #f9dd8866; transition: color 160ms var(--ease), background-color 160ms var(--ease), border-color 160ms var(--ease), box-shadow 160ms var(--ease), transform 160ms var(--ease); }
+/* 누름 반응: 버튼은 살짝 줄고, 목록 행은 바탕만 바뀐다 */
+:where(button, [role=button], a[class*=border], a[class*=bg-ink]):active:not(:disabled) { transform: scale(.975); }
+:where(main) :where(strong, b) { font-weight: 700; }
+/* 화면 전환과 접힌 내용 펼침 */
+.page-enter { animation: page-enter 320ms var(--ease) both; }
+@keyframes page-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+details[open] > :not(summary) { animation: reveal 240ms var(--ease) both; }
+@keyframes reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+[role=progressbar] > div, progress::-webkit-progress-value { transition: width 480ms var(--ease); }
+:where(main) :where(td, th, li, dd, p) { overflow-wrap: anywhere; }
+:where(main) :where(input, select, textarea) { max-width: 100%; }
+.frame { max-width: var(--content-max); margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
+
+@layer components {
+  .hl-line { color: inherit; }
+  /* 리뷰 원문 속 근거 구절 */
+  mark, .mark { background: var(--brand-highlight); color: var(--text); border-radius: 2px; padding: 0 1px; }
+  .bubble { border-radius: var(--r-ctl); border-left: 3px solid var(--brand-yellow); background: var(--yellow-weak); }
+  /* 흐르는 점선(실행 중 다음 단계로 넘어가는 선) */
+  .flow-dash { background-image: repeating-linear-gradient(90deg, currentColor 0 8px, transparent 8px 12px); background-size: 24px 2px; }
+  /* 사람 승인 도장 */
+  .stamp { box-shadow: inset 0 0 0 1px var(--ink); }
+}
+
+/* 심사 모드(?present=1): 글자를 키우고 개발 정보(runId·ms)를 숨긴다 */
+html.present { font-size: 18px; }
+html.present .dev { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+body:has(.workspace-dialog[open]) { overflow: hidden; }
+.workspace-dialog[open] {
+  display: flex; justify-content: flex-end; inset: 0; width: 100%; max-width: none;
+  height: 100%; max-height: none; padding: 0; margin: 0; border: 0; color: var(--text); background: transparent;
+}
+.workspace-dialog::backdrop { background: rgb(33 29 26 / 40%); }
+.workspace-drawer {
+  display: flex; flex-direction: column; width: 100%; min-width: 0; min-height: 0; height: 100%;
+  background: var(--surface); box-shadow: -7px 0 30px #211d1a20; padding-bottom: env(safe-area-inset-bottom);
+  animation: drawer-enter 360ms var(--ease);
+}
+@keyframes drawer-enter { from { transform: translateX(48px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.workspace-dialog[open]::backdrop { animation: backdrop-enter 240ms ease-out both; }
+@keyframes backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+
+/* 화면 안 보기 전환 탭: 전국 현황·매장 분석·표준 관리·에이전트가 같은 모양을 쓴다 */
+.hq-register-nav, .ops-views, .standards-views {
+  display: flex; gap: 1.5rem; margin: 1.25rem 0 1rem; overflow-x: auto; scrollbar-width: none;
+  border-bottom: 1px solid var(--line);
+}
+:is(.hq-register-nav, .ops-views, .standards-views) a {
+  position: relative; display: inline-flex; align-items: center; gap: .35rem; min-height: 42px; padding: .5rem .1rem;
+  white-space: nowrap; font-size: var(--fs-body); font-weight: 500; color: var(--text-muted);
+}
+:is(.hq-register-nav, .ops-views, .standards-views) a::after {
+  content: ''; position: absolute; inset: auto 0 -1px; height: 2px; border-radius: 2px; background: var(--ink);
+  transform: scaleX(0); transition: transform 240ms var(--ease);
+}
+:is(.hq-register-nav, .ops-views, .standards-views) a:hover { color: var(--ink); }
+:is(.hq-register-nav, .ops-views, .standards-views) a[aria-current] { color: var(--ink); font-weight: 700; }
+:is(.hq-register-nav, .ops-views, .standards-views) a[aria-current]::after { transform: scaleX(1); }
+:is(.hq-register-nav, .ops-views, .standards-views) a:focus-visible { outline-offset: -3px; }
+.standards-views b { font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.ops-views { margin-top: 0; }

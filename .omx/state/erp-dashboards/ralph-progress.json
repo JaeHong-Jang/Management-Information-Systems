@@ -1,0 +1,32 @@
+{
+  "verdict": "pass",
+  "reference": "Provided ERP, wiki inspection, and Obsidian screenshots",
+  "observations": [
+    "Shared header preserves the original co-brand and role switcher.",
+    "Wiki separates scoped search, grouped list and document detail.",
+    "Graph selection isolates direct relationships.",
+    "Titles and secondary labels remain distinct at phone and desktop sizes."
+  ],
+  "evidence": {
+    "cases": 65,
+    "widths": [
+      320,
+      390,
+      768,
+      1024,
+      1440
+    ],
+    "issues": [],
+    "navigation_widths": [
+      320,
+      390,
+      1024,
+      1440
+    ],
+    "sample_screenshots": [
+      "/tmp/yunseul-erp-qa/wiki-390.png",
+      "/tmp/yunseul-erp-qa/manager-1440.png",
+      "/tmp/yunseul-erp-qa/graph-1440.png"
+    ]
+  }
+}

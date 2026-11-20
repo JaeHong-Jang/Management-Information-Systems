@@ -1,0 +1,255 @@
+// 원본은 JSON 하나(var/store.json). 바뀔 때마다 사람이 읽는 마크다운 위키(data/wiki/)를 다시 컴파일한다.
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { Card, CardOrigin, CardStatus, EdgeType, Inventory, LogEntry, Person, Question, Snapshot, Source } from '@shared/contracts';
+import { BACKEND_DIR, DATA_DIR, STORE_DIR } from '../paths.js';
+import { resolve } from 'node:path';
+
+const STORE_FILE = join(STORE_DIR, 'store.json');
+// 테스트는 SEED_FILE로 고정 자료(카페 시드)를 쓴다
+export const SEED_FILE = process.env.SEED_FILE ? resolve(BACKEND_DIR, process.env.SEED_FILE) : join(DATA_DIR, 'seed.json');
+const WIKI_DIR = join(DATA_DIR, 'wiki');
+
+export interface Db extends Snapshot {
+  links: { source: string; target: string; type: EdgeType }[]; // 점검관이 찾은 상충·중복
+  inventory: Inventory;
+}
+
+const emptyInventory = (): Inventory => ({ items: [], recipes: [], sales: [], deliveries: [], stocktakes: [], events: [], adjustments: [], orders: [], imports: [] });
+
+let db: Db | null = null;
+
+export function load(): Db {
+  if (!existsSync(STORE_FILE)) return resetFromSeed();
+  db = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
+  db.links ??= [];
+  db.inventory = { ...emptyInventory(), ...db.inventory };
+  return db;
+}
+
+export function resetFromSeed(seed = SEED_FILE): Db {
+  mkdirSync(STORE_DIR, { recursive: true });
+  if (LIVE_DATE) writeFileSync(STORE_FILE, shiftDates(readFileSync(seed, 'utf8'), seedOffset(seed)));
+  else copyFileSync(seed, STORE_FILE);
+  db = JSON.parse(readFileSync(STORE_FILE, 'utf8')) as Db;
+  db.links = [];
+  db.inventory = { ...emptyInventory(), ...db.inventory };
+  return db;
+}
+
+export function get(): Db {
+  const d = db ?? load();
+  if (LIVE_DATE) d.store.today = realToday();
+  return d;
+}
+
+// 시연 날짜. 기본은 실제 오늘(한국 시간)이라 날이 지나면 그대로 하루씩 넘어간다(POS를 안 올린 날은 재고 계산이 요일별 평균으로 채운다).
+// 초기화하면 시드의 날짜를 모두 같은 간격만큼 옮겨 시드의 '오늘'이 실제 오늘이 되게 한다. 테스트는 DEMO_DATE=seed로 시드 날짜를 그대로 쓴다.
+const LIVE_DATE = process.env.DEMO_DATE !== 'seed';
+export const realToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
+
+const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+const seedOffset = (seed = SEED_FILE) => dayDiff((JSON.parse(readFileSync(seed, 'utf8')) as Db).store.today, realToday());
+
+/** 글 속의 YYYY-MM-DD를 모두 days만큼 옮긴다. 파일 이름의 '2026-10-24_10-30' 같은 기간 끝(MM-DD)도 같이 옮긴다 */
+export function shiftDates(text: string, days: number): string {
+  if (!days) return text;
+  return text.replace(/(\d{4}-\d{2}-\d{2})(_(\d{2}-\d{2})(?!\d))?/g, (_m, date: string, _range, end?: string) => {
+    const moved = addDays(date, days);
+    return end ? `${moved}_${addDays(`${date.slice(0, 4)}-${end}`, days).slice(5)}` : moved;
+  });
+}
+
+/** 시드와 같이 들어 있는 예시 자료(POS 파일 등)를 시드와 같은 간격으로 옮긴다 */
+export const demoShift = (text: string) => (LIVE_DATE ? shiftDates(text, seedOffset()) : text);
+
+export function save(compile = process.env.STORE_DIR !== 'var/test') {
+  writeFileSync(STORE_FILE, JSON.stringify(db, null, 1));
+  if (compile) compileWiki();
+}
+
+export const today = () => get().store.today;
+export const inventory = () => get().inventory;
+export const item = (id: string) => inventory().items.find((i) => i.id === id);
+export const now = () => `${today()}T${new Date().toTimeString().slice(0, 8)}`;
+
+let lastStamp = '';
+/** 같은 날 실사·입고의 앞뒤를 가리는 기록 시각. 같은 ms에 두 번 불려도 뒤의 값이 항상 더 크다 */
+export function stamp(): string {
+  let s = `${today()}@${new Date().toISOString()}`;
+  if (s <= lastStamp) s = `${lastStamp}+`;
+  return (lastStamp = s);
+}
+
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export function addLog(op: string, detail: string, runId?: string): LogEntry {
+  const e = { time: now(), op, detail, runId };
+  get().log.push(e);
+  return e;
+}
+
+export function nextId(prefix: string, list: { id: string }[]): string {
+  const max = list.reduce((m, x) => Math.max(m, Number(x.id.slice(1)) || 0), 0);
+  return prefix + String(max + 1).padStart(3, '0');
+}
+
+export interface CardFields {
+  title: string; topic: string; situation: string; reason: string; actions: string[];
+  avoid: string; escalateWhen: string; source: Source; tags: string[]; itemIds?: string[];
+}
+
+export function createCard(f: CardFields, authorId: string, status: CardStatus, origin: CardOrigin, fromQuestionId?: string): Card {
+  const d = get();
+  const card: Card = {
+    id: nextId('C', d.cards),
+    title: f.title,
+    topic: d.topics.includes(f.topic) ? f.topic : '기타',
+    situation: f.situation,
+    reason: f.reason,
+    actions: f.actions,
+    avoid: f.avoid ?? '',
+    escalateWhen: f.escalateWhen ?? '',
+    source: f.source === '공식규정' ? '공식규정' : '현장노하우',
+    authorId,
+    status,
+    origin,
+    created: today(),
+    updated: today(),
+    expires: addDays(today(), f.source === '공식규정' ? 180 : 120),
+    tags: f.tags ?? [],
+    uses: 0,
+    helpful: 0,
+    notHelpful: 0,
+    ...(fromQuestionId ? { fromQuestionId } : {}),
+    ...(f.itemIds?.length ? { itemIds: f.itemIds } : {}),
+  };
+  d.cards.push(card);
+  return card;
+}
+
+export function createQuestion(f: Omit<Question, 'id' | 'time' | 'feedback'>): Question {
+  const d = get();
+  const q: Question = { id: nextId('Q', d.questions), time: now(), feedback: null, ...f };
+  d.questions.push(q);
+  return q;
+}
+
+export const card = (id: string) => get().cards.find((c) => c.id === id);
+export const question = (id: string) => get().questions.find((q) => q.id === id);
+export const person = (id: string) => get().people.find((p) => p.id === id);
+export const approvedCards = () => get().cards.filter((c) => c.status === 'approved');
+export const isExpired = (c: Card) => c.expires < today();
+
+/** 신입 답의 근거로 쓸 수 있는 카드: 승인됐고, 만료 전이고, 공식규정과 상충한다고 표시된 현장노하우가 아닌 것 */
+export function usableCards(): { usable: Card[]; excluded: { id: string; why: string }[] } {
+  const d = get();
+  const conflicted = new Set<string>();
+  for (const l of d.links.filter((x) => x.type === 'conflicts')) {
+    const [a, b] = [card(l.source), card(l.target)];
+    if (a && b && a.source !== b.source) conflicted.add((a.source === '현장노하우' ? a : b).id);
+  }
+  const usable: Card[] = [];
+  const excluded: { id: string; why: string }[] = [];
+  for (const c of approvedCards()) {
+    if (isExpired(c)) excluded.push({ id: c.id, why: `만료(${c.expires})` });
+    else if (conflicted.has(c.id)) excluded.push({ id: c.id, why: '공식규정과 상충' });
+    else usable.push(c);
+  }
+  return { usable, excluded };
+}
+export const personLabel = (id: string) => {
+  const p = person(id);
+  return p ? `${p.name}(${p.role} ${p.tenure})` : id;
+};
+
+export function findOrCreatePerson(name: string, role: Person['role'], tenure: string): Person {
+  const d = get();
+  const found = d.people.find((p) => p.name === name);
+  if (found) return found;
+  const p: Person = { id: nextId('P', d.people), name, role, tenure };
+  d.people.push(p);
+  return p;
+}
+
+// ---------- 마크다운 위키 (Karpathy LLM Wiki: index + log + 토픽 페이지 + 사람 페이지) ----------
+
+const slug = (s: string) => s.replace(/[·\s/]/g, '-');
+
+function cardMd(c: Card): string {
+  return [
+    `### [${c.id}] ${c.title}`,
+    `- ${c.source}${c.source === '공식규정' && !c.ruleRef ? '(원문 미첨부)' : ''} · 작성 ${c.credit === false ? '이름 비공개' : personLabel(c.authorId)} · 갱신 ${c.updated} · 만료 ${c.expires} · 재사용 ${c.uses}회 (도움 ${c.helpful} / 안 됨 ${c.notHelpful})`,
+    `- 상황: ${c.situation}`,
+    `- 판단 이유: ${c.reason || '(비어 있음)'}`,
+    `- 대응:`,
+    ...c.actions.map((a, i) => `  ${i + 1}. ${a}`),
+    c.avoid ? `- 하면 안 되는 것: ${c.avoid}` : '',
+    c.escalateWhen ? `- 점장 호출 기준: ${c.escalateWhen}` : '',
+    c.fromQuestionId ? `- 출처 질문: ${c.fromQuestionId} (점장 답변에서 생성)` : '',
+    c.itemIds?.length ? `- 재고 품목: ${c.itemIds.map((id) => item(id)?.name ?? id).join(', ')} ([재고 기준표](../inventory.md))` : '',
+    '',
+  ].filter(Boolean).join('\n');
+}
+
+export function compileWiki() {
+  const d = get();
+  mkdirSync(join(WIKI_DIR, 'topics'), { recursive: true });
+  const approved = approvedCards();
+  const index = [
+    `# ${d.store.name} 매장 위키`,
+    '',
+    `갱신 ${now()} · 승인 사례 ${approved.length} · 승인 대기 ${d.cards.filter((c) => c.status === 'pending').length} · 질문 ${d.questions.length}`,
+    '',
+    '| 토픽 | 사례 | 핵심 원칙 첫 줄 |',
+    '|---|---|---|',
+  ];
+  for (const topic of d.topics) {
+    const cards = approved.filter((c) => c.topic === topic);
+    const summary = d.topicSummaries[topic] ?? '';
+    index.push(`| [${topic}](topics/${slug(topic)}.md) | ${cards.length} | ${summary.split('\n')[0]?.replace(/^[-\s]+/, '').slice(0, 60) || '-'} |`);
+    writeFileSync(
+      join(WIKI_DIR, 'topics', `${slug(topic)}.md`),
+      [`# ${topic}`, '', '## 핵심 판단 원칙 (종합 편집자)', '', summary || '_아직 종합되지 않음_', '', '## 사례 카드', '', ...cards.map(cardMd)].join('\n'),
+    );
+  }
+  index.push('', '## 사람', '', '[기여자 목록](people.md)');
+  if (d.inventory.items.length) {
+    index.push('', '## 재고', '', '[재고 기준표와 메뉴별 소모량](inventory.md)');
+    writeFileSync(join(WIKI_DIR, 'inventory.md'), inventoryMd(d.inventory) + '\n');
+  }
+  writeFileSync(join(WIKI_DIR, 'index.md'), index.join('\n') + '\n');
+  // 기여 크레딧만 남긴다. 질문 수는 개인별로 세지 않고, 크레딧을 끈 카드는 이름 없이 합계만
+  const people = d.people.flatMap((p) => {
+    const mine = approved.filter((c) => c.authorId === p.id && c.credit !== false);
+    return mine.length ? [`- ${p.name} (${p.role} ${p.tenure}) · 남긴 사례 ${mine.length} (${mine.map((c) => c.id).join(', ')}) · 도움 ${mine.reduce((s, c) => s + c.helpful, 0)}회`] : [];
+  });
+  const anon = approved.filter((c) => c.credit === false).length;
+  writeFileSync(join(WIKI_DIR, 'people.md'), ['# 노하우를 남긴 사람', '', ...people, anon ? `- 이름 비공개 기여 ${anon}건` : '', '', '질문한 사람은 개인별로 기록하지 않는다.'].join('\n') + '\n');
+  writeFileSync(join(WIKI_DIR, 'log.md'), ['# 변경 기록', '', ...d.log.map((l) => `- ${l.time} · ${l.op} · ${l.detail}`)].join('\n') + '\n');
+}
+
+function inventoryMd(inv: Inventory): string {
+  const name = (id: string) => inv.items.find((i) => i.id === id)?.name ?? id;
+  return [
+    '# 재고 기준표',
+    '',
+    '숫자는 POS 판매 × 메뉴별 소모량으로 계산한다. 보정은 승인된 카드에서만 온다.',
+    '',
+    '| 품목 | 단위 | 발주 단위 | 거래처 | 리드타임 | 발주점 | 적정량 |',
+    '|---|---|---|---|---|---|---|',
+    ...inv.items.map((i) => `| ${i.name} | ${i.unit} | ${i.pack}${i.unit}/${i.packLabel} | ${i.supplier} | ${i.leadDays}일 | ${i.reorderPoint} | ${i.par} |`),
+    '',
+    '## 메뉴별 소모량',
+    '',
+    ...inv.recipes.map((r) => `- ${r.menu}${r.status === 'pending' ? ' (승인 대기)' : ''}: ${r.lines.map((l) => `${name(l.itemId)} ${l.qty}`).join(' + ') || '비어 있음'}`),
+    '',
+    '## 승인된 보정',
+    '',
+    ...(inv.adjustments.filter((a) => a.status === 'approved').map((a) => `- ${name(a.itemId)} ${a.from}~${a.to} ×${a.factor} — ${a.reason} [${a.cardId}]`) || []),
+  ].join('\n');
+}

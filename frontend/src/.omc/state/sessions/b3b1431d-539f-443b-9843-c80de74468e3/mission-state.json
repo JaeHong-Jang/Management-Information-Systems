@@ -1,0 +1,79 @@
+{
+  "updatedAt": "2026-10-30T16:26:47.071Z",
+  "missions": [
+    {
+      "id": "session:b3b1431d-539f-443b-9843-c80de74468e3:none",
+      "source": "session",
+      "name": "none",
+      "objective": "Session mission",
+      "createdAt": "2026-10-30T16:25:11.671Z",
+      "updatedAt": "2026-10-30T16:26:47.071Z",
+      "status": "done",
+      "workerCount": 2,
+      "taskCounts": {
+        "total": 2,
+        "pending": 0,
+        "blocked": 0,
+        "inProgress": 0,
+        "completed": 2,
+        "failed": 0
+      },
+      "agents": [
+        {
+          "name": "general-purpose:ac86323",
+          "role": "general-purpose",
+          "ownership": "ac863238d53288bb4",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "completed",
+          "completedSummary": null,
+          "updatedAt": "2026-10-30T16:26:47.071Z"
+        },
+        {
+          "name": "general-purpose:adea709",
+          "role": "general-purpose",
+          "ownership": "adea709a301718bac",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "completed",
+          "completedSummary": null,
+          "updatedAt": "2026-10-30T16:26:30.753Z"
+        }
+      ],
+      "timeline": [
+        {
+          "id": "session-start:ac863238d53288bb4:2026-10-30T16:25:11.671Z",
+          "at": "2026-10-30T16:25:11.671Z",
+          "kind": "update",
+          "agent": "general-purpose:ac86323",
+          "detail": "started general-purpose:ac86323",
+          "sourceKey": "session-start:ac863238d53288bb4"
+        },
+        {
+          "id": "session-start:adea709a301718bac:2026-10-30T16:25:11.727Z",
+          "at": "2026-10-30T16:25:11.727Z",
+          "kind": "update",
+          "agent": "general-purpose:adea709",
+          "detail": "started general-purpose:adea709",
+          "sourceKey": "session-start:adea709a301718bac"
+        },
+        {
+          "id": "session-stop:adea709a301718bac:2026-10-30T16:26:30.753Z",
+          "at": "2026-10-30T16:26:30.753Z",
+          "kind": "completion",
+          "agent": "general-purpose:adea709",
+          "detail": "completed",
+          "sourceKey": "session-stop:adea709a301718bac"
+        },
+        {
+          "id": "session-stop:ac863238d53288bb4:2026-10-30T16:26:47.071Z",
+          "at": "2026-10-30T16:26:47.071Z",
+          "kind": "completion",
+          "agent": "general-purpose:ac86323",
+          "detail": "completed",
+          "sourceKey": "session-stop:ac863238d53288bb4"
+        }
+      ]
+    }
+  ]
+}

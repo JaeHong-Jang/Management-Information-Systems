@@ -1,0 +1,15 @@
+node_modules/
+dist/
+backend/var/
+*.tsbuildinfo
+# 실명이 든 원자료는 커밋하지 않는다. 시드(data/seed)만 커밋한다.
+data/source/*.csv
+data/source/old_pocha_seed.json
+# 실명 매장이 든 내부 조사 보고서(근거용, 제출·커밋 안 함)
+docs/research_가맹점_편차.md
+data/source/seed_config.json
+# 원자료 폴더 전체(실명 포함)
+data/source/
+__pycache__/
+.omc/
+**/.omc/

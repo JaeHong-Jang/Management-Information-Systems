@@ -1,3 +1,10 @@
 .omc/state/
 .omc/logs/
 .omc/*.json
+node_modules/
+dist/
+backend/var/
+.fablize/
+*.zip
+2026_fall_*/
+research/.omc/

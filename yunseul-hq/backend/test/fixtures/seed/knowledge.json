@@ -1,0 +1,235 @@
+{
+ "people": [
+  {
+   "id": "P001",
+   "storeId": "S001",
+   "name": "한서윤",
+   "role": "점장",
+   "tenure": "5년차"
+  },
+  {
+   "id": "P002",
+   "storeId": "S001",
+   "name": "민지",
+   "role": "숙련",
+   "tenure": "2년차"
+  },
+  {
+   "id": "P003",
+   "storeId": "S001",
+   "name": "지우",
+   "role": "신입",
+   "tenure": "1주차"
+  },
+  {
+   "id": "P010",
+   "storeId": null,
+   "name": "박지훈",
+   "role": "SV",
+   "tenure": "3년차"
+  },
+  {
+   "id": "P020",
+   "storeId": "S003",
+   "name": "오세진",
+   "role": "점장",
+   "tenure": "4년차"
+  }
+ ],
+ "cards": [
+  {
+   "id": "C001",
+   "storeId": null,
+   "scope": "brand",
+   "title": "이용시간 2시간 안내는 웨이팅 있을 때만",
+   "topic": "이용시간",
+   "situation": "손님이 이용시간 제한을 묻거나 2시간이 지난 테이블이 있을 때",
+   "reason": "웨이팅이 없는데 퇴장을 요청하면 손님이 쫓겨났다고 느껴 저평점이 남아요.",
+   "actions": [
+    "웨이팅이 있을 때만 2시간 이용시간을 적용한다",
+    "입장할 때 이용시간 기준을 먼저 안내한다",
+    "웨이팅이 없으면 퇴장을 요청하지 않는다"
+   ],
+   "avoid": "안내 없이 시간이 됐다고 퇴장을 요청하지 않는다.",
+   "escalateWhen": "손님이 퇴장 요청에 항의할 때",
+   "source": "본사 표준",
+   "authorId": "P010",
+   "status": "approved",
+   "origin": "시드",
+   "created": "2026-09-01",
+   "updated": "2026-09-01",
+   "expires": "2027-09-01",
+   "tags": [
+    "이용시간",
+    "2시간",
+    "퇴장",
+    "웨이팅"
+   ],
+   "uses": 0,
+   "helpful": 0,
+   "notHelpful": 0,
+   "customerNotice": "웨이팅이 있을 때는 2시간 이용시간을 안내드리고 있어요. 시간이 다가오면 미리 말씀드릴게요.",
+   "standardId": "H01",
+   "complaintTypes": [
+    "이용시간제한"
+   ]
+  },
+  {
+   "id": "C002",
+   "storeId": "S001",
+   "scope": "store",
+   "title": "바쁜 날 2시간 되면 퇴장 안내",
+   "topic": "이용시간",
+   "situation": "금요일 밤처럼 바쁠 때 2시간이 지난 테이블",
+   "reason": "회전이 안 되면 매출이 줄어서 점장님이 정한 방식이에요.",
+   "actions": [
+    "2시간이 되면 테이블에 가서 퇴장을 안내한다",
+    "계산서를 먼저 가져다 둔다"
+   ],
+   "avoid": "",
+   "escalateWhen": "손님이 화를 낼 때",
+   "source": "현장노하우",
+   "authorId": "P002",
+   "status": "approved",
+   "origin": "시드",
+   "created": "2026-09-01",
+   "updated": "2026-09-01",
+   "expires": "2027-09-01",
+   "tags": [
+    "2시간",
+    "퇴장",
+    "이용시간"
+   ],
+   "uses": 0,
+   "helpful": 0,
+   "notHelpful": 0
+  },
+  {
+   "id": "C003",
+   "storeId": "S001",
+   "scope": "store",
+   "title": "신분증은 실물이나 모바일 신분증 앱으로 확인",
+   "topic": "신분증",
+   "situation": "어려 보이는 손님이 술을 주문할 때",
+   "reason": "청소년에게 술을 팔면 영업정지 처분을 받을 수 있어요.",
+   "actions": [
+    "첫 주문 전에 테이블 전원의 신분증을 확인한다",
+    "실물 신분증이나 모바일 신분증 앱 화면을 본다",
+    "사진이나 캡처는 받지 않는다"
+   ],
+   "avoid": "사진이나 캡처로 확인을 대신하지 않는다.",
+   "escalateWhen": "위조가 의심되거나 손님이 확인을 거부할 때",
+   "source": "공식규정",
+   "authorId": "P001",
+   "status": "approved",
+   "origin": "시드",
+   "created": "2026-09-01",
+   "updated": "2026-09-01",
+   "expires": "2027-09-01",
+   "tags": [
+    "신분증",
+    "미성년자",
+    "모바일 신분증"
+   ],
+   "uses": 0,
+   "helpful": 0,
+   "notHelpful": 0,
+   "customerNotice": "주류 주문 전에 신분증을 확인하고 있어요. 실물이나 모바일 신분증 앱 화면을 보여 주세요.",
+   "complaintTypes": [
+    "신분증"
+   ]
+  },
+  {
+   "id": "C004",
+   "storeId": "S001",
+   "scope": "store",
+   "title": "단체 손님이 나눠서 계산할 때",
+   "topic": "결제·계산",
+   "situation": "단체 손님이 각자 계산하겠다고 할 때",
+   "reason": "한 번에 섞어 찍으면 금액이 틀려 다시 결제해야 해요.",
+   "actions": [
+    "계산 전에 몇 명이 어떻게 나눌지 먼저 묻는다",
+    "카드마다 금액을 불러 주고 결제한다"
+   ],
+   "avoid": "",
+   "escalateWhen": "결제가 잘못 찍혀 취소가 필요할 때",
+   "source": "현장노하우",
+   "authorId": "P002",
+   "status": "approved",
+   "origin": "시드",
+   "created": "2026-09-01",
+   "updated": "2026-09-01",
+   "expires": "2027-09-01",
+   "tags": [
+    "결제",
+    "계산",
+    "나눠서",
+    "더치"
+   ],
+   "uses": 0,
+   "helpful": 0,
+   "notHelpful": 0
+  },
+  {
+   "id": "C005",
+   "storeId": "S003",
+   "scope": "store",
+   "title": "생맥주가 거품만 나올 때 케그 교체",
+   "topic": "주류·케그",
+   "situation": "생맥주를 따르는데 거품만 나올 때",
+   "reason": "케그가 비었거나 가스 압이 낮으면 거품만 나와요.",
+   "actions": [
+    "케그 무게를 들어 보고 비었으면 새 케그로 바꾼다",
+    "가스 밸브가 열려 있는지 본다"
+   ],
+   "avoid": "",
+   "escalateWhen": "케그를 바꿔도 거품만 나올 때",
+   "source": "현장노하우",
+   "authorId": "P020",
+   "status": "approved",
+   "origin": "시드",
+   "created": "2026-09-01",
+   "updated": "2026-09-01",
+   "expires": "2027-09-01",
+   "tags": [
+    "생맥주",
+    "케그",
+    "거품"
+   ],
+   "uses": 0,
+   "helpful": 0,
+   "notHelpful": 0
+  },
+  {
+   "id": "C006",
+   "storeId": "S003",
+   "scope": "store",
+   "title": "2인 손님은 바 자리로 안내",
+   "topic": "좌석 배정",
+   "situation": "2인 손님이 들어올 때",
+   "reason": "4인 테이블을 비워 두려는 매장 방식이에요.",
+   "actions": [
+    "2인 손님은 바 자리로 먼저 안내한다"
+   ],
+   "avoid": "",
+   "escalateWhen": "손님이 테이블 자리를 원할 때",
+   "source": "공식규정",
+   "authorId": "P020",
+   "status": "approved",
+   "origin": "시드",
+   "created": "2026-09-01",
+   "updated": "2026-09-01",
+   "expires": "2027-09-01",
+   "tags": [
+    "2인",
+    "자리",
+    "좌석"
+   ],
+   "uses": 0,
+   "helpful": 0,
+   "notHelpful": 0
+  }
+ ],
+ "questions": [],
+ "topicSummaries": {}
+}
