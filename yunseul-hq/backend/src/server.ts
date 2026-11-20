@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import type { RunEvent, StoreState } from '@shared/contracts';
@@ -10,6 +12,7 @@ import { markOnboardingRead, overview, reviewPage, storeDetail, storeOnboarding,
 import * as db from './store/db.js';
 import { buildGraph } from './store/graph.js';
 import { manualChecklist, setManualCheck } from './store/manual.js';
+import { ROOT_DIR } from './paths.js';
 
 export const app = express();
 app.use(cors());
@@ -157,6 +160,16 @@ app.post('/api/reset', route(async (_req, res) => {
   res.json({ ok: true });
 }));
 
+// ---------- 화면 ----------
+// 프론트를 빌드해 두면(frontend/dist) 이 서버 하나가 API와 화면을 함께 낸다(배포용). 화면을 고치며 보려면 frontend에서 npm run dev(5176)
+const WEB_DIR = join(ROOT_DIR, 'frontend', 'dist');
+const hasWeb = existsSync(join(WEB_DIR, 'index.html'));
+if (hasWeb) {
+  app.use(express.static(WEB_DIR));
+  // 화면 주소(/store/S001/staff 등)를 새로고침해도 앱이 열리게 index.html을 돌려준다. 확장자가 있는 주소는 404로 둔다
+  app.use((req, res, next) => (req.method === 'GET' && !req.path.startsWith('/api') && !/\.\w+$/.test(req.path) ? res.sendFile(join(WEB_DIR, 'index.html')) : next()));
+}
+
 app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
   if (!err.status) console.error(err);
   res.status(err.status ?? 500).json({ error: err.message });
@@ -165,7 +178,7 @@ app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: 
 if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
   const { fresh } = db.load();
   const PORT = Number(process.env.PORT) || 8788;
-  app.listen(PORT, () => console.log(`윤슬 HQ 백엔드 http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
+  app.listen(PORT, () => console.log(`윤슬 HQ ${hasWeb ? '화면+API' : '백엔드'} http://localhost:${PORT} (LLM: ${aiStatus.mode}${aiStatus.model ? ` · ${aiStatus.model}` : ''})`));
   // 처음 켜면 전 매장 채점과 위험 상위 매장 규칙 진단을 미리 해 둔다(대시보드가 비지 않게)
   if (fresh || !db.get().diagnoses.length) hq.warmup().then((ids) => console.log(`[warmup] 미리 진단한 매장 ${ids.length}곳`)).catch((e) => console.error('[warmup]', e));
 }
