@@ -1,6 +1,7 @@
 // 시연 재생: 매장의 하루를 실제 흐름으로 돌린다. 화면에서는 에이전트가 움직이고 그래프가 자라는 모습이 그대로 보인다.
 import * as flows from './flows/index.js';
 import * as stock from './flows/stock.js';
+import * as shift from './flows/shift.js';
 import * as db from './store/db.js';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -60,6 +61,16 @@ export async function playDay(gapMs = 1600) {
     const card = await flows.submitCard(d2, veteran);
     await sleep(gapMs);
     await flows.cardAction(card.id, 'approve');
+    await sleep(gapMs);
+    // 근무 지도: 말 한 줄로 마감 지도를 만들고, 판정관이 채점하고, 다음 근무자에게 넘긴다.
+    // 마감 실사를 어제에 이어 또 빠뜨려 '반복 실수'가 점장 할 일에 오른다
+    const w = await shift.plan('마감하고 발주까지 해 줘', veteran);
+    await sleep(gapMs);
+    await shift.judgeStep(w.id, 'R2.S1', veteran);
+    await sleep(gapMs);
+    await shift.judgeStep(w.id, 'R2.S2', veteran);
+    await sleep(gapMs);
+    await shift.handover(w.id, veteran, other);
     await sleep(gapMs);
     await flows.lint();
     return true;

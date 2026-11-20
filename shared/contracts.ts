@@ -158,9 +158,49 @@ export interface InventoryView {
 
 export interface PosImportResult { import: PosImport; newRecipes: Recipe[]; proposals: Adjustment[]; orders: Order[]; runId: string }
 
+// ---------- 근무 지도 ----------
+// 말 한 줄로 근무(오픈·마감·발주·행사 준비)를 단계 지도로 만든다. 단계마다 판정표가 있고, 일한 사람이 아니라 판정관이 채점한다.
+
+export type ShiftActor = '신입' | '숙련' | '점장' | 'AI';
+export type CheckKind = 'auto' | 'self' | 'look'; // 자료로 확인(시스템) · 직접 체크(직원) · 점장이 볼 것
+export type AutoRule = 'posUpToDate' | 'stocktakeToday' | 'noStockDiff' | 'ordersSent' | 'noOutItems' | 'adjustmentsDecided' | 'eventsCovered' | 'noWaitingQuestions' | 'handoverWritten';
+export interface CheckDef { id: string; text: string; kind: CheckKind; source?: string; rule?: AutoRule }
+export interface StepDef { id: string; title: string; desc: string; actor: ShiftActor; agentId?: string; cards: string[]; link?: string; checks: CheckDef[] }
+export interface RoutineDef { id: string; title: string; desc: string; keywords: string[]; phases: { title: string; steps: StepDef[] }[] }
+
+export type Verdict = '합격' | '불합격' | '모름';
+export interface CheckResult { id: string; verdict: Verdict; why: string }
+export type StepState = 'todo' | 'passed' | 'failed' | 'waiting'; // waiting = 점장이 볼 줄이 남았거나 3번 불합격
+export interface ShiftStep extends StepDef {
+  phase: string;
+  routineId: string;
+  state: StepState;
+  ticks: string[]; // 직원이 체크한 줄
+  approved: string[]; // 점장이 확인한 줄
+  results: CheckResult[]; // 마지막 판정
+  fails: number;
+  failedChecks: string[]; // 이 근무에서 한 번이라도 불합격한 줄(반복 실수 찾기)
+  judgedAt?: string;
+  doneAt?: string;
+}
+export interface Handover { at: string; from: string; to: string; note: string }
+export interface Shift {
+  id: string;
+  title: string;
+  ask: string; // 처음 말한 한 줄
+  date: string;
+  by: string;
+  routines: string[];
+  steps: ShiftStep[];
+  handovers: Handover[];
+  log: { at: string; text: string }[];
+  status: 'open' | 'done';
+}
+export interface ShiftsView { routines: { id: string; title: string; desc: string; keywords: string[] }[]; shifts: Shift[] }
+
 // ---------- 하네스 선언 ----------
 
-export type FlowId = 'ask' | 'record' | 'approve' | 'resolve' | 'lint' | 'pos' | 'stocktake' | 'stockapprove';
+export type FlowId = 'ask' | 'record' | 'approve' | 'resolve' | 'lint' | 'pos' | 'stocktake' | 'stockapprove' | 'shift' | 'judge';
 
 export interface TeamDef { id: string; name: string; color: string; agents: string[] }
 export interface AgentDef { id: string; team: string; name: string; role: string; card: string; llm: boolean }
@@ -263,7 +303,7 @@ export interface InterviewDraft {
   via?: string; // 카드 편집자가 Claude였는지 규칙이었는지
 }
 
-export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기' | '재고 차이' | '사용량 이탈' | '레시피 대기' | '보정 제안'; ids: string[]; detail: string }
+export interface LintIssue { kind: '상충' | '만료' | '효과 낮음' | '공백' | '중복' | '만료 임박' | '이유 없음' | '승인 대기' | '재고 차이' | '사용량 이탈' | '레시피 대기' | '보정 제안' | '반복 실수' | '근무 대기'; ids: string[]; detail: string }
 
 
 export interface Metrics {

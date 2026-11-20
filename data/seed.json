@@ -547,6 +547,236 @@
   }
  ],
  "topicSummaries": {},
+ "shifts": [
+  {
+   "id": "W001",
+   "title": "마감·발주",
+   "ask": "마감하고 발주까지 해 줘",
+   "date": "2026-10-30",
+   "by": "P004",
+   "routines": [
+    "R2"
+   ],
+   "steps": [
+    {
+     "id": "R2.S1",
+     "title": "POS 매출 반영",
+     "desc": "POS 정리원이 판매를 재료 사용량으로 바꿔요",
+     "actor": "AI",
+     "agentId": "pos-reader",
+     "cards": [],
+     "link": "/inventory",
+     "checks": [
+      {
+       "id": "R2.S1.c1",
+       "text": "어제까지 판매가 POS에서 반영됐다",
+       "kind": "auto",
+       "rule": "posUpToDate"
+      }
+     ],
+     "phase": "마감·발주 · 1 영업 마감",
+     "routineId": "R2",
+     "ticks": [],
+     "approved": [],
+     "fails": 0,
+     "failedChecks": [],
+     "state": "passed",
+     "results": [
+      {
+       "id": "R2.S1.c1",
+       "verdict": "합격",
+       "why": "매장 PC에서 POS 반영 확인(그날 기준)"
+      }
+     ],
+     "judgedAt": "2026-10-30T23:05:00",
+     "doneAt": "2026-10-30T23:05:00"
+    },
+    {
+     "id": "R2.S2",
+     "title": "마감 재고 실사",
+     "desc": "냉장고와 창고를 따로 세서 입력해요",
+     "actor": "숙련",
+     "cards": [
+      "C013"
+     ],
+     "link": "/inventory",
+     "checks": [
+      {
+       "id": "R2.S2.c1",
+       "text": "오늘 마감 실사를 입력했다",
+       "kind": "auto",
+       "rule": "stocktakeToday"
+      },
+      {
+       "id": "R2.S2.c2",
+       "text": "냉장고와 창고를 따로 셌다",
+       "kind": "self",
+       "source": "C013"
+      }
+     ],
+     "phase": "마감·발주 · 1 영업 마감",
+     "routineId": "R2",
+     "ticks": [
+      "R2.S2.c2"
+     ],
+     "approved": [],
+     "fails": 1,
+     "failedChecks": [
+      "R2.S2.c1"
+     ],
+     "state": "failed",
+     "judgedAt": "2026-10-30T23:30:00",
+     "results": [
+      {
+       "id": "R2.S2.c1",
+       "verdict": "불합격",
+       "why": "2026-10-30 마감 실사 기록이 없어요"
+      },
+      {
+       "id": "R2.S2.c2",
+       "verdict": "합격",
+       "why": "직접 체크함"
+      }
+     ]
+    },
+    {
+     "id": "R2.S3",
+     "title": "실사 차이 확인",
+     "desc": "계산과 다른 품목의 이유를 남겨요",
+     "actor": "점장",
+     "cards": [
+      "C014"
+     ],
+     "link": "/inventory",
+     "checks": [
+      {
+       "id": "R2.S3.c1",
+       "text": "계산과 크게 다른 품목이 없다(있으면 이유를 남겼다)",
+       "kind": "auto",
+       "rule": "noStockDiff"
+      }
+     ],
+     "phase": "마감·발주 · 1 영업 마감",
+     "routineId": "R2",
+     "ticks": [],
+     "approved": [],
+     "fails": 0,
+     "failedChecks": [],
+     "state": "todo",
+     "results": []
+    },
+    {
+     "id": "R2.S4",
+     "title": "AI 제안 정리",
+     "desc": "보정·새 메뉴 소모량을 승인하거나 반려해요",
+     "actor": "점장",
+     "agentId": "demand-analyst",
+     "cards": [
+      "C011",
+      "C012"
+     ],
+     "link": "/inventory",
+     "checks": [
+      {
+       "id": "R2.S4.c1",
+       "text": "승인 대기 중인 보정·소모량이 없다",
+       "kind": "auto",
+       "rule": "adjustmentsDecided"
+      }
+     ],
+     "phase": "마감·발주 · 2 발주",
+     "routineId": "R2",
+     "ticks": [],
+     "approved": [],
+     "fails": 0,
+     "failedChecks": [],
+     "state": "todo",
+     "results": []
+    },
+    {
+     "id": "R2.S5",
+     "title": "주문서 보내기",
+     "desc": "발주 담당이 만든 주문서를 확인하고 보내요",
+     "actor": "점장",
+     "agentId": "order-clerk",
+     "cards": [],
+     "link": "/inventory",
+     "checks": [
+      {
+       "id": "R2.S5.c1",
+       "text": "오늘 주문서를 모두 보냈다",
+       "kind": "auto",
+       "rule": "ordersSent"
+      },
+      {
+       "id": "R2.S5.c2",
+       "text": "거래처와 수량을 점장이 확인했다",
+       "kind": "look"
+      }
+     ],
+     "phase": "마감·발주 · 2 발주",
+     "routineId": "R2",
+     "ticks": [],
+     "approved": [],
+     "fails": 0,
+     "failedChecks": [],
+     "state": "todo",
+     "results": []
+    },
+    {
+     "id": "R2.S6",
+     "title": "다음 근무자에게 넘기기",
+     "desc": "근무 설계자가 인계 메모를 만들어요",
+     "actor": "AI",
+     "agentId": "shift-planner",
+     "cards": [],
+     "checks": [
+      {
+       "id": "R2.S6.c1",
+       "text": "인계 메모를 남겼다",
+       "kind": "auto",
+       "rule": "handoverWritten"
+      }
+     ],
+     "phase": "마감·발주 · 3 넘기기",
+     "routineId": "R2",
+     "ticks": [],
+     "approved": [],
+     "fails": 0,
+     "failedChecks": [],
+     "state": "todo",
+     "results": []
+    }
+   ],
+   "handovers": [
+    {
+     "at": "2026-10-30T23:40:00",
+     "from": "수빈(숙련 8개월)",
+     "to": "도윤(신입 3일차)",
+     "note": "수빈(숙련 8개월) → 도윤(신입 3일차): 마감·발주\n끝난 단계 1/6 (POS 매출 반영)\n지금 단계: 마감 재고 실사 (숙련 차례)\n남은 기준: 오늘 마감 실사를 입력했다\n막힌 것: 마감 재고 실사(2026-10-30 마감 실사 기록이 없어요)\n볼 카드: C013, C014, C011, C012"
+    }
+   ],
+   "log": [
+    {
+     "at": "2026-10-30T22:50:00",
+     "text": "수빈(숙련 8개월): \"마감하고 발주까지 해 줘\" → 마감·발주 (6단계)"
+    },
+    {
+     "at": "2026-10-30T23:05:00",
+     "text": "POS 매출 반영: 합격"
+    },
+    {
+     "at": "2026-10-30T23:30:00",
+     "text": "마감 재고 실사: 불합격 1회"
+    },
+    {
+     "at": "2026-10-30T23:40:00",
+     "text": "근무 넘김: 수빈(숙련 8개월) → 도윤(신입 3일차)"
+    }
+   ],
+   "status": "open"
+  }
+ ],
  "log": [
   {
    "time": "2026-10-17T01:10:00",

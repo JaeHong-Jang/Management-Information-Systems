@@ -9,6 +9,7 @@ import { status as aiStatus } from './harness/llm.js';
 import { bus } from './harness/trace.js';
 import * as flows from './flows/index.js';
 import * as stock from './flows/stock.js';
+import * as shift from './flows/shift.js';
 import { inventoryIssues } from './agents/keeper.js';
 import { isPlaying, playDay } from './demo.js';
 import { isSimulating, recentVisits, visitMany } from './sim/customers.js';
@@ -177,6 +178,18 @@ app.post('/api/inventory/orders/:id/:action', route(async (req, res) => {
   res.json(await stock.orderAction(String(req.params.id), action as 'send'));
 }));
 app.patch('/api/inventory/items/:id', route((req, res) => res.json(stock.updateItem(String(req.params.id), req.body ?? {}))));
+
+// ---------- 근무 지도 ----------
+
+app.get('/api/shifts', (_req, res) => res.json(shift.shiftsView()));
+app.post('/api/shifts', route(async (req, res) => res.json(await shift.plan(String(req.body?.text ?? ''), req.body?.by || 'P001'))));
+app.post('/api/shifts/:id/steps/:step/tick', route((req, res) => res.json(shift.tick(String(req.params.id), String(req.params.step), String(req.body?.checkId ?? ''), Boolean(req.body?.on), req.body?.by || 'P005'))));
+app.post('/api/shifts/:id/steps/:step/judge', route(async (req, res) => res.json(await shift.judgeStep(String(req.params.id), String(req.params.step), req.body?.by || 'P005'))));
+app.post('/api/shifts/:id/handover', route(async (req, res) => {
+  const { from, to } = req.body ?? {};
+  if (!from || !to || from === to) return bad(res, '넘겨줄 사람과 받을 사람을 골라 주세요');
+  res.json(await shift.handover(String(req.params.id), String(from), String(to)));
+}));
 
 // ---------- 시연 ----------
 

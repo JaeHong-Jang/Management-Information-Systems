@@ -2,9 +2,9 @@
 // 판매는 고정 시드 난수라 다시 돌려도 같다. 10/23 마감 실사 값은 "CSV를 올린 뒤" 품목마다
 // 오늘 주문 · 3일 안 · 도착 전 바닥 · 여유가 고루 나오도록 거꾸로 맞춘다.
 //   npx tsx scripts/make_bar_demo.ts
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Card, Delivery, Inventory, Item, Order, Recipe, Sale, Stocktake } from '@shared/contracts';
+import type { Card, Delivery, Inventory, Item, Order, Recipe, RoutineDef, Sale, Shift, Stocktake } from '@shared/contracts';
 import { addDays, salesDates, usage, weekday, weekdayAvg } from '../src/inventory/calc.js';
 import { DATA_DIR } from '../src/paths.js';
 
@@ -193,8 +193,38 @@ const cards: Card[] = [
     avoid: '서비스 소주를 기록 없이 내주지 않는다.', escalateWhen: '서비스 기록으로 설명되지 않는 차이가 한 짝 이상일 때', tags: ['실사', '차이', '서비스', '진로', '소주'] }, '2026-10-17', 2, 2),
 ];
 
+// ---------- 지난 근무 하나: 어제 마감·발주에서 마감 실사를 빠뜨렸다(오늘 또 빠뜨리면 '반복 실수'가 된다) ----------
+const R2 = (JSON.parse(readFileSync(join(DATA_DIR, 'routines.json'), 'utf8')) as { routines: RoutineDef[] }).routines.find((r) => r.id === 'R2')!;
+const YESTERDAY = addDays(TODAY, -1);
+const pastShift: Shift = {
+  id: 'W001',
+  title: R2.title,
+  ask: '마감하고 발주까지 해 줘',
+  date: YESTERDAY,
+  by: 'P004',
+  routines: ['R2'],
+  steps: R2.phases.flatMap((ph) =>
+    ph.steps.map((st) => {
+      const base = { ...st, phase: `${R2.title} · ${ph.title}`, routineId: 'R2', ticks: [] as string[], approved: [] as string[], fails: 0, failedChecks: [] as string[] };
+      if (st.id === 'R2.S1') return { ...base, state: 'passed' as const, results: [{ id: 'R2.S1.c1', verdict: '합격' as const, why: '매장 PC에서 POS 반영 확인(그날 기준)' }], judgedAt: `${YESTERDAY}T23:05:00`, doneAt: `${YESTERDAY}T23:05:00` };
+      if (st.id === 'R2.S2')
+        return { ...base, state: 'failed' as const, fails: 1, failedChecks: ['R2.S2.c1'], ticks: ['R2.S2.c2'], judgedAt: `${YESTERDAY}T23:30:00`,
+          results: [{ id: 'R2.S2.c1', verdict: '불합격' as const, why: `${YESTERDAY} 마감 실사 기록이 없어요` }, { id: 'R2.S2.c2', verdict: '합격' as const, why: '직접 체크함' }] };
+      return { ...base, state: 'todo' as const, results: [] };
+    }),
+  ),
+  handovers: [{ at: `${YESTERDAY}T23:40:00`, from: '수빈(숙련 8개월)', to: '도윤(신입 3일차)', note: `수빈(숙련 8개월) → 도윤(신입 3일차): 마감·발주\n끝난 단계 1/6 (POS 매출 반영)\n지금 단계: 마감 재고 실사 (숙련 차례)\n남은 기준: 오늘 마감 실사를 입력했다\n막힌 것: 마감 재고 실사(${YESTERDAY} 마감 실사 기록이 없어요)\n볼 카드: C013, C014, C011, C012` }],
+  log: [
+    { at: `${YESTERDAY}T22:50:00`, text: '수빈(숙련 8개월): "마감하고 발주까지 해 줘" → 마감·발주 (6단계)' },
+    { at: `${YESTERDAY}T23:05:00`, text: 'POS 매출 반영: 합격' },
+    { at: `${YESTERDAY}T23:30:00`, text: '마감 재고 실사: 불합격 1회' },
+    { at: `${YESTERDAY}T23:40:00`, text: '근무 넘김: 수빈(숙련 8개월) → 도윤(신입 3일차)' },
+  ],
+  status: 'open', // 어제 넘겨받은 근무: 도윤이 마감 재고 실사부터 이어받는다
+};
+
 const seedFile = {
-  store: { name: '포차 달빛 (가상 데모 매장)', today: TODAY },
+  store: { name: '포차 달빛', today: TODAY },
   topics: ['주류·케그', '신분증 확인', '취객·분쟁 응대', '결제·POS', '단체 예약', '재고·발주', '품절·대체', '기타'],
   people: [
     { id: 'P001', name: '한서윤', role: '점장', tenure: '5년차' },
@@ -212,6 +242,7 @@ const seedFile = {
       answer: '매장 위키에 이 상황에 맞는 사례가 아직 없어요. 점장님께 질문을 넘겼어요. 답이 오면 위키에 사례로 추가돼요.', why: '' },
   ],
   topicSummaries: {},
+  shifts: [pastShift],
   log: [
     { time: '2026-10-17T01:10:00', op: '실사 차이 → 새 카드', detail: '진로 -10병 → [C014]' },
     { time: '2026-10-23T01:20:00', op: '마감 재고 실사', detail: `${items.length}개 품목 (수빈)` },

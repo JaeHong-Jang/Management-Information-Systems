@@ -10,15 +10,16 @@
     "ollama": { "model": "ax4-light:q4_K_M", "envModel": "OLLAMA_MODEL", "envHost": "OLLAMA_HOST" }
   },
   "teams": [
-    { "id": "lead", "name": "지휘", "color": "blue", "agents": ["orchestrator"] },
+    { "id": "lead", "name": "지휘", "color": "blue", "agents": ["orchestrator", "shift-planner"] },
     { "id": "capture", "name": "수집팀", "color": "green", "agents": ["privacy-guard", "interviewer", "card-writer"] },
     { "id": "answer", "name": "답변팀", "color": "violet", "agents": ["librarian", "coach", "escalator"] },
-    { "id": "verify", "name": "검증팀", "color": "orange", "agents": ["citation-checker", "policy-checker", "wording-guard"] },
+    { "id": "verify", "name": "검증팀", "color": "orange", "agents": ["citation-checker", "policy-checker", "wording-guard", "judge"] },
     { "id": "keeper", "name": "위키 관리팀", "color": "teal", "agents": ["synthesizer", "linter"] },
     { "id": "stock", "name": "재고팀", "color": "ink", "agents": ["pos-reader", "recipe-writer", "demand-analyst", "order-clerk"] }
   ],
   "agents": [
-    { "id": "orchestrator", "team": "lead", "name": "오케스트레이터", "role": "들어온 요청을 흐름(질문·기록·점장 답변·점검·재고)에 배정하고 실행 순서와 결과 요약을 맡는다", "card": "agents/lead/orchestrator.md", "llm": false },
+    { "id": "orchestrator", "team": "lead", "name": "오케스트레이터", "role": "들어온 요청을 흐름(근무·질문·기록·점장 답변·점검·재고)에 배정하고 실행 순서와 결과 요약을 맡는다", "card": "agents/lead/orchestrator.md", "llm": false },
+    { "id": "shift-planner", "team": "lead", "name": "근무 설계자", "role": "말 한 줄에서 근무 루틴(오픈·마감·발주·행사 준비)을 골라 단계 지도를 만들고, 근무를 넘길 때 인계 메모를 쓴다", "card": "agents/lead/shift-planner.md", "llm": true },
     { "id": "privacy-guard", "team": "capture", "name": "개인정보 가드", "role": "기록 속 전화번호·카드번호·고객 실명을 가린다. 가린 개수를 남긴다", "card": "agents/capture/privacy-guard.md", "llm": false },
     { "id": "interviewer", "team": "capture", "name": "회고 인터뷰어", "role": "무엇을 했는지만 적힌 기록에서 빠진 판단 이유·하면 안 되는 것·점장 호출 기준을 되묻는다", "card": "agents/capture/interviewer.md", "llm": true },
     { "id": "card-writer", "team": "capture", "name": "사례 카드 편집자", "role": "기록과 되묻기 답을 상황·판단 이유·대응·금지·호출 기준의 사례 카드로 정리한다", "card": "agents/capture/card-writer.md", "llm": true },
@@ -28,6 +29,7 @@
     { "id": "citation-checker", "team": "verify", "name": "근거 검증", "role": "답의 문장마다 실제 승인된 카드 번호가 붙었는지, 없는 카드를 인용하지 않았는지 본다", "card": "agents/verify/citation-checker.md", "llm": false },
     { "id": "policy-checker", "team": "verify", "name": "규정 우선 검증", "role": "인용한 카드끼리 공식규정과 현장노하우가 부딪히면 공식규정을 따르라는 안내가 있는지 본다", "card": "agents/verify/policy-checker.md", "llm": false },
     { "id": "wording-guard", "team": "verify", "name": "표현 검증", "role": "고객 탓, 단정, 임의 보상 약속 같은 금지 표현을 막는다", "card": "agents/verify/wording-guard.md", "llm": false },
+    { "id": "judge", "team": "verify", "name": "판정관", "role": "일한 사람·AI와 따로 근무 단계의 판정표를 줄마다 합격·불합격·모름으로 채점한다. 3번 불합격이면 점장에게 넘긴다", "card": "agents/verify/judge.md", "llm": false },
     { "id": "synthesizer", "team": "keeper", "name": "종합 편집자", "role": "토픽에 카드가 늘거나 바뀌면 토픽 페이지의 핵심 판단 원칙을 다시 쓴다", "card": "agents/keeper/synthesizer.md", "llm": true },
     { "id": "linter", "team": "keeper", "name": "위키 점검관", "role": "상충·만료·효과 낮음·중복·빈 토픽·승인 대기를 찾아 점장 할 일로 만든다", "card": "agents/keeper/linter.md", "llm": true },
     { "id": "pos-reader", "team": "stock", "name": "POS 정리원", "role": "POS 매출 CSV에서 날짜·메뉴·수량을 뽑고 처음 보는 메뉴를 찾는다", "card": "agents/stock/pos-reader.md", "llm": false },
@@ -43,7 +45,9 @@
     "lint": { "name": "위키 점검", "steps": ["orchestrator", "linter"] },
     "pos": { "name": "POS 판매 반영", "steps": ["orchestrator", "pos-reader", "recipe-writer", "demand-analyst", "citation-checker", "order-clerk"] },
     "stocktake": { "name": "마감 재고 실사", "steps": ["orchestrator", "order-clerk", "linter"] },
-    "stockapprove": { "name": "재고 승인·입고", "steps": ["orchestrator", "order-clerk"] }
+    "stockapprove": { "name": "재고 승인·입고", "steps": ["orchestrator", "order-clerk"] },
+    "shift": { "name": "근무 지도", "steps": ["orchestrator", "shift-planner"] },
+    "judge": { "name": "단계 판정", "steps": ["orchestrator", "judge"] }
   },
   "gates": [
     { "id": "answer-gate", "flow": "ask", "agents": ["citation-checker", "policy-checker", "wording-guard"], "onFail": "근거 없는 문장을 빼고 다시 확인한다. 남는 문장이 없으면 점장에게 넘긴다" },
